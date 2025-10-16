@@ -1,0 +1,48 @@
+{
+  "name": "isometric-3d-viewer",
+  "version": "1.0.0",
+  "description": "A modern 3D isometric viewer with interactive navigation, highlighting, and SVG connectors",
+  "main": "dist/isometric-3d.min.js",
+  "module": "src/isometric-3d.js",
+  "types": "dist/isometric-3d.d.ts",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch",
+    "serve": "npx http-server examples -p 8080 -o"
+  },
+  "keywords": [
+    "isometric",
+    "3d",
+    "viewer",
+    "navigation",
+    "highlight",
+    "connector",
+    "svg",
+    "visualization",
+    "interactive",
+    "scroll-sync"
+  ],
+  "author": "Your Name",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/isometric-3d-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/isometric-3d-viewer/issues"
+  },
+  "homepage": "https://github.com/yourusername/isometric-3d-viewer#readme",
+  "devDependencies": {
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "terser-webpack-plugin": "^5.3.10",
+    "css-loader": "^6.8.1",
+    "style-loader": "^3.3.3"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}
