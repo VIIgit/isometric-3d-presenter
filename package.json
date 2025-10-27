@@ -30,12 +30,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/erwin/isometric-3d-presenter.git"
+    "url": "https://github.com/VIIgit/isometric-3d-presenter.git"
   },
   "bugs": {
-    "url": "https://github.com/erwin/isometric-3d-presenter/issues"
+    "url": "https://github.com/VIIgit/isometric-3d-presenter/issues"
   },
-  "homepage": "https://github.com/erwin/isometric-3d-presenter#readme",
+  "homepage": "https://github.com/VIIgit/isometric-3d-presenter#readme",
   "devDependencies": {
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
