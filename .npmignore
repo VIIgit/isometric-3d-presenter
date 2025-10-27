@@ -1,0 +1,21 @@
+# Development files
+.vscode/
+.DS_Store
+node_modules/
+.git/
+.gitignore
+
+# Development and build tools
+webpack.config.js
+*.log
+
+# Documentation that's not needed in npm package
+SETUP.md
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Examples (optional - you might want to include these)
+# examples/
+
+# Source maps (optional)
+*.map

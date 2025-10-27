@@ -1,52 +1,52 @@
-# Isometric 3D Viewer
+# Isometric 3D Presenter
 
-A modern, interactive 3D isometric viewer with smooth navigation, highlighting system, SVG connectors, and scroll synchronization. Perfect for visualizing architecture diagrams, workflows, and 3D documentation.
+A modern, interactive 3D isometric presentation tool with smooth navigation, highlighting system, SVG connectors, and scroll synchronization. Perfect for creating engaging presentations, visualizing architecture diagrams, workflows, and interactive 3D storytelling experiences.
 
 ## Features
 
-- **3D Isometric Rendering**: CSS3-based 3D transforms with customizable rotation and zoom
-- **Interactive Navigation**: Mouse drag, keyboard controls, and programmatic navigation
-- **SVG Connectors**: Draw connections between elements with automatic routing
-- **Highlighting System**: Multi-key highlighting with automatic dimming of non-highlighted elements
-- **Scroll Synchronization**: Sync 3D navigation with page scrolling for storytelling
-- **Compact Controls**: Optional spherical controller with keyboard help
-- **Responsive Design**: Works on desktop and mobile devices
-- **URL Bookmarking**: Save and share specific views via URL parameters
-- **Multiple Instances**: Run multiple independent viewers on the same page
+- **3D Isometric Presentation**: CSS3-based 3D transforms with smooth transitions for storytelling
+- **Interactive Navigation**: Mouse drag, keyboard controls, and programmatic navigation between scenes
+- **SVG Connectors**: Draw animated connections between elements with customizable styles
+- **Highlighting System**: Multi-key highlighting with focus-based animations and automatic dimming
+- **Scroll Synchronization**: Sync 3D navigation with page scrolling for seamless storytelling
+- **Presentation Controls**: Spherical controller with navigation dots and keyboard shortcuts
+- **Responsive Design**: Works on desktop and mobile devices for any presentation environment
+- **URL Bookmarking**: Save and share specific presentation states via URL parameters
+- **Multiple Presentations**: Run multiple independent presenters on the same page
 
 ## Installation
 
 ```bash
-npm install isometric-3d-viewer
+npm install isometric-3d-presenter
 ```
 
 ## Quick Start
 
-### Basic Usage
+### Basic Presentation Setup
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="node_modules/isometric-3d-viewer/src/isometric-3d.css">
+  <link rel="stylesheet" href="node_modules/isometric-3d-presenter/src/isometric-3d.css">
 </head>
 <body>
-  <div id="viewer" class="isometric-container">
+  <div id="presentation" class="isometric-container">
     <div class="isometric-perspective">
-      <div id="cube1" class="scene" data-width="100" data-height="100" data-depth="100">
-        <div class="face front">Front</div>
+      <div id="scene1" class="scene" data-width="100" data-height="100" data-depth="100">
+        <div class="face front">Scene 1</div>
         <div class="face back">Back</div>
         <div class="face left">Left</div>
         <div class="face right">Right</div>
-        <div class="face top">Top</div>
+        <div class="face top" data-nav-xyz="45.0.-35" data-nav-zoom="1.2">Main Content</div>
         <div class="face bottom">Bottom</div>
       </div>
     </div>
   </div>
 
-  <script src="node_modules/isometric-3d-viewer/src/isometric-3d.js"></script>
+  <script src="node_modules/isometric-3d-presenter/src/isometric-3d.js"></script>
   <script>
-    const viewer = createIsometric3D('viewer', {
+    const presenter = createIsometric3D('presentation', {
       defaultRotation: { x: 45, y: 0, z: -35 },
       defaultZoom: 1.0,
       showCompactControls: true
@@ -337,19 +337,20 @@ viewer.on('navigationChange', (data) => {
 
 ### URL Bookmarking
 
-The viewer automatically saves state to URL:
+The presenter automatically saves state to URL:
 - `{prefix}xyz` - Rotation (e.g., "45.00.-35")
 - `{prefix}zoom` - Zoom level (e.g., "1.2")
 
-Example: `?viewerxyz=45.00.-35&viewerzoom=1.2`
+Example: `?presentationxyz=45.00.-35&presentationzoom=1.2`
 
 ## Examples
 
 See the `examples/` directory for:
-- Basic cube viewer
-- Architecture diagrams
-- Workflow visualization
-- Scroll-synced documentation
+
+- Interactive cube presentation
+- Architecture diagram walkthroughs
+- Workflow process demonstrations  
+- Scroll-synced storytelling experiences
 
 ## Browser Support
 
@@ -362,13 +363,15 @@ See the `examples/` directory for:
 
 Apache License 2.0
 
-Copyright 2025 Isometric 3D Viewer Contributors
+Copyright 2025 Isometric 3D Presenter Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+```text
+http://www.apache.org/licenses/LICENSE-2.0
+```
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,

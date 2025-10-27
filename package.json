@@ -1,14 +1,18 @@
 {
-  "name": "isometric-3d-viewer",
+  "name": "isometric-3d-presenter",
   "version": "1.0.0",
-  "description": "A modern 3D isometric viewer with interactive navigation, highlighting, and SVG connectors",
+  "description": "A modern 3D isometric presenter with interactive navigation, highlighting, connectors based on plain HTML, CSS and Javascript",
   "main": "dist/isometric-3d.min.js",
   "module": "src/isometric-3d.js",
   "types": "dist/isometric-3d.d.ts",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
-    "serve": "npx http-server examples -p 8080 -o"
+    "serve": "npx http-server examples -p 8080 -o",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "echo \"No linting configured\" && exit 0"
   },
   "keywords": [
     "isometric",
@@ -22,16 +26,16 @@
     "interactive",
     "scroll-sync"
   ],
-  "author": "Your Name",
+  "author": "Erwin <your-email@example.com>",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/isometric-3d-viewer.git"
+    "url": "https://github.com/erwin/isometric-3d-presenter.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/isometric-3d-viewer/issues"
+    "url": "https://github.com/erwin/isometric-3d-presenter/issues"
   },
-  "homepage": "https://github.com/yourusername/isometric-3d-viewer#readme",
+  "homepage": "https://github.com/erwin/isometric-3d-presenter#readme",
   "devDependencies": {
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
