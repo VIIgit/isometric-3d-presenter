@@ -413,6 +413,11 @@ class Isometric3D {
     // Use resetView for core functionality, then update URL
     this.resetView();
     this.updateUrlWithRotation();
+    
+    // Restart all animations for default view
+    setTimeout(() => {
+      this.startAllAnimations();
+    }, 100);
   }
 
   setActiveNavPoint(activeIndex) {
@@ -1701,6 +1706,9 @@ class Isometric3D {
         if (perspective) {
         perspective.classList.add('ready');
         }
+        
+        // Start all animations for default view
+        this.startAllAnimations();
       }, 50); // Small delay to ensure updateScene has completed
 
     }, 300);
@@ -1792,11 +1800,25 @@ class Isometric3D {
         return;
       }
       
+      // Check for fromCenter and toCenter options
+      const fromCenter = connector.fromCenter || false;
+      const toCenter = connector.toCenter || false;
+      
       // Calculate start point based on fromPoint
-      const startPoint = this.getConnectionPoint(fromCorners, connector.fromPoint);
+      const startPoint = this.getConnectionPoint(
+        fromCorners, 
+        connector.fromPoint, 
+        fromCenter, 
+        fromCenter ? connector.fromPoint : null
+      );
       
       // Calculate end point based on toPoint
-      const endPoint = this.getConnectionPoint(toCorners, connector.toPoint);
+      const endPoint = this.getConnectionPoint(
+        toCorners, 
+        connector.toPoint, 
+        toCenter, 
+        toCenter ? connector.toPoint : null
+      );
       
       // Determine routing direction based on connection points
       // left/right → horizontal first, top/bottom → vertical first, center → depends on opposite end
@@ -1807,6 +1829,13 @@ class Isometric3D {
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const color = connector.color || '#4CAF50';
       const cornerRadius = 10;
+      
+      // Line style options
+      const showArrow = connector.showArrow !== false; // Default true
+      const showStartCircle = connector.showStartCircle || false; // Default false
+      const showEndCircle = connector.showEndCircle || false; // Default false
+      const animated = connector.animated || false; // Default false
+      const lineStyle = connector.lineStyle || 'solid'; // Default solid ('solid' or 'dashed')
       
       // Calculate direction and distance
       const deltaY = endPoint.y - startPoint.y;
@@ -1961,8 +1990,17 @@ class Isometric3D {
       path.setAttribute('stroke', color);
       path.setAttribute('stroke-width', '3');
       path.setAttribute('fill', 'none');
-      path.setAttribute('marker-end', `url(#arrowhead-${color.replace('#', '')})`);
       path.setAttribute('stroke-linecap', 'round');
+      
+      // Apply line style (solid or dashed)
+      if (lineStyle === 'dashed') {
+        path.setAttribute('stroke-dasharray', '8,4');
+      }
+      
+      // Apply arrow marker only if showArrow is true
+      if (showArrow) {
+        path.setAttribute('marker-end', `url(#arrowhead-${color.replace('#', '')})`);
+      }
       
       // Add data attributes and class for highlighting
       path.setAttribute('data-connector-from', connector.from);
@@ -1977,29 +2015,72 @@ class Isometric3D {
       
       svg.appendChild(path);
       
-      // Add start and end markers for debugging
-      const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      startCircle.setAttribute('cx', startPoint.x);
-      startCircle.setAttribute('cy', startPoint.y);
-      startCircle.setAttribute('r', '5');
-      startCircle.setAttribute('fill', color);
-      startCircle.setAttribute('opacity', '0.5');
-      startCircle.classList.add('connector-marker');
-      if (keys.length > 0) {
-        startCircle.setAttribute('data-connector-keys', keys.join(','));
+      // Add start circle if specified
+      if (showStartCircle) {
+        const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        startCircle.setAttribute('cx', startPoint.x);
+        startCircle.setAttribute('cy', startPoint.y);
+        startCircle.setAttribute('r', '6');
+        startCircle.setAttribute('fill', color);
+        startCircle.setAttribute('opacity', '0.8');
+        startCircle.classList.add('connector-marker');
+        if (keys.length > 0) {
+          startCircle.setAttribute('data-connector-keys', keys.join(','));
+        }
+        svg.appendChild(startCircle);
       }
-      svg.appendChild(startCircle);
       
-      const endCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      endCircle.setAttribute('cx', endPoint.x);
-      endCircle.setAttribute('cy', endPoint.y);
-      endCircle.setAttribute('r', '5');
-      endCircle.setAttribute('fill', color);
-      endCircle.classList.add('connector-marker');
-      if (keys.length > 0) {
-        endCircle.setAttribute('data-connector-keys', keys.join(','));
+      // Add end circle if specified
+      if (showEndCircle) {
+        const endCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        endCircle.setAttribute('cx', endPoint.x);
+        endCircle.setAttribute('cy', endPoint.y);
+        endCircle.setAttribute('r', '6');
+        endCircle.setAttribute('fill', color);
+        endCircle.setAttribute('opacity', '0.8');
+        endCircle.classList.add('connector-marker');
+        if (keys.length > 0) {
+          endCircle.setAttribute('data-connector-keys', keys.join(','));
+        }
+        svg.appendChild(endCircle);
       }
-      svg.appendChild(endCircle);
+      
+      // Add animated circle that travels along the path if specified
+      if (animated) {
+        const animatedCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        animatedCircle.setAttribute('r', '4');
+        animatedCircle.setAttribute('fill', color);
+        animatedCircle.setAttribute('opacity', '0.9');
+        animatedCircle.classList.add('connector-animated-marker');
+        
+        // Create animateMotion element
+        const animateMotion = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+        animateMotion.setAttribute('dur', '3s');
+        animateMotion.setAttribute('repeatCount', 'indefinite');
+        
+        // Start immediately - will be controlled by highlight system
+        // animateMotion.setAttribute('begin', 'indefinite');
+        
+        // Create mpath element to reference the path
+        const mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+        
+        // Give the path a unique ID for the mpath reference
+        const pathId = `connector-path-${index}`;
+        path.setAttribute('id', pathId);
+        mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pathId}`);
+        
+        animateMotion.appendChild(mpath);
+        animatedCircle.appendChild(animateMotion);
+        
+        // Store animation reference for later control
+        animatedCircle.setAttribute('data-animation-id', `animation-${index}`);
+        
+        if (keys.length > 0) {
+          animatedCircle.setAttribute('data-connector-keys', keys.join(','));
+        }
+        
+        svg.appendChild(animatedCircle);
+      }
       
     });
   }
@@ -2036,16 +2117,74 @@ class Isometric3D {
     return 'horizontal';
   }
   
-  // Helper to calculate connection point on a scene
-  getConnectionPoint(corners, point) {
+  /**
+   * Helper to calculate connection point on a scene
+   * @param {Object} corners - The corner coordinates of the element
+   * @param {string} point - Connection point ('top', 'bottom', 'left', 'right', 'center', etc.)
+   * @param {boolean} fromCenter - If true, start drawing from center with offset in direction
+   * @param {string} direction - Direction for center offset ('left', 'right', 'top', 'bottom')
+   * @returns {Object} Connection point coordinates {x, y}
+   * 
+   * New Connector Options:
+   * - fromCenter: true/false - Start from center of scene instead of edge
+   * - toCenter: true/false - End at center of scene instead of edge  
+   * - showArrow: true/false - Show triangle arrow at end (default: true)
+   * - showStartCircle: true/false - Show circle at start of line (default: false)
+   * - showEndCircle: true/false - Show circle at end of line (default: false)
+   * - lineStyle: "solid"/"dashed" - Line style (default: "solid")
+   * - animated: true/false - Add moving circle animation along path (default: false)
+   *   Note: Animation only runs when the connector is highlighted/in focus
+   * 
+   * Example connector with new options:
+   * {
+   *   "from": "cube1", 
+   *   "fromPoint": "left", 
+   *   "fromCenter": true,
+   *   "to": "cube2", 
+   *   "toPoint": "right",
+   *   "toCenter": true, 
+   *   "color": "#FF9800",
+   *   "lineStyle": "dashed",
+   *   "showArrow": false,
+   *   "showStartCircle": true,
+   *   "showEndCircle": true,
+   *   "animated": true
+   * }
+   */
+  getConnectionPoint(corners, point, fromCenter = false, direction = null) {
     const { tl, tr, br, bl } = corners;
+    
+    // Calculate center first
+    const center = {
+      x: (tl.x + br.x) / 2,
+      y: (tl.y + br.y) / 2
+    };
+    
+    // If fromCenter is true, adjust the center point based on direction
+    if (fromCenter && direction) {
+      const offset = 20; // Distance from center to start drawing
+      switch (direction) {
+        case 'left':
+          return { x: center.x - offset, y: center.y };
+        case 'right':
+          return { x: center.x + offset, y: center.y };
+        case 'top':
+          return { x: center.x, y: center.y - offset };
+        case 'bottom':
+          return { x: center.x, y: center.y + offset };
+        default:
+          return center;
+      }
+    }
+    
+    // If fromCenter is true but no direction specified, return exact center
+    if (fromCenter) {
+      return center;
+    }
     
     switch (point) {
       case 'center':
-        return {
-          x: (tl.x + br.x) / 2,
-          y: (tl.y + br.y) / 2
-        };
+        return center;
       case 'top':
         return {
           x: (tl.x + tr.x) / 2,
@@ -2076,10 +2215,7 @@ class Isometric3D {
         return { x: br.x, y: br.y };
       default:
         // Default to center if unknown point
-        return {
-          x: (tl.x + br.x) / 2,
-          y: (tl.y + br.y) / 2
-        };
+        return center;
     }
   }
 
@@ -2115,26 +2251,52 @@ class Isometric3D {
     // Ensure keys is an array
     const keyArray = Array.isArray(keys) ? keys : [keys];
     
-    
     // First, remove all existing highlights
     this.clearHighlights();
     
+    // Stop all animations first
+    const allAnimatedMarkers = this.container.querySelectorAll('.connector-animated-marker');
+    allAnimatedMarkers.forEach(marker => {
+      const animateMotion = marker.querySelector('animateMotion');
+      if (animateMotion) {
+        animateMotion.endElement();
+      }
+    });
+    
+    // Get all connectors and determine which should be highlighted
+    const allConnectors = this.container.querySelectorAll('[data-connector-keys]');
+    const connectorsToHighlight = new Set();
+    
     keyArray.forEach(key => {
-      // Highlight connectors with matching key (check comma-separated list)
-      const allConnectors = this.container.querySelectorAll('[data-connector-keys]');
+      // Find connectors with matching key (check comma-separated list)
       allConnectors.forEach(el => {
-        const elementKeys = el.getAttribute('data-connector-keys').split(',');
+        const elementKeys = el.getAttribute('data-connector-keys').split(',').map(k => k.trim());
         if (elementKeys.includes(key)) {
-          el.classList.add('highlight');
+          connectorsToHighlight.add(el);
         }
       });
-      
+    });
+    
+    // Apply highlighting only to matching connectors
+    allConnectors.forEach(el => {
+      if (connectorsToHighlight.has(el)) {
+        el.classList.add('highlight');
+      } else {
+        el.classList.remove('highlight'); // Ensure non-matching connectors are not highlighted
+      }
+    });
+    
+    // Handle scene highlighting separately
+    const allScenes = this.container.querySelectorAll('.scene');
+    const scenesToHighlight = new Set();
+    
+    keyArray.forEach(key => {
       // Highlight scenes with matching key (check comma-separated list in data-keys)
       const scenes = this.container.querySelectorAll(`.scene[data-keys]`);
       scenes.forEach(scene => {
         const elementKeys = scene.getAttribute('data-keys').split(',').map(k => k.trim());
         if (elementKeys.includes(key)) {
-          scene.classList.add('highlight');
+          scenesToHighlight.add(scene);
         }
       });
       
@@ -2145,20 +2307,63 @@ class Isometric3D {
         if (elementKeys.includes(key)) {
           const parentScene = face.closest('.scene');
           if (parentScene) {
-            parentScene.classList.add('highlight');
+            scenesToHighlight.add(parentScene);
           }
         }
       });
-      
-      const connectorCount = this.container.querySelectorAll(`.connector-path.highlight, .connector-marker.highlight`).length;
-      const sceneCount = this.container.querySelectorAll(`.scene.highlight`).length;
+    });
+    
+    // Apply scene highlighting explicitly
+    allScenes.forEach(scene => {
+      if (scenesToHighlight.has(scene)) {
+        scene.classList.add('highlight');
+      } else {
+        scene.classList.remove('highlight'); // Ensure non-matching scenes are not highlighted
+      }
+    });
+    
+    // Control animations based on highlighting
+    allAnimatedMarkers.forEach(marker => {
+      const animateMotion = marker.querySelector('animateMotion');
+      if (animateMotion) {
+        if (marker.classList.contains('highlight')) {
+          // Start animation for highlighted markers
+          animateMotion.beginElement();
+        } else {
+          // Keep animation stopped for non-highlighted markers
+          animateMotion.endElement();
+        }
+      }
     });
   }
   
+  // Start all animations (for default view)
+  startAllAnimations() {
+    const allAnimatedMarkers = this.container.querySelectorAll('.connector-animated-marker');
+    allAnimatedMarkers.forEach(marker => {
+      const animateMotion = marker.querySelector('animateMotion');
+      if (animateMotion) {
+        animateMotion.beginElement();
+      }
+    });
+  }
+
   // Clear all highlights
   clearHighlights() {
     const highlighted = this.container.querySelectorAll('.highlight');
     highlighted.forEach(el => el.classList.remove('highlight'));
+    
+    // When clearing highlights (returning to default view), restart all animations
+    const allAnimatedMarkers = this.container.querySelectorAll('.connector-animated-marker');
+    allAnimatedMarkers.forEach(marker => {
+      const animateMotion = marker.querySelector('animateMotion');
+      if (animateMotion) {
+        animateMotion.endElement(); // Stop current animation
+        setTimeout(() => {
+          animateMotion.beginElement(); // Restart animation after brief pause
+        }, 50);
+      }
+    });
   }
   
   // Toggle highlight for specific key

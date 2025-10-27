@@ -6,12 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modern Spherical Controller Demo</title>
     <link rel="stylesheet" href="../src/isometric-3d.css">
+    <link rel="stylesheet" href="styles.css">
+
     <style>
         body {
             margin: 0;
             padding: 20px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }
 
@@ -25,6 +26,10 @@
             height: 300px;
             width: 100%;
             z-index: 100;
+        }
+
+        .isometric-perspective {
+            border: 2px solid #000000;
         }
 
         .content-sections {
@@ -49,6 +54,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
+        /* HTML Grid Layout */
         .grid-layout {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -58,7 +64,8 @@
                 "cube-a . rect-a"
                 ". cube-b rect-b"
                 "cube-c cube-c .";
-            background-color: rgb(255, 0, 0);
+            background: linear-gradient(135deg, #6fff00 0%, #764ba2 100%);
+
         }
 
         .scene-a {
@@ -92,12 +99,50 @@
         }
 
         #modern-scene {
-            background-color: antiquewhite;
+            background-color: linear-gradient(135deg, #2c47be 0%, #abd5ff 100%);
+            border: black 2px solid;
         }
 
         .scene {
             border: 1px solid #00f;
         }
+
+
+        /* Base cube styles */
+
+
+        /* Enhanced SVG connector styles */
+        .connector-path {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            transition: opacity 0.3s ease;
+        }
+
+        .connector-animated-marker {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            transition: opacity 0.3s ease;
+        }
+
+        .connector-marker {
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+            transition: opacity 0.3s ease;
+        }
+
+        /* Highlighted connectors have enhanced visibility */
+        .connector-path.highlight {
+            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4));
+            opacity: 1 !important;
+        }
+
+        .connector-animated-marker.highlight {
+            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+            opacity: 1 !important;
+        }
+
+        .connector-marker.highlight {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+            opacity: 1 !important;
+        }
+
     </style>
 </head>
 
@@ -110,23 +155,29 @@
             magna aliqua.</p>
         <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
         </p>
-                <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </p>        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        </p>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
         </p>
     </div>
 
     <div class="sticky-section-wrapper">
         <div id="modern-scene" class="isometric-container">
             <div class="isometric-perspective grid-layout" data-connectors='[
-                     {"from": "cube1", "fromPoint": "bottom", "edgeAt": "80", "to": "cube3", "toPoint": "top", "color": "#4CAF50", "keys": ["A"]},
-                     {"from": "cube1", "fromPoint": "right", "edgeAt": "20", "to": "rectA", "toPoint": "left", "color": "#4CAF50", "keys": ["C"]},
-                     {"from": "cube4", "fromPoint": "left", "edgeAt": "50", "to": "cube2", "toPoint": "right", "color": "#4CAF50", "keys": ["C"]},
-                     {"from": "cube4", "fromPoint": "left", "edgeAt": "50", "to": "cube3", "toPoint": "right", "color": "#2196F3", "keys": ["A", "B"]}
+                     {"from": "cube1", "fromPoint": "bottom", "fromCenter": true, "edgeAt": "80", "to": "cube3", "toPoint": "top", "color": "#4CAF50", "keys": ["A"], "showArrow": false, "animated": true, "lineStyle": "solid"},
+                     {"from": "cube1", "fromPoint": "right", "edgeAt": "20", "to": "rectA", "toPoint": "left", "color": "#FF9800", "keys": ["C"], "showArrow": false, "showStartCircle": true, "showEndCircle": true, "lineStyle": "dashed"},
+                     {"from": "cube4", "fromPoint": "left", "fromCenter": true, "edgeAt": "50", "to": "cube2", "toPoint": "right", "color": "#E91E63", "keys": ["C"], "showArrow": true, "showStartCircle": true, "lineStyle": "solid"},
+                     {"from": "cube4", "fromPoint": "left", "edgeAt": "50", "to": "cube3", "toPoint": "right", "toCenter": true, "color": "#2196F3", "keys": ["A", "B"], "animated": true, "showEndCircle": true, "lineStyle": "dashed"}
                  ]'>
 
                 <div id="rectA" class="scene rect-a" data-focus="center">RECT A</div>
@@ -162,8 +213,7 @@
                     <div class="face left">left</div>
                     <div class="face right">right</div>
                     <div class="face top" data-nav-xyz="15.00.-15" data-nav-zoom="0.8" data-focus="center"
-                        data-id="cube3-description"
-                        data-auto-highlight-key="A,B">top cube3</div>
+                        data-id="cube3-description" data-auto-highlight-key="A,B">top cube3</div>
                     <div class="face bottom">bottom</div>
                 </div>
             </div>
