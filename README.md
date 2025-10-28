@@ -123,16 +123,20 @@ mouseSensitivity: {
 <div class="face top" 
      data-nav-xyz="45.00.-35" 
      data-nav-zoom="1.2"
+     data-nav-pan="100,-50"
      data-id="section1">
   Click to navigate
 </div>
 ```
 
-### Data Attributes
+### Navigation Data Attributes
 
-- `data-nav-xyz` - Target rotation (format: "x.y.z")
-- `data-nav-zoom` - Target zoom level
+- `data-nav-xyz` - Target rotation (format: "x.y.z" with dots)
+- `data-nav-zoom` - Target zoom level (e.g., "1.2")
+- `data-nav-pan` - Target pan/translation (format: "x,y" with comma)
 - `data-id` - ID for scroll synchronization
+
+**Note:** When navigating, if `data-nav-pan` is not defined, the pan position automatically resets to (0,0).
 
 ### API Methods
 
@@ -203,23 +207,86 @@ Draw connections between elements with automatic routing:
 
 ## Highlighting System
 
-### Auto-Highlighting
+The highlighting system allows you to create visual focus effects on specific scenes and connectors. When elements are highlighted, non-highlighted elements automatically dim and animations pause, creating a clear visual hierarchy.
+
+### Auto-Highlighting on Navigation
+
+Use `data-auto-highlight-key` to automatically highlight elements when navigating to a scene:
 
 ```html
 <div class="face top" 
      data-auto-highlight-key="A,B"
-     data-nav-xyz="45.00.-35">
-  Auto-highlights keys A and B on navigation
+     data-nav-xyz="45.00.-35"
+     data-nav-zoom="1.2">
+  When clicked, automatically highlights all elements with keys A and B
 </div>
 ```
 
-### Element Highlighting
+**Behavior:**
+
+- Can be placed on navigable faces or scenes
+- Automatically activates when the element is clicked for navigation
+- Supports multiple keys separated by commas
+- Highlights matching scenes, faces, and SVG connectors
+- Non-highlighted elements dim to 40% opacity
+- Connector animations pause on non-highlighted connectors
+
+### Element Highlighting Keys
+
+Use `data-keys` to mark elements as highlightable:
 
 ```html
+<!-- Scene that highlights with multiple keys -->
 <div class="scene" data-keys="A,B,C">
-  Highlighted when key A, B, or C is active
+  This scene highlights when key A, B, or C is active
+</div>
+
+<!-- Face with specific highlight key -->
+<div class="face top" data-keys="feature1">
+  Highlighted when "feature1" key is active
 </div>
 ```
+
+**Behavior:**
+
+- Elements with matching keys receive `.highlight` class
+- Non-matching elements dim automatically
+- Multiple keys can be assigned (comma-separated)
+- Works on both scenes and individual faces
+
+### SVG Connector Highlighting
+
+Connectors can be highlighted using the same key system:
+
+```html
+<div class="isometric-perspective" 
+     data-connectors='[
+       {
+         "from": "cube1",
+         "to": "cube2",
+         "color": "#4CAF50",
+         "keys": ["A", "B"]
+       }
+     ]'>
+```
+
+**Behavior:**
+
+- Connectors with matching keys remain colored
+- Non-matching connectors turn gray (#808080)
+- Animations stop on non-highlighted connectors
+- Arrow markers change to gray
+
+### Highlighting Workflow
+
+1. **Navigate to element** with `data-auto-highlight-key="A,B"`
+2. **System highlights**:
+   - All scenes/faces with `data-keys` containing A or B
+   - All connectors with `"keys": ["A"]` or `"keys": ["B"]`
+3. **System dims**:
+   - All elements without matching keys (40% opacity)
+   - Connector colors turn gray
+   - Animations pause
 
 ### API Methods
 
@@ -227,11 +294,45 @@ Draw connections between elements with automatic routing:
 // Highlight by key(s)
 viewer.highlightByKey(['A', 'B']);
 
-// Clear all highlights
+// Clear all highlights (returns all to normal)
 viewer.clearHighlights();
 
-// Toggle highlight
-viewer.toggleHighlight('A');
+// Programmatically check current highlights
+const highlighted = document.querySelectorAll('.highlight');
+```
+
+### Example: Multi-Step Presentation
+
+```html
+<!-- Step 1: Introduce input system -->
+<div class="face top" 
+     data-auto-highlight-key="input"
+     data-nav-xyz="45.00.-35"
+     data-nav-zoom="1.5">
+  Step 1: Input Layer
+</div>
+
+<div id="input-scene" class="scene" data-keys="input">
+  Input Processing
+</div>
+
+<!-- Step 2: Show data flow -->
+<div class="face top" 
+     data-auto-highlight-key="input,processing"
+     data-nav-xyz="30.00.-45"
+     data-nav-zoom="1.2">
+  Step 2: Data Flow
+</div>
+
+<div id="processor" class="scene" data-keys="processing">
+  Data Processor
+</div>
+
+<!-- Connectors highlight with their steps -->
+<div class="isometric-perspective" 
+     data-connectors='[
+       {"from": "input-scene", "to": "processor", "keys": ["input", "processing"]}
+     ]'>
 ```
 
 ## Scroll Synchronization
@@ -272,6 +373,7 @@ const scrollSync = new ScrollSync(viewer, {
 | `↑` `↓` | X-axis rotation |
 | `Shift` + `←` `→` | Y-axis rotation |
 | `Shift` + `↑` `↓` | Zoom in/out |
+| `Ctrl/Cmd` + `←` `→` `↑` `↓` | Pan view (translate) |
 | `+` `-` | Zoom controls |
 | `Space` | Reset to default view |
 | `Tab` | Navigate through navigation points |
@@ -279,6 +381,7 @@ const scrollSync = new ScrollSync(viewer, {
 ## Mouse Controls
 
 - **Left drag**: X and Z-axis rotation
+- **Middle drag**: Pan/translate view
 - **Right drag**: Y-axis rotation + zoom
 - **Mouse wheel**: Zoom in/out
 - **Click navigation point**: Navigate to preset view
@@ -338,10 +441,12 @@ viewer.on('navigationChange', (data) => {
 ### URL Bookmarking
 
 The presenter automatically saves state to URL:
+
 - `{prefix}xyz` - Rotation (e.g., "45.00.-35")
 - `{prefix}zoom` - Zoom level (e.g., "1.2")
+- `{prefix}pan` - Pan position (e.g., "100.-50")
 
-Example: `?presentationxyz=45.00.-35&presentationzoom=1.2`
+Example: `?presentationxyz=45.00.-35&presentationzoom=1.2&presentationpan=100.-50`
 
 ## Examples
 

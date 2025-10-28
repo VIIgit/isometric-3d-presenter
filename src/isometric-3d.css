@@ -599,17 +599,15 @@
 }
 
 /* When any element is highlighted, change non-highlighted connectors to gray and reduce opacity */
-.isometric-perspective:has(.highlight) .connector-path:not(.highlight),
-.isometric-perspective:has(.highlight) .connector-marker:not(.highlight),
-.isometric-perspective:has(.highlight) .connector-animated-marker:not(.highlight) {
-  opacity: 0.3;
-  stroke: #808080 !important;
-  fill: #808080 !important;
+.isometric-perspective:has(.highlight) .connector-path:not(.highlight) {
+  opacity: 0.1;
+  stroke: #808080;
 }
 
-/* Update arrow markers to gray for non-highlighted connectors */
-.isometric-perspective:has(.highlight) .connector-path:not(.highlight) marker path {
-  fill: #808080 !important;
+.isometric-perspective:has(.highlight) .connector-marker:not(.highlight),
+.isometric-perspective:has(.highlight) .connector-animated-marker:not(.highlight) {
+  opacity: 0.1;
+  fill: #808080;
 }
 
 /* Don't dim scenes directly, as it would affect all child faces */

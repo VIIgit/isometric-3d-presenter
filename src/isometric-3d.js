@@ -270,7 +270,7 @@ class Isometric3D {
 
   setupNavigationEffects() {
     // Find all elements with navigation data within this container
-    const navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom]');
+    const navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
 
     // Only create navigation bar if there are navigation elements
     if (navElements.length > 0) {
@@ -289,13 +289,14 @@ class Isometric3D {
 
         const xyz = element.getAttribute('data-nav-xyz');
         const zoom = element.getAttribute('data-nav-zoom');
+        const pan = element.getAttribute('data-nav-pan');
 
-        if (xyz || zoom) {
+        if (xyz || zoom || pan) {
           // Update navigation bar active state
           this.setActiveNavPoint(index);
           
           // Navigate to position with the element for auto-highlighting
-          this.navigateToPosition(xyz, zoom, element);
+          this.navigateToPosition(xyz, zoom, element, pan);
         }
       });
     });
@@ -352,8 +353,9 @@ class Isometric3D {
     navElements.forEach((element, index) => {
       const xyz = element.getAttribute('data-nav-xyz');
       const zoom = element.getAttribute('data-nav-zoom');
+      const pan = element.getAttribute('data-nav-pan');
       
-      if (xyz || zoom) {
+      if (xyz || zoom || pan) {
         const navPoint = document.createElement('div');
         navPoint.className = 'nav-point';
         navPoint.setAttribute('data-nav-index', index);
@@ -368,7 +370,7 @@ class Isometric3D {
           this.setActiveNavPoint(index);
           
           // Navigate to position with the element for auto-highlighting
-          this.navigateToPosition(xyz, zoom, element);
+          this.navigateToPosition(xyz, zoom, element, pan);
         });
 
         // Add keyboard handler for Enter/Space
@@ -410,9 +412,21 @@ class Isometric3D {
   }
 
   resetToDefault() {
-    // Use resetView for core functionality, then update URL
-    this.resetView();
+    // Animate smoothly to default position
+    this.smoothAnimateToWithPan(
+      this.defaultRotation, 
+      this.defaultZoom, 
+      this.defaultTranslation
+    );
+    
+    // Update URL
     this.updateUrlWithRotation();
+    
+    // Update navigation bar to show default position as active
+    this.setActiveNavPoint(-1);
+    
+    // Clear all highlights when resetting to default position
+    this.clearHighlights();
     
     // Restart all animations for default view
     setTimeout(() => {
@@ -486,28 +500,29 @@ class Isometric3D {
 
   // Navigate to element by ID or data-id attribute
   navigateByKey(key) {
-    const navigableElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom]');
+    const navigableElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
     
     // Try to find element by ID first
     let targetElement = this.container.querySelector(`#${key}`);
     
     // If not found by ID, try data-id attribute
-    if (!targetElement || (!targetElement.hasAttribute('data-nav-xyz') && !targetElement.hasAttribute('data-nav-zoom'))) {
+    if (!targetElement || (!targetElement.hasAttribute('data-nav-xyz') && !targetElement.hasAttribute('data-nav-zoom') && !targetElement.hasAttribute('data-nav-pan'))) {
       targetElement = this.container.querySelector(`[data-id="${key}"]`);
     }
     
     // If still not found, try to find a child with nav attributes
-    if (targetElement && !targetElement.hasAttribute('data-nav-xyz') && !targetElement.hasAttribute('data-nav-zoom')) {
-      const childElement = targetElement.querySelector('[data-nav-xyz], [data-nav-zoom]');
+    if (targetElement && !targetElement.hasAttribute('data-nav-xyz') && !targetElement.hasAttribute('data-nav-zoom') && !targetElement.hasAttribute('data-nav-pan')) {
+      const childElement = targetElement.querySelector('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
       if (childElement) {
         targetElement = childElement;
       }
     }
     
-    if (targetElement && (targetElement.hasAttribute('data-nav-xyz') || targetElement.hasAttribute('data-nav-zoom'))) {
+    if (targetElement && (targetElement.hasAttribute('data-nav-xyz') || targetElement.hasAttribute('data-nav-zoom') || targetElement.hasAttribute('data-nav-pan'))) {
       // Get navigation data from element
       const xyz = targetElement.getAttribute('data-nav-xyz');
       const zoom = targetElement.getAttribute('data-nav-zoom');
+      const pan = targetElement.getAttribute('data-nav-pan');
       
       // Find index for updating nav bar
       const index = Array.from(navigableElements).indexOf(targetElement);
@@ -516,7 +531,7 @@ class Isometric3D {
       }
       
       // Navigate to the position with the element for auto-highlighting
-      this.navigateToPosition(xyz, zoom, targetElement);
+      this.navigateToPosition(xyz, zoom, targetElement, pan);
       return true;
     }
     
@@ -613,6 +628,10 @@ class Isometric3D {
           <span>X/Z-Axis rotation</span>
         </div>
         <div class="key-mapping">
+          <span>🖱️ <strong>Middle drag</strong></span>
+          <span>Pan view</span>
+        </div>
+        <div class="key-mapping">
           <span>🖱️ <strong>Right drag</strong></span>
           <span>Y-Axis rotation + zoom</span>
         </div>
@@ -635,6 +654,10 @@ class Isometric3D {
         <div class="key-mapping">
           <span><span class="key">Shift</span>+<span class="key">↑</span> <span class="key">↓</span></span>
           <span>Zoom in/out</span>
+        </div>
+        <div class="key-mapping">
+          <span><span class="key">Ctrl</span>+<span class="key">←</span> <span class="key">→</span> <span class="key">↑</span> <span class="key">↓</span></span>
+          <span>Pan view</span>
         </div>
         <div class="key-mapping">
           <span><span class="key">Space</span></span>
@@ -974,10 +997,11 @@ class Isometric3D {
     while (targetElement && targetElement !== this.container) {
       const xyz = targetElement.getAttribute('data-nav-xyz');
       const zoom = targetElement.getAttribute('data-nav-zoom');
+      const pan = targetElement.getAttribute('data-nav-pan');
       const autoHighlight = targetElement.getAttribute('data-auto-highlight-key');
 
-      if (xyz || zoom) {
-        navData = { xyz, zoom, element: targetElement };
+      if (xyz || zoom || pan) {
+        navData = { xyz, zoom, pan, element: targetElement };
         autoHighlightKeys = autoHighlight;
         break;
       }
@@ -986,14 +1010,15 @@ class Isometric3D {
     }
 
     if (navData) {
-      this.navigateToPosition(navData.xyz, navData.zoom, navData.element);
+      this.navigateToPosition(navData.xyz, navData.zoom, navData.element, navData.pan);
     }
     // Removed default reset behavior - only navigate if navigation data is found
   }
 
-  navigateToPosition(xyzString, zoomString, sourceElement = null) {
+  navigateToPosition(xyzString, zoomString, sourceElement = null, panString = null) {
     const targetRotation = { ...this.currentRotation };
     let targetZoom = this.currentZoom;
+    let targetTranslation = { x: 0, y: 0, z: 0 }; // Default to no pan
 
     // Parse xyz string (e.g., "35.00.15")
     if (xyzString) {
@@ -1008,9 +1033,15 @@ class Isometric3D {
       targetZoom = parseFloat(zoomString) || this.defaultZoom;
     }
 
+    // Parse pan string (e.g., "100,-50") - if not provided, use default (0,0)
+    if (panString) {
+      const [x, y] = panString.split(',').map(v => parseFloat(v) || 0);
+      targetTranslation.x = x;
+      targetTranslation.y = y;
+    }
 
     // Update navigation bar to match the target position
-    this.syncNavigationBar(xyzString, zoomString);
+    this.syncNavigationBar(xyzString, zoomString, panString);
 
     // Handle auto-highlighting if source element is provided
     if (sourceElement) {
@@ -1040,28 +1071,30 @@ class Isometric3D {
       this.clearHighlights();
     }
 
-    // Perform smooth animation
-    this.smoothAnimateTo(targetRotation, targetZoom);
+    // Perform smooth animation with pan/translation
+    this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation);
   }
 
-  syncNavigationBar(xyzString, zoomString) {
+  syncNavigationBar(xyzString, zoomString, panString) {
     // Find the navigation element that matches this position
-    const navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom]');
+    const navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
     let matchingIndex = -1;
 
-    // Check if this matches the default position (no xyz or zoom)
-    if (!xyzString && !zoomString) {
+    // Check if this matches the default position (no xyz, zoom, or pan)
+    if (!xyzString && !zoomString && !panString) {
       matchingIndex = -1; // Default position
     } else {
       // Find matching navigation element
       navElements.forEach((element, index) => {
         const elementXyz = element.getAttribute('data-nav-xyz');
         const elementZoom = element.getAttribute('data-nav-zoom');
+        const elementPan = element.getAttribute('data-nav-pan');
         
         const xyzMatch = !xyzString || elementXyz === xyzString;
         const zoomMatch = !zoomString || elementZoom === zoomString;
+        const panMatch = !panString || elementPan === panString;
         
-        if (xyzMatch && zoomMatch) {
+        if (xyzMatch && zoomMatch && panMatch) {
           matchingIndex = index;
         }
       });
@@ -1125,6 +1158,67 @@ class Isometric3D {
     requestAnimationFrame(animate);
   }
 
+  smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, duration = 1200) {
+    this.isAnimating = true; // Set animation flag to prevent premature label updates
+
+    const startTime = performance.now();
+    const startRotation = { ...this.currentRotation };
+    const startZoom = this.currentZoom;
+    const startTranslation = { ...this.currentTranslation };
+
+    // Clamp target rotation to limits before animating
+    const clampedTarget = {
+      x: Math.max(this.rotationLimits.x.min, Math.min(this.rotationLimits.x.max, targetRotation.x)),
+      y: Math.max(this.rotationLimits.y.min, Math.min(this.rotationLimits.y.max, targetRotation.y)),
+      z: Math.max(this.rotationLimits.z.min, Math.min(this.rotationLimits.z.max, targetRotation.z))
+    };
+
+    const clampedZoom = Math.max(0.2, Math.min(3.0, targetZoom));
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Use easeInOutQuad for smoother, more gentle animation
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      // Interpolate rotation values
+      this.currentRotation.x = startRotation.x + (clampedTarget.x - startRotation.x) * eased;
+      this.currentRotation.y = startRotation.y + (clampedTarget.y - startRotation.y) * eased;
+      this.currentRotation.z = startRotation.z + (clampedTarget.z - startRotation.z) * eased;
+
+      // Interpolate zoom
+      this.currentZoom = startZoom + (clampedZoom - startZoom) * eased;
+
+      // Interpolate translation/pan
+      this.currentTranslation.x = startTranslation.x + (targetTranslation.x - startTranslation.x) * eased;
+      this.currentTranslation.y = startTranslation.y + (targetTranslation.y - startTranslation.y) * eased;
+      this.currentTranslation.z = startTranslation.z + (targetTranslation.z - startTranslation.z) * eased;
+
+      // Update the scene
+      this.updateScene();
+
+      // Continue animation if not complete
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Ensure final values are exactly the target
+        this.currentRotation = { ...clampedTarget };
+        this.currentZoom = clampedZoom;
+        this.currentTranslation = { ...targetTranslation };
+        this.updateScene();
+
+        // Animation finished - now update labels
+        this.isAnimating = false;
+        setTimeout(() => this.updateLabelPositions(), 100); // Update labels after animation completes
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }
+
   normalizeAngle(angle) {
     angle = angle % 360;
     if (angle < 0) angle += 360;
@@ -1141,10 +1235,15 @@ class Isometric3D {
       this.currentRotation.z === this.defaultRotation.z
     );
     const isDefaultZoom = Math.abs(this.currentZoom - this.defaultZoom) < 0.01;
+    const isDefaultTranslation = (
+      Math.abs(this.currentTranslation.x - this.defaultTranslation.x) < 1 &&
+      Math.abs(this.currentTranslation.y - this.defaultTranslation.y) < 1
+    );
 
-    // Use simplified parameters: "prefixXYZ" and "prefixZoom" (no dashes to keep it shorter)
+    // Use simplified parameters: "prefixXYZ", "prefixZoom", and "prefixPan"
     const rotationParam = `${this.urlPrefix.replace('_', '')}xyz`;
     const zoomParam = `${this.urlPrefix.replace('_', '')}zoom`;
+    const panParam = `${this.urlPrefix.replace('_', '')}pan`;
 
     if (isDefaultRotation) {
       url.searchParams.delete(rotationParam);
@@ -1174,6 +1273,16 @@ class Isometric3D {
       url.searchParams.delete(zoomParam);
     } else {
       url.searchParams.set(zoomParam, this.currentZoom.toFixed(1));
+    }
+
+    if (isDefaultTranslation) {
+      url.searchParams.delete(panParam);
+    } else {
+      // Format: x.y with dots as separator, rounded to integers
+      const panX = Math.round(this.currentTranslation.x);
+      const panY = Math.round(this.currentTranslation.y);
+      const panValue = `${panX}.${panY}`;
+      url.searchParams.set(panParam, panValue);
     }
 
     window.history.replaceState({}, '', url);
@@ -1224,20 +1333,28 @@ class Isometric3D {
     this.updateScene();
   }
 
+  panScene(deltaX, deltaY) {
+    // Pan the scene by adjusting translation
+    // Divide by zoom to maintain consistent pan speed at different zoom levels
+    const panSpeed = 1 / this.currentZoom;
+    this.currentTranslation.x += deltaX * panSpeed;
+    this.currentTranslation.y += deltaY * panSpeed;
+    this.updateScene();
+  }
+
   resetView() {
-    // Reset to default rotation values
-    this.currentRotation = { ...this.defaultRotation };
-    this.currentZoom = this.defaultZoom;
-    this.currentTranslation = { ...this.defaultTranslation };
+    // Animate smoothly to default rotation, zoom, and pan
+    this.smoothAnimateToWithPan(
+      this.defaultRotation, 
+      this.defaultZoom, 
+      this.defaultTranslation
+    );
     
     // Update navigation bar to show default position as active
     this.setActiveNavPoint(-1);
     
     // Clear all highlights when resetting to default position
     this.clearHighlights();
-    
-    this.clampRotation();
-    this.updateScene();
   }
 
   centerOnElement(element) {
@@ -1361,6 +1478,9 @@ class Isometric3D {
     // Change cursor to indicate dragging mode
     if (e.button === 0) { // Left mouse button - rotation
       this.container.style.cursor = 'grabbing';
+    } else if (e.button === 1) { // Middle mouse button - panning
+      this.container.style.cursor = 'move';
+      e.preventDefault(); // Prevent default middle-click behavior
     } else if (e.button === 2) { // Right mouse button - zoom/Y rotation
       this.container.style.cursor = 'move';
     }
@@ -1396,6 +1516,8 @@ class Isometric3D {
             0,
             -deltaX * this.mouseSensitivity.z   // Horizontal mouse = Z rotation (reversed for intuitive direction)
           );
+        } else if (this.dragButton === 1) { // Middle mouse button - Panning
+          this.panScene(deltaX, deltaY);
         } else if (this.dragButton === 2) { // Right mouse button - Y rotation and zoom
           this.rotateScene(
             0,
@@ -1531,35 +1653,51 @@ class Isometric3D {
     this.lastKeyTime = now;
 
     const step = 5;
+    const panStep = 20; // Pan step in pixels
     const zoomStep = e.shiftKey ? 1.1 : 1.1;
 
     // Enable smooth transition for keyboard navigation
     this.enableTransition();
 
+    // Check for Ctrl/Cmd modifier for panning
+    const isPanModifier = e.ctrlKey || e.metaKey;
+
     switch (e.key) {
       case 'ArrowUp':
-        if (e.shiftKey) {
+        if (isPanModifier) {
+          // Ctrl/Cmd + Arrow Up: Pan up
+          this.panScene(0, -panStep);
+        } else if (e.shiftKey) {
           this.zoomScene(zoomStep);
         } else {
           this.rotateScene(-step, 0, 0);
         }
         break;
       case 'ArrowDown':
-        if (e.shiftKey) {
+        if (isPanModifier) {
+          // Ctrl/Cmd + Arrow Down: Pan down
+          this.panScene(0, panStep);
+        } else if (e.shiftKey) {
           this.zoomScene(1 / zoomStep);
         } else {
           this.rotateScene(step, 0, 0);
         }
         break;
       case 'ArrowLeft':
-        if (e.shiftKey) {
+        if (isPanModifier) {
+          // Ctrl/Cmd + Arrow Left: Pan left
+          this.panScene(-panStep, 0);
+        } else if (e.shiftKey) {
           this.rotateScene(0, -step, 0);
         } else {
           this.rotateScene(0, 0, -step);
         }
         break;
       case 'ArrowRight':
-        if (e.shiftKey) {
+        if (isPanModifier) {
+          // Ctrl/Cmd + Arrow Right: Pan right
+          this.panScene(panStep, 0);
+        } else if (e.shiftKey) {
           this.rotateScene(0, step, 0);
         } else {
           this.rotateScene(0, 0, step);
@@ -1595,6 +1733,14 @@ class Isometric3D {
     const zoomParam = url.searchParams.get(`${this.urlPrefix.replace('_', '')}zoom`);
     if (zoomParam) {
       this.currentZoom = parseFloat(zoomParam);
+    }
+
+    // Load pan/translation parameter (e.g., "azurepan=100.-50")
+    const panParam = url.searchParams.get(`${this.urlPrefix.replace('_', '')}pan`);
+    if (panParam) {
+      const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
+      this.currentTranslation.x = x;
+      this.currentTranslation.y = y;
     }
   }
 
@@ -1761,6 +1907,9 @@ class Isometric3D {
     // Create defs for arrow markers (one per color)
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     const usedColors = new Set(connectors.map(c => c.color || '#4CAF50'));
+    
+    // Add gray marker for non-highlighted connectors
+    usedColors.add('#808080');
     
     usedColors.forEach(color => {
       const markerId = `arrowhead-${color.replace('#', '')}`;
@@ -2002,6 +2151,9 @@ class Isometric3D {
         path.setAttribute('marker-end', `url(#arrowhead-${color.replace('#', '')})`);
       }
       
+      // Store original color as data attribute for later restoration
+      path.setAttribute('data-original-color', color);
+      
       // Add data attributes and class for highlighting
       path.setAttribute('data-connector-from', connector.from);
       path.setAttribute('data-connector-to', connector.to);
@@ -2023,6 +2175,7 @@ class Isometric3D {
         startCircle.setAttribute('r', '6');
         startCircle.setAttribute('fill', color);
         startCircle.setAttribute('opacity', '0.8');
+        startCircle.setAttribute('data-original-color', color);
         startCircle.classList.add('connector-marker');
         if (keys.length > 0) {
           startCircle.setAttribute('data-connector-keys', keys.join(','));
@@ -2038,6 +2191,7 @@ class Isometric3D {
         endCircle.setAttribute('r', '6');
         endCircle.setAttribute('fill', color);
         endCircle.setAttribute('opacity', '0.8');
+        endCircle.setAttribute('data-original-color', color);
         endCircle.classList.add('connector-marker');
         if (keys.length > 0) {
           endCircle.setAttribute('data-connector-keys', keys.join(','));
@@ -2051,6 +2205,7 @@ class Isometric3D {
         animatedCircle.setAttribute('r', '4');
         animatedCircle.setAttribute('fill', color);
         animatedCircle.setAttribute('opacity', '0.9');
+        animatedCircle.setAttribute('data-original-color', color);
         animatedCircle.classList.add('connector-animated-marker');
         
         // Create animateMotion element
@@ -2281,8 +2436,35 @@ class Isometric3D {
     allConnectors.forEach(el => {
       if (connectorsToHighlight.has(el)) {
         el.classList.add('highlight');
+        
+        // Restore original color for highlighted elements
+        const originalColor = el.getAttribute('data-original-color');
+        if (originalColor) {
+          if (el.classList.contains('connector-path')) {
+            el.setAttribute('stroke', originalColor);
+            // Restore original arrow marker
+            const markerEnd = el.getAttribute('marker-end');
+            if (markerEnd && markerEnd.includes('808080')) {
+              el.setAttribute('marker-end', `url(#arrowhead-${originalColor.replace('#', '')})`);
+            }
+          } else {
+            el.setAttribute('fill', originalColor);
+          }
+        }
       } else {
-        el.classList.remove('highlight'); // Ensure non-matching connectors are not highlighted
+        el.classList.remove('highlight');
+        
+        // Change to gray for non-highlighted elements
+        if (el.classList.contains('connector-path')) {
+          el.setAttribute('stroke', '#808080');
+          // Change arrow marker to gray
+          const markerEnd = el.getAttribute('marker-end');
+          if (markerEnd) {
+            el.setAttribute('marker-end', 'url(#arrowhead-808080)');
+          }
+        } else {
+          el.setAttribute('fill', '#808080');
+        }
       }
     });
     
@@ -2318,7 +2500,7 @@ class Isometric3D {
       if (scenesToHighlight.has(scene)) {
         scene.classList.add('highlight');
       } else {
-        scene.classList.remove('highlight'); // Ensure non-matching scenes are not highlighted
+        scene.classList.remove('highlight');
       }
     });
     
@@ -2353,6 +2535,24 @@ class Isometric3D {
   clearHighlights() {
     const highlighted = this.container.querySelectorAll('.highlight');
     highlighted.forEach(el => el.classList.remove('highlight'));
+    
+    // Restore original colors for all connectors
+    const allConnectors = this.container.querySelectorAll('[data-original-color]');
+    allConnectors.forEach(el => {
+      const originalColor = el.getAttribute('data-original-color');
+      if (originalColor) {
+        if (el.classList.contains('connector-path')) {
+          el.setAttribute('stroke', originalColor);
+          // Restore original arrow marker
+          const markerEnd = el.getAttribute('marker-end');
+          if (markerEnd) {
+            el.setAttribute('marker-end', `url(#arrowhead-${originalColor.replace('#', '')})`);
+          }
+        } else {
+          el.setAttribute('fill', originalColor);
+        }
+      }
+    });
     
     // When clearing highlights (returning to default view), restart all animations
     const allAnimatedMarkers = this.container.querySelectorAll('.connector-animated-marker');
