@@ -2323,6 +2323,7 @@ class Isometric3D {
     });
     
     // Control animations based on highlighting
+    // Only start animations for highlighted connectors, stop all others
     allAnimatedMarkers.forEach(marker => {
       const animateMotion = marker.querySelector('animateMotion');
       if (animateMotion) {
@@ -2330,7 +2331,7 @@ class Isometric3D {
           // Start animation for highlighted markers
           animateMotion.beginElement();
         } else {
-          // Keep animation stopped for non-highlighted markers
+          // Stop animation for non-highlighted markers
           animateMotion.endElement();
         }
       }
