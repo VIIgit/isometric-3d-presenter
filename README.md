@@ -211,11 +211,11 @@ The highlighting system allows you to create visual focus effects on specific sc
 
 ### Auto-Highlighting on Navigation
 
-Use `data-auto-highlight-key` to automatically highlight elements when navigating to a scene:
+Use `data-highlight-keys` to automatically highlight elements when navigating to a scene:
 
 ```html
 <div class="face top" 
-     data-auto-highlight-key="A,B"
+     data-highlight-keys="A,B"
      data-nav-xyz="45.00.-35"
      data-nav-zoom="1.2">
   When clicked, automatically highlights all elements with keys A and B
@@ -279,7 +279,7 @@ Connectors can be highlighted using the same key system:
 
 ### Highlighting Workflow
 
-1. **Navigate to element** with `data-auto-highlight-key="A,B"`
+1. **Navigate to element** with `data-highlight-keys="A,B"`
 2. **System highlights**:
    - All scenes/faces with `data-keys` containing A or B
    - All connectors with `"keys": ["A"]` or `"keys": ["B"]`
@@ -306,7 +306,7 @@ const highlighted = document.querySelectorAll('.highlight');
 ```html
 <!-- Step 1: Introduce input system -->
 <div class="face top" 
-     data-auto-highlight-key="input"
+     data-highlight-keys="input"
      data-nav-xyz="45.00.-35"
      data-nav-zoom="1.5">
   Step 1: Input Layer
@@ -318,7 +318,7 @@ const highlighted = document.querySelectorAll('.highlight');
 
 <!-- Step 2: Show data flow -->
 <div class="face top" 
-     data-auto-highlight-key="input,processing"
+     data-highlight-keys="input,processing"
      data-nav-xyz="30.00.-45"
      data-nav-zoom="1.2">
   Step 2: Data Flow

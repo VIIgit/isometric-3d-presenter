@@ -998,7 +998,7 @@ class Isometric3D {
       const xyz = targetElement.getAttribute('data-nav-xyz');
       const zoom = targetElement.getAttribute('data-nav-zoom');
       const pan = targetElement.getAttribute('data-nav-pan');
-      const autoHighlight = targetElement.getAttribute('data-auto-highlight-key');
+      const autoHighlight = targetElement.getAttribute('data-highlight-keys');
 
       if (xyz || zoom || pan) {
         navData = { xyz, zoom, pan, element: targetElement };
@@ -1045,13 +1045,13 @@ class Isometric3D {
 
     // Handle auto-highlighting if source element is provided
     if (sourceElement) {
-      // Check face first, then parent scene for auto-highlight-key
-      let autoHighlightKeys = sourceElement.getAttribute('data-auto-highlight-key');
+      // Check face first, then parent scene for highlight-keys
+      let autoHighlightKeys = sourceElement.getAttribute('data-highlight-keys');
       let sourceScene = sourceElement.closest('.scene');
       
       // If not found on the element itself, check parent scene
       if (!autoHighlightKeys && sourceScene) {
-        autoHighlightKeys = sourceScene.getAttribute('data-auto-highlight-key');
+        autoHighlightKeys = sourceScene.getAttribute('data-highlight-keys');
       }
       
       if (autoHighlightKeys) {
@@ -1063,7 +1063,7 @@ class Isometric3D {
           sourceScene.classList.add('highlight');
         }
       } else {
-        // No auto-highlight-key found, clear all highlights
+        // No highlight-keys found, clear all highlights
         this.clearHighlights();
       }
     } else {
