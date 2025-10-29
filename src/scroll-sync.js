@@ -123,13 +123,14 @@ class ScrollSync {
                         // Get navigation data from element
                         const xyz = navElement.getAttribute('data-nav-xyz');
                         const zoom = navElement.getAttribute('data-nav-zoom');
-                        const navigationKey = `${xyz}|${zoom}`;
+                        const pan = navElement.getAttribute('data-nav-pan');
+                        const navigationKey = `${xyz}|${zoom}|${pan}`;
 
                         // Only navigate if target has changed
-                        if (xyz || zoom) {
+                        if (xyz || zoom || pan) {
                             if (this.currentNavigationTarget !== navigationKey) {
                                 this.currentNavigationTarget = navigationKey;
-                                this.controller.navigateToPosition(xyz, zoom);
+                                this.controller.navigateToPosition(xyz, zoom, navElement, pan);
                                 
                                 // Check for highlight keys on the navigation element or its parent scene
                                 const autoHighlightKeys = navElement.getAttribute('data-highlight-keys') || 
