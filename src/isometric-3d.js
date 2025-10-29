@@ -1278,10 +1278,10 @@ class Isometric3D {
     if (isDefaultTranslation) {
       url.searchParams.delete(panParam);
     } else {
-      // Format: x.y with dots as separator, rounded to integers
+      // Format: x,y with comma as separator (matching data-nav-pan format)
       const panX = Math.round(this.currentTranslation.x);
       const panY = Math.round(this.currentTranslation.y);
-      const panValue = `${panX}.${panY}`;
+      const panValue = `${panX},${panY}`;
       url.searchParams.set(panParam, panValue);
     }
 
@@ -1735,10 +1735,12 @@ class Isometric3D {
       this.currentZoom = parseFloat(zoomParam);
     }
 
-    // Load pan/translation parameter (e.g., "azurepan=100.-50")
+    // Load pan/translation parameter (e.g., "azurepan=100,-50")
     const panParam = url.searchParams.get(`${this.urlPrefix.replace('_', '')}pan`);
     if (panParam) {
-      const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
+      // URLSearchParams.get() automatically decodes %2C to comma, but we decode again to be safe
+      const decodedParam = decodeURIComponent(panParam);
+      const [x, y] = decodedParam.split(',').map(v => parseFloat(v) || 0);
       this.currentTranslation.x = x;
       this.currentTranslation.y = y;
     }
@@ -1800,8 +1802,9 @@ class Isometric3D {
     const url = new URL(window.location);
     const rotationParam = url.searchParams.get(`${this.urlPrefix.replace('_', '')}xyz`);
     const zoomParam = url.searchParams.get(`${this.urlPrefix.replace('_', '')}zoom`);
+    const panParam = url.searchParams.get(`${this.urlPrefix.replace('_', '')}pan`);
     
-    let finalRotation, finalZoom;
+    let finalRotation, finalZoom, finalTranslation;
     
     // Priority: URL parameters > defaults
     if (rotationParam) {
@@ -1816,10 +1819,19 @@ class Isometric3D {
     } else {
       finalZoom = this.defaultZoom;
     }
+    
+    if (panParam) {
+      const decodedParam = decodeURIComponent(panParam);
+      const [x, y] = decodedParam.split(',').map(v => parseFloat(v) || 0);
+      finalTranslation = { x, y, z: 0 };
+    } else {
+      finalTranslation = { ...this.defaultTranslation };
+    }
 
     // Apply completely flat state - ignore all stored values
     this.currentRotation = { x: 0, y: 0, z: 0 };
     this.currentZoom = 1.0;
+    this.currentTranslation = { x: 0, y: 0, z: 0 };
     
     this.configureScenes();
     this.captureCoordinatesAndDrawSvg();
@@ -1835,9 +1847,10 @@ class Isometric3D {
         }
       });
       
-      // Apply final rotation and zoom (URL params have priority over defaults)
+      // Apply final rotation, zoom, and pan (URL params have priority over defaults)
       this.currentRotation = { ...finalRotation };
       this.currentZoom = finalZoom;
+      this.currentTranslation = { ...finalTranslation };
       
       // Clamp rotation to ensure it's within limits
       this.clampRotation();

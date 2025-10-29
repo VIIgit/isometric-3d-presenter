@@ -444,9 +444,9 @@ The presenter automatically saves state to URL:
 
 - `{prefix}xyz` - Rotation (e.g., "45.00.-35")
 - `{prefix}zoom` - Zoom level (e.g., "1.2")
-- `{prefix}pan` - Pan position (e.g., "100.-50")
+- `{prefix}pan` - Pan position (e.g., "100,-50" with comma separator)
 
-Example: `?presentationxyz=45.00.-35&presentationzoom=1.2&presentationpan=100.-50`
+Example: `?presentationxyz=45.00.-35&presentationzoom=1.2&presentationpan=100,-50`
 
 ## Examples
 
