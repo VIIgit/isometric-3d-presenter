@@ -335,6 +335,112 @@ const highlighted = document.querySelectorAll('.highlight');
      ]'>
 ```
 
+### Troubleshooting Highlighting
+
+If highlighting isn't working, verify these requirements:
+
+#### 1. Missing `data-keys` Attribute
+
+Elements must have `data-keys` to be highlightable:
+
+```html
+<!-- ❌ Won't highlight -->
+<div id="cube1" class="scene">Content</div>
+
+<!-- ✅ Will highlight when key "A" is active -->
+<div id="cube1" class="scene" data-keys="A">Content</div>
+```
+
+#### 2. Missing `data-highlight-keys` on Navigation
+
+Navigation elements need `data-highlight-keys` to trigger highlighting:
+
+```html
+<!-- ❌ Navigation won't trigger highlighting -->
+<div class="face top" data-nav-xyz="15.00.-15">Click me</div>
+
+<!-- ✅ Triggers highlighting for key "A" -->
+<div class="face top" 
+     data-nav-xyz="15.00.-15" 
+     data-highlight-keys="A">
+  Click me
+</div>
+```
+
+#### 3. Missing `keys` in Connector Configuration
+
+Connectors need the `keys` array property:
+
+```javascript
+// ❌ Connector won't highlight
+{"from": "cube1", "to": "cube2", "color": "#2196F3"}
+
+// ✅ Connector highlights with keys
+{"from": "cube1", "to": "cube2", "color": "#2196F3", "keys": ["A", "B"]}
+```
+
+#### 4. Key Matching Rules
+
+- Keys are **case-sensitive**: `"A"` ≠ `"a"`
+- Multiple keys in HTML use **comma separation**: `data-keys="A,B,C"`
+- Connector keys use **array format**: `"keys": ["A", "B"]`
+- Keys must match exactly between navigation and elements
+
+#### 5. Debug Checklist
+
+Run in browser console to verify setup:
+
+```javascript
+// Check elements with highlight keys
+document.querySelectorAll('[data-keys]').forEach(el => {
+  console.log('Highlightable:', el.id, el.getAttribute('data-keys'));
+});
+
+// Check navigation elements with highlight triggers
+document.querySelectorAll('[data-highlight-keys]').forEach(el => {
+  console.log('Nav trigger:', el.className, el.getAttribute('data-highlight-keys'));
+});
+
+// Check connectors configuration
+const perspective = document.querySelector('.isometric-perspective');
+console.log('Connectors:', perspective.getAttribute('data-connectors'));
+```
+
+#### 6. Complete Working Example
+
+```html
+<div class="isometric-perspective" data-connectors='[
+  {"from": "cube1", "to": "cube2", "color": "#2196F3", "keys": ["flow"]}
+]'>
+  <!-- Element 1: Has highlight key -->
+  <div id="cube1" class="scene" data-keys="flow">
+    <div class="face top" 
+         data-nav-xyz="15.00.-15" 
+         data-highlight-keys="flow"
+         data-nav-zoom="1.2">
+      Click to highlight flow
+    </div>
+  </div>
+  
+  <!-- Element 2: Has same highlight key -->
+  <div id="cube2" class="scene" data-keys="flow">
+    Connected element
+  </div>
+  
+  <!-- Element 3: Different key (won't highlight) -->
+  <div id="cube3" class="scene" data-keys="other">
+    Other element
+  </div>
+</div>
+```
+
+**Expected behavior when clicking cube1's top face:**
+
+- ✅ cube1 and cube2 stay bright (both have `data-keys="flow"`)
+- ✅ Connector turns bright blue (has `"keys": ["flow"]`)
+- ✅ cube3 dims to 40% opacity (different key)
+- ✅ Other connectors turn gray and stop animating
+
 ## Scroll Synchronization
 
 Sync 3D navigation with page scrolling:
