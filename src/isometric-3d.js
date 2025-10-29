@@ -1977,7 +1977,7 @@ class Isometric3D {
       // Draw connector line with rounded corners
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const color = connector.color || '#4CAF50';
-      const cornerRadius = 10;
+      const baseCornerRadius = 10;
       
       // Line style options
       const showArrow = connector.showArrow !== false; // Default true
@@ -1993,6 +1993,17 @@ class Isometric3D {
       // Determine the direction for corner calculation
       const xDir = Math.sign(deltaX) || 1; // Left-to-right (1) or right-to-left (-1)
       const yDir = Math.sign(deltaY) || 1; // Top-to-bottom (1) or bottom-to-top (-1)
+      
+      // Helper function to calculate safe corner radius based on segment lengths
+      const getSafeRadius = (segment1Length, segment2Length) => {
+        // Use minimum of: base radius, half of first segment, half of second segment
+        // This prevents corners from exceeding available space
+        return Math.min(
+          baseCornerRadius,
+          Math.abs(segment1Length) / 2,
+          Math.abs(segment2Length) / 2
+        );
+      };
       
       let pathData;
       
@@ -2024,12 +2035,19 @@ class Isometric3D {
           const corner1X = startPoint.x + xDir * edgeStart;
           const corner2X = endPoint.x - xDir * edgeEnd;
           
+          // Calculate safe radius for both corners
+          const horizontalDist1 = Math.abs(edgeStart);
+          const verticalDist = Math.abs(deltaY);
+          const horizontalDist2 = Math.abs(edgeEnd);
+          const cornerRadius = getSafeRadius(horizontalDist1, verticalDist);
+          const cornerRadius2 = getSafeRadius(verticalDist, horizontalDist2);
+          
           pathData = `
             M ${startPoint.x},${startPoint.y}
             L ${corner1X - xDir * cornerRadius},${startPoint.y}
             Q ${corner1X},${startPoint.y} ${corner1X},${startPoint.y + yDir * cornerRadius}
-            L ${corner2X},${endPoint.y - yDir * cornerRadius}
-            Q ${corner2X},${endPoint.y} ${corner2X + xDir * cornerRadius},${endPoint.y}
+            L ${corner2X},${endPoint.y - yDir * cornerRadius2}
+            Q ${corner2X},${endPoint.y} ${corner2X + xDir * cornerRadius2},${endPoint.y}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         } else {
@@ -2037,11 +2055,18 @@ class Isometric3D {
           const corner1Y = startPoint.y + yDir * edgeStart;
           const corner2Y = endPoint.y - yDir * edgeEnd;
           
+          // Calculate safe radius for both corners
+          const verticalDist1 = Math.abs(edgeStart);
+          const horizontalDist = Math.abs(deltaX);
+          const verticalDist2 = Math.abs(edgeEnd);
+          const cornerRadius = getSafeRadius(verticalDist1, horizontalDist);
+          const cornerRadius2 = getSafeRadius(horizontalDist, verticalDist2);
+          
           const corner1BeforeY = corner1Y - yDir * cornerRadius;
           const corner1AfterX = startPoint.x + xDir * cornerRadius;
           
-          const corner2BeforeX = endPoint.x - xDir * cornerRadius;
-          const corner2AfterY = corner2Y + yDir * cornerRadius;
+          const corner2BeforeX = endPoint.x - xDir * cornerRadius2;
+          const corner2AfterY = corner2Y + yDir * cornerRadius2;
           
           pathData = `
             M ${startPoint.x},${startPoint.y}
@@ -2058,17 +2083,29 @@ class Isometric3D {
           // Start → horizontal → Corner ↓ vertical → corner ↓ End
           const cornerX = endPoint.x - xDir * edgeEnd;
           
+          // Calculate safe radius for both corners
+          const horizontalDist = Math.abs(startPoint.x - cornerX);
+          const verticalDist = Math.abs(deltaY);
+          const horizontalDist2 = Math.abs(edgeEnd);
+          const cornerRadius = getSafeRadius(horizontalDist, verticalDist);
+          const cornerRadius2 = getSafeRadius(verticalDist, horizontalDist2);
+          
           pathData = `
             M ${startPoint.x},${startPoint.y}
             L ${cornerX - xDir * cornerRadius},${startPoint.y}
             Q ${cornerX},${startPoint.y} ${cornerX},${startPoint.y + yDir * cornerRadius}
-            L ${cornerX},${endPoint.y - yDir * cornerRadius}
-            Q ${cornerX},${endPoint.y} ${cornerX + xDir * cornerRadius},${endPoint.y}
+            L ${cornerX},${endPoint.y - yDir * cornerRadius2}
+            Q ${cornerX},${endPoint.y} ${cornerX + xDir * cornerRadius2},${endPoint.y}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         } else {
           // Start ↓ Vertical ↓ Corner → horizontal → End
           const cornerX = endPoint.x - xDir * edgeEnd;
+          
+          // Calculate safe radius
+          const verticalDist = Math.abs(deltaY);
+          const horizontalDist = Math.abs(deltaX);
+          const cornerRadius = getSafeRadius(verticalDist, horizontalDist);
           
           pathData = `
             M ${startPoint.x},${startPoint.y}
@@ -2083,24 +2120,38 @@ class Isometric3D {
           // Start → horizontal(edgeStart px) → Corner ↓ Vertical ↓ Corner → End
           const cornerX = startPoint.x + xDir * edgeStart;
           
+          // Calculate safe radius for both corners
+          const horizontalDist = Math.abs(edgeStart);
+          const verticalDist = Math.abs(deltaY);
+          const horizontalDist2 = Math.abs(endPoint.x - cornerX);
+          const cornerRadius = getSafeRadius(horizontalDist, verticalDist);
+          const cornerRadius2 = getSafeRadius(verticalDist, horizontalDist2);
+          
           pathData = `
             M ${startPoint.x},${startPoint.y}
             L ${cornerX - xDir * cornerRadius},${startPoint.y}
             Q ${cornerX},${startPoint.y} ${cornerX},${startPoint.y + yDir * cornerRadius}
-            L ${cornerX},${endPoint.y - yDir * cornerRadius}
-            Q ${cornerX},${endPoint.y} ${cornerX + xDir * cornerRadius},${endPoint.y}
+            L ${cornerX},${endPoint.y - yDir * cornerRadius2}
+            Q ${cornerX},${endPoint.y} ${cornerX + xDir * cornerRadius2},${endPoint.y}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         } else {
           // Start ↓ vertical(edgeStart px) ↓ Corner → horizontal → corner ↓ End
           const cornerY = startPoint.y + yDir * edgeStart;
           
+          // Calculate safe radius for both corners
+          const verticalDist = Math.abs(edgeStart);
+          const horizontalDist = Math.abs(deltaX);
+          const verticalDist2 = Math.abs(endPoint.y - cornerY);
+          const cornerRadius = getSafeRadius(verticalDist, horizontalDist);
+          const cornerRadius2 = getSafeRadius(horizontalDist, verticalDist2);
+          
           pathData = `
             M ${startPoint.x},${startPoint.y}
             L ${startPoint.x},${cornerY - yDir * cornerRadius}
             Q ${startPoint.x},${cornerY} ${startPoint.x + xDir * cornerRadius},${cornerY}
-            L ${endPoint.x - xDir * cornerRadius},${cornerY}
-            Q ${endPoint.x},${cornerY} ${endPoint.x},${cornerY + yDir * cornerRadius}
+            L ${endPoint.x - xDir * cornerRadius2},${cornerY}
+            Q ${endPoint.x},${cornerY} ${endPoint.x},${cornerY + yDir * cornerRadius2}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         }
@@ -2111,12 +2162,19 @@ class Isometric3D {
           const corner1X = startPoint.x + deltaX * 0.25;
           const corner2X = startPoint.x + deltaX * 0.75;
           
+          // Calculate safe radius for both corners
+          const horizontalDist1 = Math.abs(corner1X - startPoint.x);
+          const verticalDist = Math.abs(deltaY);
+          const horizontalDist2 = Math.abs(endPoint.x - corner2X);
+          const cornerRadius = getSafeRadius(horizontalDist1, verticalDist);
+          const cornerRadius2 = getSafeRadius(verticalDist, horizontalDist2);
+          
           pathData = `
             M ${startPoint.x},${startPoint.y}
             L ${corner1X - xDir * cornerRadius},${startPoint.y}
             Q ${corner1X},${startPoint.y} ${corner1X},${startPoint.y + yDir * cornerRadius}
-            L ${corner2X},${endPoint.y - yDir * cornerRadius}
-            Q ${corner2X},${endPoint.y} ${corner2X + xDir * cornerRadius},${endPoint.y}
+            L ${corner2X},${endPoint.y - yDir * cornerRadius2}
+            Q ${corner2X},${endPoint.y} ${corner2X + xDir * cornerRadius2},${endPoint.y}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         } else {
@@ -2124,12 +2182,19 @@ class Isometric3D {
           const corner1Y = startPoint.y + deltaY * 0.25;
           const corner2Y = startPoint.y + deltaY * 0.75;
           
+          // Calculate safe radius for both corners
+          const verticalDist1 = Math.abs(corner1Y - startPoint.y);
+          const horizontalDist = Math.abs(deltaX);
+          const verticalDist2 = Math.abs(endPoint.y - corner2Y);
+          const cornerRadius = getSafeRadius(verticalDist1, horizontalDist);
+          const cornerRadius2 = getSafeRadius(horizontalDist, verticalDist2);
+          
           pathData = `
             M ${startPoint.x},${startPoint.y}
             L ${startPoint.x},${corner1Y - yDir * cornerRadius}
             Q ${startPoint.x},${corner1Y} ${startPoint.x + xDir * cornerRadius},${corner1Y}
-            L ${endPoint.x - xDir * cornerRadius},${corner2Y}
-            Q ${endPoint.x},${corner2Y} ${endPoint.x},${corner2Y + yDir * cornerRadius}
+            L ${endPoint.x - xDir * cornerRadius2},${corner2Y}
+            Q ${endPoint.x},${corner2Y} ${endPoint.x},${corner2Y + yDir * cornerRadius2}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         }

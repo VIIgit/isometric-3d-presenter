@@ -476,6 +476,18 @@
   transition: all 0.3s ease;
 }
 
+/* Make child elements transparent to pointer events to prevent hover flickering
+   UNLESS they are also scenes or faces (which should remain clickable) */
+.nav-clickable > *:not(.scene):not(.face) {
+  pointer-events: none;
+}
+
+/* Restore pointer events for nested scenes and faces */
+.nav-clickable .scene,
+.nav-clickable .face {
+  pointer-events: auto;
+}
+
 .nav-clickable::before {
   content: '';
   position: absolute;
