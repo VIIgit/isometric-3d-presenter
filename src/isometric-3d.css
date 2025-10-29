@@ -628,6 +628,11 @@
   opacity: 0.2;
 }
 
+/* Also dim all child elements inside non-highlighted scenes (images, divs, text, etc.) */
+.isometric-perspective:has(.highlight) .scene:not(.highlight) > *:not(.face) {
+  opacity: 0.4;
+}
+
 /* Dark mode variables */
 :root {
   --nav-bg-light: rgba(255, 255, 255, 0.5);
