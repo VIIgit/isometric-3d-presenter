@@ -1018,7 +1018,7 @@ class Isometric3D {
   navigateToPosition(xyzString, zoomString, sourceElement = null, panString = null) {
     const targetRotation = { ...this.currentRotation };
     let targetZoom = this.currentZoom;
-    let targetTranslation = { x: 0, y: 0, z: 0 }; // Default to no pan
+    let targetTranslation = { ...this.currentTranslation }; // Default to current pan position
 
     // Parse xyz string (e.g., "35.00.15")
     if (xyzString) {
