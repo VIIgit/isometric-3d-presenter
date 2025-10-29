@@ -75,6 +75,33 @@
   -webkit-backface-visibility: hidden;
 }
 
+/* Make all child elements inside scenes transparent to pointer events
+   so clicks and hovers pass through to the scene itself.
+   This prevents images, divs, and other content from interfering with scene interactions.
+   Exception: .face elements should remain interactive */
+.scene > *:not(.face) {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Prevent image dragging and selection inside scenes */
+.scene img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* Faces should remain interactive */
+.scene > .face {
+  pointer-events: auto;
+}
+
 .face {
   position: absolute;
   width: 100px;
