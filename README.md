@@ -546,13 +546,29 @@ viewer.on('navigationChange', (data) => {
 
 ### URL Bookmarking
 
-The presenter automatically saves state to URL:
+The presenter uses two types of URL navigation:
+
+#### 1. Hash Navigation (Click/Scroll-Based)
+
+When clicking on a navigable element or scrolling to a content section, the URL updates with a hash anchor:
+
+```html
+example.html#cube1-description
+```
+
+This provides semantic navigation to specific content sections using the element's `data-id` attribute.
+
+#### 2. Query Parameter Navigation (Manual Manipulation)
+
+When manually rotating, zooming, or panning the view, the URL updates with query parameters after 3 seconds:
 
 - `{prefix}xyz` - Rotation (e.g., "45.00.-35")
 - `{prefix}zoom` - Zoom level (e.g., "1.2")
 - `{prefix}pan` - Pan position (e.g., "100,-50" with comma separator)
 
 Example: `?presentationxyz=45.00.-35&presentationzoom=1.2&presentationpan=100,-50`
+
+**Note:** Hash navigation and query parameter navigation are mutually exclusive. Clicking an element removes query parameters, and manual navigation removes the hash.
 
 ## Examples
 

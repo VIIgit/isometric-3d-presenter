@@ -119,38 +119,25 @@ class ScrollSync {
                     const [sectionId, state] = sortedEntries[0];
                     const navElement = sectionToNavElement[sectionId];
                     
-                    if (navElement) {
-                        // Get navigation data from element
-                        const xyz = navElement.getAttribute('data-nav-xyz');
-                        const zoom = navElement.getAttribute('data-nav-zoom');
-                        const pan = navElement.getAttribute('data-nav-pan');
-                        const navigationKey = `${xyz}|${zoom}|${pan}`;
-
-                        // Only navigate if target has changed
-                        if (xyz || zoom || pan) {
-                            if (this.currentNavigationTarget !== navigationKey) {
-                                this.currentNavigationTarget = navigationKey;
-                                this.controller.navigateToPosition(xyz, zoom, navElement, pan);
-                                
-                                // Check for highlight keys on the navigation element or its parent scene
-                                const autoHighlightKeys = navElement.getAttribute('data-highlight-keys') || 
-                                                         navElement.closest('.scene')?.getAttribute('data-highlight-keys');
-                                
-                                if (autoHighlightKeys) {
-                                    // Split by comma and highlight all keys
-                                    const keys = autoHighlightKeys.split(',').map(k => k.trim());
-                                    this.controller.highlightByKey(keys);
-                                } else {
-                                    // No highlight keys defined, clear any existing highlights
-                                    this.controller.clearHighlights();
-                                }
-                            }
+                    if (navElement && sectionId) {
+                        // Only update if the target section has changed
+                        if (this.currentNavigationTarget !== sectionId) {
+                            this.currentNavigationTarget = sectionId;
+                            
+                            // Trigger click on the navigation element to handle everything consistently
+                            // (navigation, highlighting, URL update with hash)
+                            navElement.click();
                         }
                     }
                 } else {
                     // No sections are intersecting - reset to default view
                     if (this.currentNavigationTarget !== null) {
                         this.currentNavigationTarget = null;
+                        
+                        // Clear URL (remove hash)
+                        const baseUrl = window.location.pathname;
+                        window.history.replaceState({}, '', baseUrl);
+                        
                         this.controller.resetToDefault();
                         this.controller.clearHighlights();
                     }

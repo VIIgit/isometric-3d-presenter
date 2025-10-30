@@ -1,5 +1,3 @@
-// Isometric 3D Bird's Eye View JavaScript - Modular Class
-
 class Isometric3D {
   constructor(containerId, options = {}) {
     this.containerId = containerId;
@@ -26,6 +24,7 @@ class Isometric3D {
 
     this.urlUpdateTimeout = null;
     this.isDragging = false;
+    this.isClickNavigation = false; // Track if navigation is from a click (vs manual drag)
     this.lastMouseX = 0;
     this.lastMouseY = 0;
     this.dragButton = null;
@@ -419,8 +418,13 @@ class Isometric3D {
       this.defaultTranslation
     );
     
-    // Update URL
-    this.updateUrlWithRotation();
+    // Clear URL completely (remove both query params and hash)
+    const baseUrl = window.location.pathname;
+    window.history.replaceState({}, '', baseUrl);
+    
+    // Mark as click navigation to prevent URL updates during animation
+    this.isClickNavigation = true;
+    clearTimeout(this.urlUpdateTimeout);
     
     // Update navigation bar to show default position as active
     this.setActiveNavPoint(-1);
@@ -874,9 +878,11 @@ class Isometric3D {
       setTimeout(() => this.updateLabelPositions(), 50); // Small delay to ensure transforms are applied
     }
 
-    // Queue URL update to avoid too frequent updates
-    clearTimeout(this.urlUpdateTimeout);
-    this.urlUpdateTimeout = setTimeout(() => this.updateUrlWithRotation(), 3000);
+    // Queue URL update to avoid too frequent updates (but skip if navigating via click)
+    if (!this.isClickNavigation) {
+      clearTimeout(this.urlUpdateTimeout);
+      this.urlUpdateTimeout = setTimeout(() => this.updateUrlWithRotation(), 3000);
+    }
   }
 
   updateDisplayValues() {
@@ -1038,6 +1044,31 @@ class Isometric3D {
       const [x, y] = panString.split(',').map(v => parseFloat(v) || 0);
       targetTranslation.x = x;
       targetTranslation.y = y;
+    }
+
+    // Check if source element has data-id for hash-based navigation
+    let targetHash = null;
+    if (sourceElement) {
+      targetHash = sourceElement.getAttribute('data-id');
+      // If not on element itself, check parent scene
+      if (!targetHash) {
+        const parentScene = sourceElement.closest('.scene');
+        if (parentScene) {
+          targetHash = parentScene.getAttribute('data-id');
+        }
+      }
+    }
+
+    // Update URL: use hash if data-id exists, otherwise skip URL update
+    // (manual navigation will update via updateUrlWithRotation)
+    if (targetHash) {
+      // Navigate using hash anchor (for clicked navigation elements)
+      // Remove query parameters and use only the hash
+      const baseUrl = window.location.pathname;
+      window.history.replaceState({}, '', `${baseUrl}#${targetHash}`);
+      // Cancel any pending query param updates and mark as click navigation
+      clearTimeout(this.urlUpdateTimeout);
+      this.isClickNavigation = true;
     }
 
     // Update navigation bar to match the target position
@@ -1285,6 +1316,9 @@ class Isometric3D {
       url.searchParams.set(panParam, panValue);
     }
 
+    // Remove hash when updating via manual navigation (query params are mutually exclusive with hash)
+    url.hash = '';
+
     window.history.replaceState({}, '', url);
   }
 
@@ -1464,6 +1498,7 @@ class Isometric3D {
   // Mouse event handlers
   onMouseDown(e) {
     this.isDragging = true;
+    this.isClickNavigation = false; // Reset flag when manually dragging
     this.lastMouseX = e.clientX;
     this.lastMouseY = e.clientY;
     this.dragButton = e.button; // 0 = left, 1 = middle, 2 = right
@@ -1658,6 +1693,9 @@ class Isometric3D {
 
     // Enable smooth transition for keyboard navigation
     this.enableTransition();
+
+    // Reset click navigation flag when manually navigating via keyboard
+    this.isClickNavigation = false;
 
     // Check for Ctrl/Cmd modifier for panning
     const isPanModifier = e.ctrlKey || e.metaKey;
