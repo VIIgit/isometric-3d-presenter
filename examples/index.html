@@ -82,10 +82,14 @@
 
         .rect-a {
             grid-area: rect-a;
+            border: rgba(7, 0, 214, 0.784) 2px solid;
+            border-radius: 4px;
         }
 
         .rect-b {
             grid-area: rect-b;
+            border: rgb(0, 189, 246) 2px solid;
+            border-radius: 4px;
         }
 
         .scene-a,
@@ -93,7 +97,6 @@
         .scene-c,
         .rect-a,
         .rect-b {
-            border: 3px solid white;
             width: 100%;
             height: 100%;
         }
@@ -103,46 +106,37 @@
             border: black 2px solid;
         }
 
-        .scene {
-            border: 1px solid #00f;
-        }
-
-
-        /* Base cube styles */
-
-
         /* Enhanced SVG connector styles */
         .connector-path {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
             transition: opacity 0.3s ease;
         }
 
         .connector-animated-marker {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
             transition: opacity 0.3s ease;
         }
 
         .connector-marker {
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
             transition: opacity 0.3s ease;
         }
 
         /* Highlighted connectors have enhanced visibility */
         .connector-path.highlight {
-            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4));
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
             opacity: 1 !important;
         }
 
         .connector-animated-marker.highlight {
-            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.5));
             opacity: 1 !important;
         }
 
         .connector-marker.highlight {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
             opacity: 1 !important;
         }
-
     </style>
 </head>
 
@@ -174,10 +168,10 @@
     <div class="sticky-section-wrapper">
         <div id="modern-scene" class="isometric-container">
             <div class="isometric-perspective grid-layout" data-connectors='[
-                     {"from": "cube1", "fromPoint": "bottom", "fromCenter": true, "edgeAt": "80", "to": "cube3", "toPoint": "top", "color": "#4CAF50", "keys": ["A"], "showArrow": false, "animated": true, "lineStyle": "solid"},
-                     {"from": "cube1", "fromPoint": "right", "edgeAt": "20", "to": "rectA", "toPoint": "left", "color": "#FF9800", "keys": ["C"], "showArrow": false, "showStartCircle": true, "showEndCircle": true, "lineStyle": "dashed"},
-                     {"from": "cube4", "fromPoint": "left", "fromCenter": true, "edgeAt": "50", "to": "cube2", "toPoint": "right", "color": "#E91E63", "keys": ["C"], "showArrow": true, "showStartCircle": true, "lineStyle": "solid"},
-                     {"from": "cube4", "fromPoint": "left", "edgeAt": "50", "to": "cube3", "toPoint": "right", "toCenter": true, "color": "#2196F3", "keys": ["A", "B"], "animated": true, "showEndCircle": true, "lineStyle": "dashed"}
+                     {"ids": "cube1,cube3", "positions": "center,top", "vertices": "20,80", "color": "#4CAF50", "groups": "workflow", "animationStyle": "circle"},
+                     {"ids": "cube1,rectA", "positions": "right,left", "vertices": "20", "color": "#FF9800", "groups": "database", "endStyles": "circle,arrow-circle", "lineStyle": "dashed"},
+                     {"ids": "cube4,cube2", "positions": "center,right", "vertices": "50", "color": "#E91E63", "groups": "database", "endStyles": "circle,arrow"},
+                     {"ids": "cube4,cube3", "positions": "left,center", "vertices": "50", "color": "#2196F3", "groups": "workflow,integration", "endStyles": ",arrowSmall", "animationStyle": "circle", "lineStyle": "dashed"}
                  ]'>
 
                 <div id="rectA" class="scene rect-a" data-focus="center">
@@ -185,27 +179,49 @@
                     <img src="logo.jpeg">
                 </div>
                 <div id="cube4" class="scene rect-b" data-z-axis="80" data-nav-xyz="00.15.15" data-nav-zoom="1.2"
-                    data-id="cube1-description">Cube 4</div>
+                    data-section="cube1-description">Cube 4
+                    <img src="logo.jpeg">
+                </div>
 
-                <div id="cube1" class="scene scene-a" data-width="100" data-height="100" data-depth="100"
-                    data-z-axis="80" data-highlight-keys="C" data-keys="C,B">
+                <div id="cube1" class="scene scene-a" data-width="100" data-height="evaluate" data-depth="120"
+                    data-z-axis="80" data-activate="database" data-groups="database,integration">
                     <div class="face front">front</div>
                     <div class="face back">back</div>
-                    <div class="face left">left</div>
+                    <div class="face left flex-column">
+                        left
+                        <div class="face" data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-section="featureA">Feature A
+                        </div>
+                        <div class="face" data-nav-xyz="40.10.-65" data-nav-zoom="0.9" data-section="featureB">Feature B
+                        </div>
+
+<div class="face flex-row">
+                        <div class="face" data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-section="featureA">A</div>
+                        <div class="face" data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-section="featureD">D</div>
+</div>
+                       
+                    </div>
                     <div class="face right">right</div>
-                    <div class="face top" data-nav-xyz="48.00.-79" data-nav-zoom="0.7" data-nav-pan="261,-31" data-focus="center"
-                        data-id="cube1-description">top 1</div>
+                    <div class="face top" data-nav-xyz="48.00.-79" data-nav-zoom="0.7" data-nav-pan="261,-31"
+                        data-focus="center" data-section="cube1-description">top 1</div>
                     <div class="face bottom">bottom</div>
                 </div>
                 <div style="transform-style: preserve-3d;"> Cube 2
-                    <div id="cube2" class="scene scene-b" data-width="20" data-height="360" data-depth="80"
-                        data-z-axis="10" data-keys="A">
+                    <div id="cube2" class="scene scene-b" data-width="20" data-height="260" data-depth="80"
+                        data-z-axis="10" data-groups="workflow">
                         <div class="face front">front</div>
                         <div class="face back">back</div>
-                        <div class="face left">left</div>
+                        <div class="face left flex-column">
+                            left
+                            <div class="face" id="cube2-left-1" data-nav-xyz="35.00.-65" data-nav-zoom="0.8"
+                                data-section="featureA">Feature A</div>
+                            <div class="face" id="cube2-left-2" data-nav-xyz="40.10.-65" data-nav-zoom="0.9"
+                                data-section="featureB">Feature B</div>
+                            <div class="face" id="cube2-left-3" data-nav-xyz="45.20.-65" data-nav-zoom="1.0"
+                                data-section="featureC">Feature C</div>
+                        </div>
                         <div class="face right">right</div>
                         <div class="face top" id="cube2-top" data-z-axis="180" data-nav-xyz="00.00.15"
-                            data-nav-zoom="0.8" data-id="cube2-top-description">top 2</div>
+                            data-nav-zoom="0.8" data-section="cube2-top-description">top 2</div>
                         <div class="face bottom">bottom</div>
                     </div>
                 </div>
@@ -216,7 +232,7 @@
                     <div class="face left">left</div>
                     <div class="face right">right</div>
                     <div class="face top" data-nav-xyz="15.00.-15" data-nav-zoom="0.8" data-focus="center"
-                        data-id="cube3-description" data-highlight-keys="A,B">top cube3</div>
+                        data-section="cube3-description" data-activate="workflow,integration">top cube3</div>
                     <div class="face bottom">bottom</div>
                 </div>
             </div>
@@ -339,10 +355,17 @@
             defaultZoom: 1.0,
             showCompactControls: true,
             bookmarkPrefix: 'modern_',
+            navSelectedTarget: 'bottom',
             rotationLimits: {
                 x: { min: 0, max: 180 },
                 y: { min: -180, max: 180 },
                 z: { min: -180, max: 180 }
+            },
+            connectorDefaults: {
+                startLine: undefined,      // Default: no start marker
+                endLine: 'arrow',          // Default: arrow at end
+                lineStyle: 'solid',        // Default: solid line
+                animationStyle: undefined  // Default: no animation
             }
         });
 

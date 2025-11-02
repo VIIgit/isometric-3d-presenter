@@ -22,13 +22,11 @@
 
   /* Hide initially until 3D transforms are ready */
   opacity: 0;
-  
+
   /* Center the 3D content properly within the container */
   position: relative;
 
   /* Ensure the perspective element itself is centered and has a reasonable size */
-  width: 600px;
-  height: 400px;
   margin: auto;
 
   /* Performance optimizations to reduce flicker during dragging */
@@ -37,7 +35,8 @@
   transform-origin: center center;
   /* Prevent text and image selection */
   user-select: none;
-  -webkit-user-select: none; /* Keep for older Safari/iOS */
+  -webkit-user-select: none;
+  /* Keep for older Safari/iOS */
 
   z-index: -1;
 }
@@ -65,8 +64,6 @@
 
 .scene {
   position: relative;
-  width: 100px;
-  height: 100px;
   transform-style: preserve-3d;
   transform-origin: center center;
   cursor: default;
@@ -79,7 +76,7 @@
    so clicks and hovers pass through to the scene itself.
    This prevents images, divs, and other content from interfering with scene interactions.
    Exception: .face elements should remain interactive */
-.scene > *:not(.face) {
+.scene>*:not(.face) {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -90,22 +87,15 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
-  -webkit-user-drag: none;
-  -khtml-user-drag: none;
-  -moz-user-drag: none;
-  -o-user-drag: none;
-  user-drag: none;
 }
 
 /* Faces should remain interactive */
-.scene > .face {
+.scene>.face {
   pointer-events: auto;
 }
 
 .face {
   position: absolute;
-  width: 100px;
-  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,11 +105,32 @@
 
   left: 50%;
   top: 50%;
-  transform-style: preserve-3d;
-
+  /*transform-style: preserve-3d;*/
   box-sizing: border-box;
-  opacity: 0.9;
+  /*opacity: 0.9;*/
 }
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.flex-column>div,.flex-row>div {
+  position: initial;
+  width: 100%;
+}
+
+.flex-column>div:hover,.flex-row>div:hover {
+  scale: 1.1;
+}
+
+
 
 /* ========= WIREFRAME STYLES - Core 3D Structure ========= */
 
@@ -128,39 +139,6 @@
   cursor: pointer !important;
 }
 
-[data-nav-xyz]:hover, [data-nav-zoom]:hover {
-  cursor: pointer !important;
-}
-
-
-
-/* Animation variant - uncomment to add rotation animation */
-/*
-.isometric-perspective {
-  animation: rotate3d 20s infinite linear;
-}
-*/
-@keyframes rotate3d {
-  0% {
-    transform: rotateX(45.264deg) rotateY(5deg) rotateZ(-35deg);
-  }
-
-  25% {
-    transform: rotateX(45.264deg) rotateY(95deg) rotateZ(55deg);
-  }
-
-  50% {
-    transform: rotateX(45.264deg) rotateY(185deg) rotateZ(145deg);
-  }
-
-  75% {
-    transform: rotateX(45.264deg) rotateY(275deg) rotateZ(235deg);
-  }
-
-  100% {
-    transform: rotateX(45.264deg) rotateY(365deg) rotateZ(325deg);
-  }
-}
 
 /* ========= COMPACT CONTROLS WITH GLASS EFFECT ========= */
 
@@ -171,7 +149,7 @@
   right: 10px;
   transform: translateY(10px);
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  -text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: 99;
@@ -183,12 +161,22 @@
   pointer-events: auto;
 }
 
-/* Hide keyboard-help by default */
+/* Keyboard help styling */
 .compact-controls .keyboard-help {
   display: none;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   padding: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  font-family: 'Arial', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  -text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .control-sphere {
@@ -410,19 +398,7 @@
   transform: scale(1.1);
 }
 
-.compact-controls .keyboard-help {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  font-family: 'Arial', sans-serif;
-  font-size: 10px;
-  font-weight: 500;
-  display: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.compact-controls .keyboard-help.show {
+.keyboard-help.show {
   display: block;
   max-height: 200px;
   overflow-y: auto;
@@ -465,9 +441,8 @@
   padding: 3px 6px;
   font-size: 9px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: rgba(37, 37, 37, 0.8);
+
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -505,7 +480,7 @@
 
 /* Make child elements transparent to pointer events to prevent hover flickering
    UNLESS they are also scenes or faces (which should remain clickable) */
-.nav-clickable > *:not(.scene):not(.face) {
+.nav-clickable>*:not(.scene):not(.face) {
   pointer-events: none;
 }
 
@@ -526,7 +501,7 @@
       rgba(255, 255, 255, 0.1) 0%,
       rgba(255, 255, 255, 0) 50%,
       rgba(255, 255, 255, 0.1) 100%);
-  border: 2px solid rgba(255, 3, 3, 0.8);
+  border: 2px solid rgba(109, 109, 109, 0.4);
   border-radius: 5px;
   opacity: 0;
   transition: all 0.3s ease;
@@ -558,6 +533,11 @@
       rgba(255, 255, 255, 0.25) 100%);
 }
 
+.label {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Navigation indicator */
 .nav-clickable::after {
   position: absolute;
@@ -567,20 +547,12 @@
   opacity: 0;
   transition: all 0.3s ease;
   z-index: 11;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .nav-clickable:hover::after {
   opacity: 0.8;
 }
 
-/* Navigation selected state */
-.face.nav-selected,
-.scene.nav-selected {
-  outline: 2px solid rgba(255, 255, 255, 0.5);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
 
 /* Shadow divs for elevated scenes */
 .scene-shadow {
@@ -637,47 +609,40 @@
   transition: opacity 0.3s ease, stroke 0.3s ease, fill 0.3s ease;
 }
 
-/* When any element is highlighted, change non-highlighted connectors to gray and reduce opacity */
-.isometric-perspective:has(.highlight) .connector-path:not(.highlight) {
+/* Non-highlighted connectors when highlighting is active */
+.isometric-perspective:has(.highlight[data-highlight-keys]) .connector-path:not(.highlight),
+.connector-path:not(.highlight).dimmed {
   opacity: 0.1;
-  stroke: #808080;
+  stroke: #80808066 !important;
 }
 
-.isometric-perspective:has(.highlight) .connector-marker:not(.highlight),
-.isometric-perspective:has(.highlight) .connector-animated-marker:not(.highlight) {
+.isometric-perspective:has(.highlight[data-highlight-keys]) .connector-marker:not(.highlight),
+.isometric-perspective:has(.highlight[data-highlight-keys]) .connector-animated-marker:not(.highlight),
+.connector-marker:not(.highlight).dimmed,
+.connector-animated-marker:not(.highlight).dimmed {
   opacity: 0.1;
-  fill: #808080;
+  fill: #808080 !important;
 }
 
 /* Don't dim scenes directly, as it would affect all child faces */
-/* Instead, we'll dim only the faces of non-highlighted scenes */
-.isometric-perspective:has(.highlight) .scene:not(.highlight) > .face {
+/* Instead, we'll dim only the faces of non-highlighted scenes when a scene/face with data-highlight-keys is highlighted */
+.isometric-perspective:has(.highlight[data-highlight-keys]) .scene:not(.highlight)>.face {
   opacity: 0.2;
 }
 
-/* Also dim all child elements inside non-highlighted scenes (images, divs, text, etc.) */
-.isometric-perspective:has(.highlight) .scene:not(.highlight) > *:not(.face) {
+/* Also dim all child elements inside non-highlighted scenes (images, divs, text, etc.) when a scene/face with data-highlight-keys is highlighted */
+.isometric-perspective:has(.highlight[data-highlight-keys]) .scene:not(.highlight)>*:not(.face) {
   opacity: 0.4;
 }
 
-/* Dark mode variables */
+/* Highlighted scenes and faces at full opacity */
+.scene.highlight,
+.face.highlight {
+  opacity: 1 !important;
+}
+
+/* CSS variables for theming (currently unused but available for future dark mode) */
 :root {
   --nav-bg-light: rgba(255, 255, 255, 0.5);
   --nav-bg-active-light: rgba(255, 255, 255, 1);
-  --nav-bg-dark: rgba(0, 0, 0, 0.5);
-  --nav-bg-active-dark: rgba(0, 0, 0, 1);
-
-  --control-bg-light: rgba(255, 255, 255, 0.3);
-  --control-bg-dark: rgba(0, 0, 0, 0.3);
-  --control-border-light: rgba(255, 255, 255, 0.15);
-  --control-border-dark: rgba(0, 0, 0, 0.15);
-}
-
-/* Light mode (default) */
-.nav-point {
-  background: var(--nav-bg-light);
-}
-
-.nav-point.active {
-  background: var(--nav-bg-active-light);
 }

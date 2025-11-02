@@ -66,6 +66,27 @@ npm install isometric-3d-presenter
 | `defaultZoom` | Number | `1.0` | Initial zoom level |
 | `showCompactControls` | Boolean | `false` | Show spherical controller |
 | `bookmarkPrefix` | String | `containerId_` | URL parameter prefix |
+| `navSelectedTarget` | String | `'clicked'` | Which face gets `.nav-selected` class: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
+
+### Navigation Selected Target
+
+The `navSelectedTarget` option controls which face receives the `.nav-selected` class when clicking on a face. This is useful for always highlighting a specific face (e.g., the bottom face) regardless of which face was clicked.
+
+**Example:**
+
+```javascript
+const presenter = createIsometric3D('presentation', {
+  navSelectedTarget: 'bottom'  // Always highlight the bottom face
+});
+```
+
+When you click on the `top` face, the `.nav-selected` class will be applied to the `bottom` face instead. If the target face doesn't exist, it falls back to the clicked element.
+
+**Use cases:**
+
+- Display important information on a specific face (e.g., bottom) that should always be highlighted
+- Create consistent visual feedback regardless of viewing angle
+- Separate the interaction target from the visual selection indicator
 
 ### Rotation Limits
 
@@ -111,9 +132,49 @@ mouseSensitivity: {
 ### Data Attributes
 
 - `data-width` - Width of the 3D scene
-- `data-height` - Height of the 3D scene
+- `data-height` - Height of the 3D scene (numeric value in pixels, or `"evaluate"` for dynamic calculation)
 - `data-depth` - Depth of the 3D scene
 - `data-z-axis` - Z-axis offset (elevation)
+
+#### Dynamic Height Evaluation
+
+Instead of manually calculating the height based on dynamic content, you can use `data-height="evaluate"` to automatically measure and set the height based on the actual rendered content of the side faces.
+
+```html
+<div id="cube1" class="scene" 
+     data-width="100" 
+     data-height="evaluate" 
+     data-depth="100">
+  <div class="face front">Front content</div>
+  <div class="face back">Back content</div>
+  <div class="face left">
+    <!-- Dynamic content with unknown height -->
+    <div>Item 1</div>
+    <div>Item 2</div>
+    <div>Item 3</div>
+    <div>Item 4</div>
+  </div>
+  <div class="face right">Right content</div>
+  <div class="face top">Top face</div>
+  <div class="face bottom">Bottom face</div>
+</div>
+```
+
+**How it works:**
+
+1. During initialization, the scene temporarily renders with no 3D transforms
+2. The actual height of `.face.left`, `.face.right`, `.face.front`, and `.face.back` is measured
+3. The maximum height among these faces becomes the scene's height
+4. The scene is then configured with the evaluated height
+5. A console log displays the measurements: `📏 Evaluated height for scene #cube1: { measurements: {...}, maxHeight: "350px" }`
+
+**Use cases:**
+
+- ✅ Flex layouts with variable number of items
+- ✅ Dynamic content loaded from APIs
+- ✅ Responsive text that changes based on viewport
+- ✅ Nested elements with unknown combined height
+- ✅ Ensuring top/bottom faces align with the tallest side face
 
 ## Navigation
 
@@ -124,7 +185,7 @@ mouseSensitivity: {
      data-nav-xyz="45.00.-35" 
      data-nav-zoom="1.2"
      data-nav-pan="100,-50"
-     data-id="section1">
+     data-section="section1">
   Click to navigate
 </div>
 ```
@@ -134,11 +195,11 @@ mouseSensitivity: {
 - `data-nav-xyz` - Target rotation (format: "x.y.z" with dots)
 - `data-nav-zoom` - Target zoom level (e.g., "1.2")
 - `data-nav-pan` - Target pan/translation (format: "x,y" with comma)
-- `data-id` - ID for scroll synchronization
+- `data-section` - Unique section identifier for navigation
 
 **Note:** When navigating, if `data-nav-pan` is not defined, the pan position automatically resets to (0,0).
 
-### API Methods
+### Navigation API Methods
 
 ```javascript
 // Navigate programmatically
@@ -162,18 +223,19 @@ const state = viewer.getState();
 
 ## SVG Connectors
 
-Draw connections between elements with automatic routing:
+Draw connections between elements with automatic routing and customizable line endings:
 
 ```html
 <div class="isometric-perspective" 
      data-connectors='[
        {
-         "from": "cube1",
-         "fromPoint": "top",
-         "to": "cube2",
-         "toPoint": "bottom",
+         "ids": "cube1,cube2",
+         "positions": "top,bottom",
          "color": "#4CAF50",
-         "keys": ["A", "B"]
+         "endStyles": "circle,arrow",
+         "lineStyle": "solid",
+         "animationStyle": "circle",
+         "groups": "workflow,integration"
        }
      ]'>
   <!-- scenes -->
@@ -182,43 +244,133 @@ Draw connections between elements with automatic routing:
 
 ### Connector Configuration
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `from` | String | Source element ID |
-| `fromPoint` | String | Connection point: `center`, `top`, `bottom`, `left`, `right`, `top-left`, etc. |
-| `to` | String | Target element ID |
-| `toPoint` | String | Connection point |
-| `color` | String | Line color (hex or CSS color) |
-| `keys` | Array | Highlight keys for this connector |
-| `edgeAt` | String | Edge positioning: `"50,40"` = edge 50px from start, 40px before end |
+#### Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ids` | String | - | Element IDs: `"from,to"` (e.g., `"cube1,cube2"`) |
+| `positions` | String | - | Connection points: `"fromPoint,toPoint"` (e.g., `"top,bottom"`, `"center,left"`) |
+| `vertices` | String | - | Edge positioning: `"50,40"` = 50px from start, 40px before end; `"50"` = only start edge; `",40"` = only end edge |
+| `color` | String | `"#4CAF50"` | Line color (hex or CSS color) |
+| `endStyles` | String | `undefined` | Line endings: `"start,end"` (e.g., `"circle,arrow"`, `",arrowSmall"`, `"arrow-circle,circle"`) |
+| `lineStyle` | String | `"solid"` | Line style: `"solid"` or `"dashed"` |
+| `animationStyle` | String | `undefined` | Animated marker: `"circle"` or `undefined` |
+| `groups` | String | - | Group membership for highlighting (e.g., `"workflow,integration"`) |
+
+**Position values:** `center`, `top`, `bottom`, `left`, `right`, `top-left`, `top-right`, `bottom-left`, `bottom-right`
+
+**End style values:** `arrow`, `arrowSmall`, `circle`, `arrow-circle`, or empty for no marker
+
+**Note:** Using `positions="center,..."` automatically enables center-based connection.
+
+### Connector Defaults
+
+Set global defaults for all connectors to avoid repetition:
+
+```javascript
+const presenter = createIsometric3D('presentation', {
+  connectorDefaults: {
+    startLine: undefined,      // Default: no start marker
+    endLine: 'arrow',          // Default: arrow at end
+    lineStyle: 'solid',        // Default: solid line
+    animationStyle: undefined  // Default: no animation
+  }
+});
+```
+
+Individual connectors can override these defaults.
+
+### Line Ending Options
+
+**Arrow Markers:**
+
+- `"arrow"` - Standard arrow (full size)
+- `"arrowSmall"` - Small arrow (30% smaller, perfect for subtle connections)
+
+**Circle Markers:**
+
+- `"circle"` - Circular dot marker
+
+**Combined:**
+
+- `"arrow-circle"` - Both arrow and circle at the same point
+
+**None:**
+
+- `undefined` - No marker
+
+**Example with different line endings:**
+
+```javascript
+// Small arrow at start, large arrow at end
+{
+  "ids": "cube1,cube2",
+  "positions": "right,left",
+  "endStyles": "arrowSmall,arrow",
+  "color": "#2196F3"
+}
+
+// Circle at both ends
+{
+  "ids": "cube2,cube3",
+  "positions": "bottom,top",
+  "endStyles": "circle,circle",
+  "color": "#FF9800"
+}
+
+// No start marker, arrow with circle at end, animated, with custom routing
+{
+  "ids": "cube3,cube4",
+  "positions": "center,left",
+  "vertices": "50",
+  "endStyles": ",arrow-circle",
+  "animationStyle": "circle",
+  "color": "#4CAF50"
+}
+```
 
 ### Edge Routing Examples
 
 ```javascript
 // Two corners at specific positions
-{"edgeAt": "50,40"}  // First corner at 50px, second corner 40px before end
+{"vertices": "50,40"}  // First corner at 50px, second corner 40px before end
 
 // Single corner at end
-{"edgeAt": ",60"}  // Corner 60px before end
+{"vertices": ",60"}  // Corner 60px before end
 
 // Single corner at start
-{"edgeAt": "80"}  // Corner at 80px from start
+{"vertices": "80"}  // Corner at 80px from start
 ```
 
 ## Highlighting System
 
 The highlighting system allows you to create visual focus effects on specific scenes and connectors. When elements are highlighted, non-highlighted elements automatically dim and animations pause, creating a clear visual hierarchy.
 
+### Data Attributes
+
+The library uses intuitive, semantic attribute names with consistent comma-separated list notation:
+
+- **`data-activate`** - Auto-activate groups when navigating (e.g., `"workflow,database"`)
+- **`data-groups`** - Mark element as member of named groups (e.g., `"api,frontend"`)
+- **`data-section`** - Unique section identifier for navigation
+- **`groups`** (connectors) - Connector group membership (e.g., `"workflow,integration"`)
+
+These semantic names make the code self-documenting. Use meaningful names like "workflow", "database", "integration" rather than abstract identifiers.
+
+> **Note:** If you're upgrading from an earlier version, see [TERMINOLOGY-MIGRATION.md](./TERMINOLOGY-MIGRATION.md) for migration guidance and backward compatibility information.
+
+---
+
 ### Auto-Highlighting on Navigation
 
-Use `data-highlight-keys` to automatically highlight elements when navigating to a scene:
+Use `data-activate` to automatically activate groups when navigating to a scene:
 
 ```html
 <div class="face top" 
-     data-highlight-keys="A,B"
+     data-activate="workflow,database"
      data-nav-xyz="45.00.-35"
      data-nav-zoom="1.2">
-  When clicked, automatically highlights all elements with keys A and B
+  When clicked, automatically highlights all elements in workflow and database groups
 </div>
 ```
 
@@ -226,73 +378,96 @@ Use `data-highlight-keys` to automatically highlight elements when navigating to
 
 - Can be placed on navigable faces or scenes
 - Automatically activates when the element is clicked for navigation
-- Supports multiple keys separated by commas
+- Supports multiple groups separated by commas (e.g., "workflow,integration")
 - Highlights matching scenes, faces, and SVG connectors
 - Non-highlighted elements dim to 40% opacity
 - Connector animations pause on non-highlighted connectors
 
-### Element Highlighting Keys
+### Element Group Membership
 
-Use `data-keys` to mark elements as highlightable:
+Use `data-groups` to mark elements as members of named groups:
 
 ```html
-<!-- Scene that highlights with multiple keys -->
-<div class="scene" data-keys="A,B,C">
-  This scene highlights when key A, B, or C is active
+<!-- Scene that belongs to multiple groups -->
+<div class="scene" data-groups="workflow,integration">
+  This scene activates when workflow or integration groups are active
 </div>
 
-<!-- Face with specific highlight key -->
-<div class="face top" data-keys="feature1">
-  Highlighted when "feature1" key is active
+<!-- Face with specific group -->
+<div class="face top" data-groups="database">
+  Highlighted when "database" group is active
 </div>
 ```
 
 **Behavior:**
 
-- Elements with matching keys receive `.highlight` class
+- Elements with matching groups receive `.highlight` class
 - Non-matching elements dim automatically
-- Multiple keys can be assigned (comma-separated)
+- Multiple groups can be assigned (comma-separated)
 - Works on both scenes and individual faces
+- Use semantic names (e.g., "api", "frontend", "backend") for clarity
 
-### SVG Connector Highlighting
+### SVG Connector Group Highlighting
 
-Connectors can be highlighted using the same key system:
+Connectors can be highlighted using the same group system:
 
 ```html
 <div class="isometric-perspective" 
      data-connectors='[
        {
-         "from": "cube1",
-         "to": "cube2",
+         "ids": "cube1,cube2",
+         "positions": "center,top",
          "color": "#4CAF50",
-         "keys": ["A", "B"]
+         "groups": "workflow,integration"
        }
      ]'>
 ```
 
 **Behavior:**
 
-- Connectors with matching keys remain colored
+- Connectors with matching groups remain colored
 - Non-matching connectors turn gray (#808080)
 - Animations stop on non-highlighted connectors
 - Arrow markers change to gray
 
 ### Highlighting Workflow
 
-1. **Navigate to element** with `data-highlight-keys="A,B"`
+1. **Navigate to element** with `data-activate="workflow,database"`
 2. **System highlights**:
-   - All scenes/faces with `data-keys` containing A or B
-   - All connectors with `"keys": ["A"]` or `"keys": ["B"]`
+   - All scenes/faces with `data-groups` containing "workflow" or "database"
+   - All connectors with `"groups": "workflow"` or `"groups": "database"`
 3. **System dims**:
-   - All elements without matching keys (40% opacity)
+   - All elements without matching groups (40% opacity)
    - Connector colors turn gray
+
+**Example Flow:**
+```html
+<!-- Navigation trigger -->
+<div class="face top" 
+     data-activate="api,backend"
+     data-nav-xyz="0.0.0">
+  Click me to highlight API and backend components
+</div>
+
+<!-- Highlighted scene -->
+<div class="scene" data-groups="api">
+  API Gateway (receives .highlight class)
+</div>
+
+<!-- Highlighted connector -->
+<div class="isometric-perspective" 
+     data-connectors='[
+       {"ids": "api,db", "groups": "backend"}
+     ]'>
+</div>
+```
    - Animations pause
 
-### API Methods
+### Highlighting API Methods
 
 ```javascript
-// Highlight by key(s)
-viewer.highlightByKey(['A', 'B']);
+// Highlight by group(s)
+viewer.highlightByKey(['workflow', 'integration']);
 
 // Clear all highlights (returns all to normal)
 viewer.clearHighlights();
@@ -306,32 +481,32 @@ const highlighted = document.querySelectorAll('.highlight');
 ```html
 <!-- Step 1: Introduce input system -->
 <div class="face top" 
-     data-highlight-keys="input"
+     data-activate="input"
      data-nav-xyz="45.00.-35"
      data-nav-zoom="1.5">
   Step 1: Input Layer
 </div>
 
-<div id="input-scene" class="scene" data-keys="input">
+<div id="input-scene" class="scene" data-groups="input">
   Input Processing
 </div>
 
 <!-- Step 2: Show data flow -->
 <div class="face top" 
-     data-highlight-keys="input,processing"
+     data-activate="input,processing"
      data-nav-xyz="30.00.-45"
      data-nav-zoom="1.2">
   Step 2: Data Flow
 </div>
 
-<div id="processor" class="scene" data-keys="processing">
+<div id="processor" class="scene" data-groups="processing">
   Data Processor
 </div>
 
 <!-- Connectors highlight with their steps -->
 <div class="isometric-perspective" 
      data-connectors='[
-       {"from": "input-scene", "to": "processor", "keys": ["input", "processing"]}
+       {"ids": "input-scene,processor", "positions": "right,left", "groups": "input,processing"}
      ]'>
 ```
 
@@ -339,66 +514,65 @@ const highlighted = document.querySelectorAll('.highlight');
 
 If highlighting isn't working, verify these requirements:
 
-#### 1. Missing `data-keys` Attribute
+#### 1. Missing `data-groups` Attribute
 
-Elements must have `data-keys` to be highlightable:
+Elements must have `data-groups` to be highlightable:
 
 ```html
 <!-- ❌ Won't highlight -->
 <div id="cube1" class="scene">Content</div>
 
-<!-- ✅ Will highlight when key "A" is active -->
-<div id="cube1" class="scene" data-keys="A">Content</div>
+<!-- ✅ Will highlight when "workflow" group is active -->
+<div id="cube1" class="scene" data-groups="workflow">Content</div>
 ```
 
-#### 2. Missing `data-highlight-keys` on Navigation
+#### 2. Missing `data-activate` on Navigation
 
-Navigation elements need `data-highlight-keys` to trigger highlighting:
+Navigation elements need `data-activate` to trigger highlighting:
 
 ```html
 <!-- ❌ Navigation won't trigger highlighting -->
 <div class="face top" data-nav-xyz="15.00.-15">Click me</div>
 
-<!-- ✅ Triggers highlighting for key "A" -->
+<!-- ✅ Triggers highlighting for "workflow" group -->
 <div class="face top" 
      data-nav-xyz="15.00.-15" 
-     data-highlight-keys="A">
+     data-activate="workflow">
   Click me
 </div>
 ```
 
-#### 3. Missing `keys` in Connector Configuration
+#### 3. Missing `groups` in Connector Configuration
 
-Connectors need the `keys` array property:
+Connectors need the `groups` array property:
 
 ```javascript
 // ❌ Connector won't highlight
-{"from": "cube1", "to": "cube2", "color": "#2196F3"}
+{"ids": "cube1,cube2", "positions": "right,left", "color": "#2196F3"}
 
-// ✅ Connector highlights with keys
-{"from": "cube1", "to": "cube2", "color": "#2196F3", "keys": ["A", "B"]}
+// ✅ Connector highlights with groups
+{"ids": "cube1,cube2", "positions": "right,left", "color": "#2196F3", "groups": "workflow,integration"}
 ```
 
-#### 4. Key Matching Rules
+#### 4. Group Matching Rules
 
-- Keys are **case-sensitive**: `"A"` ≠ `"a"`
-- Multiple keys in HTML use **comma separation**: `data-keys="A,B,C"`
-- Connector keys use **array format**: `"keys": ["A", "B"]`
-- Keys must match exactly between navigation and elements
+- Group names are **case-sensitive**: `"workflow"` ≠ `"Workflow"`
+- Multiple groups use **comma separation**: `data-groups="workflow,integration,api"` or `"groups": "workflow,integration"`
+- Group names must match exactly between navigation and elements
 
 #### 5. Debug Checklist
 
 Run in browser console to verify setup:
 
 ```javascript
-// Check elements with highlight keys
-document.querySelectorAll('[data-keys]').forEach(el => {
-  console.log('Highlightable:', el.id, el.getAttribute('data-keys'));
+// Check elements with groups
+document.querySelectorAll('[data-groups]').forEach(el => {
+  console.log('Highlightable:', el.id, el.getAttribute('data-groups'));
 });
 
-// Check navigation elements with highlight triggers
-document.querySelectorAll('[data-highlight-keys]').forEach(el => {
-  console.log('Nav trigger:', el.className, el.getAttribute('data-highlight-keys'));
+// Check navigation elements with activation triggers
+document.querySelectorAll('[data-activate]').forEach(el => {
+  console.log('Nav trigger:', el.className, el.getAttribute('data-activate'));
 });
 
 // Check connectors configuration
@@ -410,25 +584,25 @@ console.log('Connectors:', perspective.getAttribute('data-connectors'));
 
 ```html
 <div class="isometric-perspective" data-connectors='[
-  {"from": "cube1", "to": "cube2", "color": "#2196F3", "keys": ["flow"]}
+  {"ids": "cube1,cube2", "positions": "right,left", "color": "#2196F3", "groups": "workflow"}
 ]'>
-  <!-- Element 1: Has highlight key -->
-  <div id="cube1" class="scene" data-keys="flow">
+  <!-- Element 1: Has group -->
+  <div id="cube1" class="scene" data-groups="workflow">
     <div class="face top" 
          data-nav-xyz="15.00.-15" 
-         data-highlight-keys="flow"
+         data-activate="workflow"
          data-nav-zoom="1.2">
-      Click to highlight flow
+      Click to highlight workflow
     </div>
   </div>
   
-  <!-- Element 2: Has same highlight key -->
-  <div id="cube2" class="scene" data-keys="flow">
+  <!-- Element 2: Has same group -->
+  <div id="cube2" class="scene" data-groups="workflow">
     Connected element
   </div>
   
-  <!-- Element 3: Different key (won't highlight) -->
-  <div id="cube3" class="scene" data-keys="other">
+  <!-- Element 3: Different group (won't highlight) -->
+  <div id="cube3" class="scene" data-groups="database">
     Other element
   </div>
 </div>
@@ -436,8 +610,8 @@ console.log('Connectors:', perspective.getAttribute('data-connectors'));
 
 **Expected behavior when clicking cube1's top face:**
 
-- ✅ cube1 and cube2 stay bright (both have `data-keys="flow"`)
-- ✅ Connector turns bright blue (has `"keys": ["flow"]`)
+- ✅ cube1 and cube2 stay bright (both have `data-groups="workflow"`)
+- ✅ Connector turns bright blue (has `"groups": "workflow"`)
 - ✅ cube3 dims to 40% opacity (different key)
 - ✅ Other connectors turn gray and stop animating
 
@@ -512,6 +686,9 @@ const scrollSync = new ScrollSync(viewer, {
   /* Your custom styles */
 }
 
+.scene:not(:has(> .face)) {
+  /* your styles for scence without faces */
+}
 .face {
   background: rgba(100, 150, 200, 0.8);
   border: 1px solid #fff;
@@ -519,6 +696,128 @@ const scrollSync = new ScrollSync(viewer, {
 
 .scene.highlight {
   /* Highlighted state */
+}
+
+```
+
+### Customizing Highlight and Selection States
+
+The library provides two CSS classes for visual feedback during navigation and highlighting:
+
+#### `.highlight` Class
+
+Applied to elements that belong to the currently active highlight group (based on `data-groups` or `data-section`). Multiple elements can have this class simultaneously. The class name intentionally uses the universal web convention term "highlight" rather than "group" or "activate" because it represents the visual presentation state.
+
+**Common customizations:**
+
+```css
+/* Add background color to highlighted elements */
+.scene.highlight,
+.face.highlight {
+  background-color: rgba(173, 216, 230, 0.3); /* Light blue tint */
+}
+
+/* Add a glow effect to highlighted elements */
+.scene.highlight,
+.face.highlight {
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+/* Adjust dimming level for non-highlighted elements */
+.isometric-perspective:has(.highlight) .scene:not(.highlight) > .face {
+  opacity: 0.1; /* More dramatic dimming (default: 0.2) */
+}
+
+.isometric-perspective:has(.highlight) .scene:not(.highlight) > *:not(.face) {
+  opacity: 0.2; /* Dim child elements more (default: 0.4) */
+}
+
+/* Keep non-highlighted connectors more visible */
+.isometric-perspective:has(.highlight) .connector-path:not(.highlight) {
+  opacity: 0.3; /* More visible (default: 0.1) */
+  stroke: #999999; /* Lighter gray (default: #808080) */
+}
+```
+
+#### `.nav-selected` Class
+
+Applied to the specific element that was clicked or navigated to. Only one element has this class at a time.
+
+**Common customizations:**
+
+```css
+/* Change outline color and style */
+.face.highlight,
+.face.nav-selected,
+.scene.nav-selected {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Add animation to selected element */
+.face.nav-selected,
+.scene.nav-selected {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    outline-color: rgba(0, 255, 0, 0.8);
+  }
+  50% {
+    outline-color: rgba(0, 255, 0, 0.3);
+  }
+}
+
+/* Add background highlight instead of outline 
+```
+
+#### Complete Theme Example
+
+Here's a complete dark theme with purple highlights:
+
+```css
+/* Dark theme with purple highlights */
+.scene.highlight,
+.face.highlight {
+  background-color: rgba(138, 43, 226, 0.2); /* Purple tint */
+  border: 1px solid rgba(138, 43, 226, 0.5);
+}
+
+.face.nav-selected,
+.scene.nav-selected {
+  outline: 2px solid rgba(255, 0, 255, 0.9); /* Magenta outline */
+  outline-offset: 3px;
+  animation: glow 1.5s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+  }
+}
+
+/* Adjust non-highlighted elements for dark theme */
+.isometric-perspective:has(.highlight) .scene:not(.highlight) > .face {
+  opacity: 0.15;
+}
+
+.isometric-perspective:has(.highlight) .connector-path:not(.highlight) {
+  stroke: #444444; /* Darker gray for dark theme */
+  opacity: 0.2;
+}
+
+/* Custom hover effect */
+.nav-clickable::before {
+  background: linear-gradient(135deg,
+    rgba(138, 43, 226, 0.3) 0%,
+    rgba(138, 43, 226, 0) 50%,
+    rgba(138, 43, 226, 0.3) 100%);
+  border: 2px solid rgba(138, 43, 226, 0.8);
 }
 ```
 
@@ -556,7 +855,7 @@ When clicking on a navigable element or scrolling to a content section, the URL 
 example.html#cube1-description
 ```
 
-This provides semantic navigation to specific content sections using the element's `data-id` attribute.
+This provides semantic navigation to specific content sections using the element's `data-section` attribute.
 
 #### 2. Query Parameter Navigation (Manual Manipulation)
 

@@ -23,6 +23,7 @@ class Isometric3D {
     this.defaultTranslation = { x: 0, y: 0, z: 0 };
 
     this.urlUpdateTimeout = null;
+    this.labelUpdateTimeout = null; // Track label update timeout to prevent flicker
     this.isDragging = false;
     this.isClickNavigation = false; // Track if navigation is from a click (vs manual drag)
     this.lastMouseX = 0;
@@ -64,6 +65,19 @@ class Isometric3D {
 
     // Compact controls option
     this.showCompactControls = options.showCompactControls || false;
+
+    // Nav-selected target face option
+    // When clicking a face, which face should get .nav-selected?
+    // Options: 'clicked' (default), 'top', 'bottom', 'front', 'back', 'left', 'right'
+    this.navSelectedTarget = options.navSelectedTarget || 'clicked';
+
+    // Default connector settings
+    this.connectorDefaults = {
+      startLine: options.connectorDefaults?.startLine || undefined,  // 'arrow', 'arrowSmall', 'circle', 'arrow-circle', or undefined
+      endLine: options.connectorDefaults?.endLine || undefined,        // 'arrow', 'arrowSmall', 'circle', 'arrow-circle', or undefined
+      lineStyle: options.connectorDefaults?.lineStyle || 'solid',    // 'solid' or 'dashed'
+      animationStyle: options.connectorDefaults?.animationStyle || undefined  // 'circle' or undefined
+    };
 
     // Event listeners for custom events
     this.eventListeners = {
@@ -463,17 +477,82 @@ class Isometric3D {
       el.classList.remove('nav-selected');
     });
     
-    // If activeIndex is valid, add nav-selected only to the active element
+    // If activeIndex is valid, add nav-selected to the appropriate element
     if (activeIndex >= 0 && activeIndex < navigableElements.length) {
       const activeElement = navigableElements[activeIndex];
-      activeElement.classList.add('nav-selected');
+      let targetElement = activeElement;
       
-      // Emit navigation change event
+      // If navSelectedTarget is not 'clicked', try to find the target face
+      if (this.navSelectedTarget !== 'clicked') {
+        // Check if activeElement is a face without a direction class (nested face)
+        const directionClasses = ['top', 'bottom', 'front', 'back', 'left', 'right'];
+        const isNestedFace = activeElement.classList.contains('face') && 
+          !directionClasses.some(dir => activeElement.classList.contains(dir));
+        
+        // Find the parent scene
+        let parentScene = null;
+        
+        if (isNestedFace) {
+          // For nested faces, look for the target in the grandparent scene (skip parent face)
+          // Walk up to find a face with a direction class
+          let currentElement = activeElement.parentElement;
+          let parentFace = null;
+          
+          while (currentElement && !parentScene) {
+            if (currentElement.classList.contains('face')) {
+              // Check if this face has a direction class
+              if (directionClasses.some(dir => currentElement.classList.contains(dir))) {
+                parentFace = currentElement;
+                break;
+              }
+            }
+            currentElement = currentElement.parentElement;
+          }
+          
+          if (parentFace) {
+            parentScene = parentFace.closest('.scene');
+          } else {
+            // Fallback: just get the closest scene
+            parentScene = activeElement.closest('.scene');
+          }
+        } else if (activeElement.classList.contains('scene')) {
+          parentScene = activeElement;
+        } else {
+          parentScene = activeElement.closest('.scene');
+        }
+        
+        if (parentScene) {
+          // Look for direct child face with the target direction class
+          const targetFace = parentScene.querySelector(`:scope > .face.${this.navSelectedTarget}`);
+          if (targetFace) {
+            targetElement = targetFace;
+          }
+        }
+      }
+      
+      // IMPORTANT: Only add nav-selected to elements that belong to the same scene as activeElement
+      // This prevents issues when multiple elements share the same data-id across different scenes
+      const activeElementScene = activeElement.classList.contains('scene') 
+        ? activeElement 
+        : activeElement.closest('.scene');
+      const targetElementScene = targetElement.classList.contains('scene')
+        ? targetElement
+        : targetElement.closest('.scene');
+      
+      // Only add nav-selected if both elements are in the same scene
+      if (activeElementScene === targetElementScene) {
+        targetElement.classList.add('nav-selected');
+      }
+      
+      // Emit navigation change event (with the originally clicked element)
       this.emit('navigationChange', {
         index: activeIndex,
         element: activeElement,
+        navSelectedElement: targetElement,
         id: activeElement.id || null,
-        key: activeElement.getAttribute('data-id') || activeElement.id || null
+        key: activeElement.getAttribute('data-section') || 
+             activeElement.getAttribute('data-id') || 
+             activeElement.id || null
       });
     }
   }
@@ -641,7 +720,15 @@ class Isometric3D {
         </div>
         <div class="key-mapping">
           <span>🖱️ <strong>Wheel</strong></span>
+          <span>X-Axis rotation</span>
+        </div>
+        <div class="key-mapping">
+          <span>🖱️ <strong>Shift+Wheel</strong></span>
           <span>Zoom in/out</span>
+        </div>
+        <div class="key-mapping">
+          <span>🖱️ <strong>Ctrl+Wheel</strong></span>
+          <span>Pan up/down</span>
         </div>
         <div class="key-mapping">
           <span><span class="key">←</span> <span class="key">→</span></span>
@@ -875,7 +962,8 @@ class Isometric3D {
 
     // Update label positions only if not animating and not dragging (to avoid flicker)
     if (!this.isAnimating && !this.isDragging) {
-      setTimeout(() => this.updateLabelPositions(), 50); // Small delay to ensure transforms are applied
+      clearTimeout(this.labelUpdateTimeout);
+      this.labelUpdateTimeout = setTimeout(() => this.updateLabelPositions(), 50); // Small delay to ensure transforms are applied
     }
 
     // Queue URL update to avoid too frequent updates (but skip if navigating via click)
@@ -1004,7 +1092,9 @@ class Isometric3D {
       const xyz = targetElement.getAttribute('data-nav-xyz');
       const zoom = targetElement.getAttribute('data-nav-zoom');
       const pan = targetElement.getAttribute('data-nav-pan');
-      const autoHighlight = targetElement.getAttribute('data-highlight-keys');
+      // Support both new (data-activate) and legacy (data-highlight-keys) attributes
+      const autoHighlight = targetElement.getAttribute('data-activate') || 
+                           targetElement.getAttribute('data-highlight-keys');
 
       if (xyz || zoom || pan) {
         navData = { xyz, zoom, pan, element: targetElement };
@@ -1049,15 +1139,17 @@ class Isometric3D {
       targetTranslation.y = y;
     }
 
-    // Check if source element has data-id for hash-based navigation
+    // Check if source element has data-section (new) or data-id (legacy) for hash-based navigation
     let targetHash = null;
     if (sourceElement) {
-      targetHash = sourceElement.getAttribute('data-id');
+      targetHash = sourceElement.getAttribute('data-section') || 
+                  sourceElement.getAttribute('data-id');
       // If not on element itself, check parent scene
       if (!targetHash) {
         const parentScene = sourceElement.closest('.scene');
         if (parentScene) {
-          targetHash = parentScene.getAttribute('data-id');
+          targetHash = parentScene.getAttribute('data-section') || 
+                      parentScene.getAttribute('data-id');
         }
       }
     }
@@ -1075,26 +1167,32 @@ class Isometric3D {
     }
 
     // Update navigation bar to match the target position
-    this.syncNavigationBar(xyzString, zoomString, panString);
+    // Pass sourceElement so we know which specific element was clicked
+    this.syncNavigationBar(xyzString, zoomString, panString, sourceElement);
 
     // Handle auto-highlighting if source element is provided
     if (sourceElement) {
-      // Check face first, then parent scene for highlight-keys
-      let autoHighlightKeys = sourceElement.getAttribute('data-highlight-keys');
+      // Check face first, then parent scene for activate groups (new) or highlight-keys (legacy)
+      let autoHighlightKeys = sourceElement.getAttribute('data-activate') || 
+                             sourceElement.getAttribute('data-highlight-keys');
       let sourceScene = sourceElement.closest('.scene');
       
       // If not found on the element itself, check parent scene
       if (!autoHighlightKeys && sourceScene) {
-        autoHighlightKeys = sourceScene.getAttribute('data-highlight-keys');
+        autoHighlightKeys = sourceScene.getAttribute('data-activate') || 
+                           sourceScene.getAttribute('data-highlight-keys');
       }
       
       if (autoHighlightKeys) {
         const keys = autoHighlightKeys.split(',').map(k => k.trim());
         this.highlightByKey(keys);
         
-        // Also ensure the source scene itself is highlighted
+        // Also ensure the source scene itself is highlighted, but only if it has no highlighted faces
         if (sourceScene) {
-          sourceScene.classList.add('highlight');
+          const hasHighlightedFaces = sourceScene.querySelectorAll('.face.highlight').length > 0;
+          if (!hasHighlightedFaces) {
+            sourceScene.classList.add('highlight');
+          }
         }
       } else {
         // No highlight-keys found, clear all highlights
@@ -1104,12 +1202,45 @@ class Isometric3D {
       // No source element provided, clear highlights
       this.clearHighlights();
     }
+    
+    // IMPORTANT: Highlight all elements with the same data-section/data-id AFTER all other highlighting
+    // This ensures section-based highlights aren't cleared by highlightByKey()
+    if (targetHash && sourceElement) {
+      // Query for both new (data-section) and legacy (data-id) attributes
+      const elementsWithSameId = this.container.querySelectorAll(
+        `[data-section="${targetHash}"], [data-id="${targetHash}"]`
+      );
+      const scenesWithHighlightedFaces = new Set();
+      
+      // First pass: highlight elements and track scenes with highlighted faces
+      elementsWithSameId.forEach(el => {
+        if (el.classList.contains('scene')) {
+          // Scene will be highlighted in second pass if it has no highlighted faces
+        } else {
+          // If it's a face or other element, add highlight to it
+          el.classList.add('highlight');
+          
+          // Track parent scene to prevent double highlighting
+          const parentScene = el.closest('.scene');
+          if (parentScene) {
+            scenesWithHighlightedFaces.add(parentScene);
+          }
+        }
+      });
+      
+      // Second pass: highlight scenes only if they don't have highlighted faces
+      elementsWithSameId.forEach(el => {
+        if (el.classList.contains('scene') && !scenesWithHighlightedFaces.has(el)) {
+          el.classList.add('highlight');
+        }
+      });
+    }
 
     // Perform smooth animation with pan/translation
     this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation);
   }
 
-  syncNavigationBar(xyzString, zoomString, panString) {
+  syncNavigationBar(xyzString, zoomString, panString, sourceElement = null) {
     // Find the navigation element that matches this position
     const navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
     let matchingIndex = -1;
@@ -1118,20 +1249,31 @@ class Isometric3D {
     if (!xyzString && !zoomString && !panString) {
       matchingIndex = -1; // Default position
     } else {
-      // Find matching navigation element
-      navElements.forEach((element, index) => {
-        const elementXyz = element.getAttribute('data-nav-xyz');
-        const elementZoom = element.getAttribute('data-nav-zoom');
-        const elementPan = element.getAttribute('data-nav-pan');
-        
-        const xyzMatch = !xyzString || elementXyz === xyzString;
-        const zoomMatch = !zoomString || elementZoom === zoomString;
-        const panMatch = !panString || elementPan === panString;
-        
-        if (xyzMatch && zoomMatch && panMatch) {
-          matchingIndex = index;
-        }
-      });
+      // If sourceElement is provided, find its exact index
+      if (sourceElement) {
+        navElements.forEach((element, index) => {
+          if (element === sourceElement) {
+            matchingIndex = index;
+          }
+        });
+      }
+      
+      // If we didn't find sourceElement or it wasn't provided, match by attributes
+      if (matchingIndex === -1) {
+        navElements.forEach((element, index) => {
+          const elementXyz = element.getAttribute('data-nav-xyz');
+          const elementZoom = element.getAttribute('data-nav-zoom');
+          const elementPan = element.getAttribute('data-nav-pan');
+          
+          const xyzMatch = !xyzString || elementXyz === xyzString;
+          const zoomMatch = !zoomString || elementZoom === zoomString;
+          const panMatch = !panString || elementPan === panString;
+          
+          if (xyzMatch && zoomMatch && panMatch) {
+            matchingIndex = index;
+          }
+        });
+      }
     }
 
     // Update the active navigation point
@@ -1506,6 +1648,9 @@ class Isometric3D {
     this.lastMouseY = e.clientY;
     this.dragButton = e.button; // 0 = left, 1 = middle, 2 = right
 
+    // Cancel any pending label updates to prevent flicker during drag
+    clearTimeout(this.labelUpdateTimeout);
+
     // Disable transition for immediate mouse response
     this.disableTransition();
 
@@ -1590,6 +1735,9 @@ class Isometric3D {
     // Restore default cursor
     this.container.style.cursor = 'default';
 
+    // Update labels now that dragging has stopped
+    setTimeout(() => this.updateLabelPositions(), 100);
+
     // Remove mousemove listener when dragging stops
     document.removeEventListener('mousemove', this.mouseMoveHandler);
     document.removeEventListener('mouseup', this.onMouseUp);
@@ -1639,8 +1787,30 @@ class Isometric3D {
     }
 
     e.preventDefault();
+
+    // Reset click navigation flag when manually navigating via mouse wheel
+    this.isClickNavigation = false;
+
+    // Check for Ctrl/Cmd modifier for panning (matching keyboard behavior)
+    const isPanModifier = e.ctrlKey || e.metaKey;
+    const isShiftModifier = e.shiftKey;
+    
+    const step = 5; // Rotation step (matching keyboard)
+    const panStep = 20; // Pan step in pixels (matching keyboard)
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    this.zoomScene(zoomFactor);
+
+    if (isPanModifier) {
+      // Ctrl/Cmd + Wheel: Pan up/down (matching Ctrl + Arrow Up/Down)
+      const panAmount = e.deltaY > 0 ? panStep : -panStep;
+      this.panScene(0, panAmount);
+    } else if (isShiftModifier) {
+      // Shift + Wheel: Zoom (matching Shift + Arrow Up/Down)
+      this.zoomScene(zoomFactor);
+    } else {
+      // No modifier: X-axis rotation (matching Arrow Up/Down)
+      const rotationAmount = e.deltaY > 0 ? step : -step;
+      this.rotateScene(rotationAmount, 0, 0);
+    }
   }
 
   onKeyDown(e) {
@@ -1834,8 +2004,14 @@ class Isometric3D {
         zAxis: scene.dataset.zAxis || '0'
       };
       this.sceneOriginalData.set(scene, original);
-      // set to inital value 
-      scene.dataset.height = '0';
+      
+      // For 'evaluate' mode, set a temporary large height so faces render with content
+      // For other modes, set to initial value of 0
+      if (original.height === 'evaluate') {
+        scene.dataset.height = '1000'; // Temporary large value for measurement
+      } else {
+        scene.dataset.height = '0';
+      }
       scene.dataset.zAxis = '0';
     });
     
@@ -1873,6 +2049,64 @@ class Isometric3D {
     this.currentRotation = { x: 0, y: 0, z: 0 };
     this.currentZoom = 1.0;
     this.currentTranslation = { x: 0, y: 0, z: 0 };
+    
+    // IMPORTANT: Evaluate heights BEFORE any 3D transformations
+    // This ensures we measure faces in their natural, untransformed state
+    scenes.forEach(scene => {
+      const original = this.sceneOriginalData.get(scene);
+      if (original && original.height === 'evaluate') {
+        // Temporarily remove all transforms to get pure content dimensions
+        const perspective = this.container.querySelector('.isometric-perspective');
+        const originalPerspectiveTransform = perspective ? perspective.style.transform : '';
+        if (perspective) {
+          perspective.style.transform = 'none';
+        }
+        
+        // Also temporarily remove scene transform
+        const originalSceneTransform = scene.style.transform;
+        scene.style.transform = 'none';
+        
+        // Measure the actual rendered height of side faces
+        const leftFace = scene.querySelector('.face.left');
+        const rightFace = scene.querySelector('.face.right');
+        const frontFace = scene.querySelector('.face.front');
+        const backFace = scene.querySelector('.face.back');
+        
+        let maxHeight = 0;
+        const measurements = {};
+        
+        // Check each side face and find the maximum height
+        [
+          { name: 'left', face: leftFace },
+          { name: 'right', face: rightFace },
+          { name: 'front', face: frontFace },
+          { name: 'back', face: backFace }
+        ].forEach(({ name, face }) => {
+          if (face) {
+            // Temporarily remove face transform for pure measurement
+            const originalFaceTransform = face.style.transform;
+            face.style.transform = 'none';
+            
+            const rect = face.getBoundingClientRect();
+            measurements[name] = rect.height;
+            maxHeight = Math.max(maxHeight, rect.height);
+            
+            // Restore face transform
+            face.style.transform = originalFaceTransform;
+          }
+        });
+        
+        // Restore transforms
+        scene.style.transform = originalSceneTransform;
+        if (perspective) {
+          perspective.style.transform = originalPerspectiveTransform;
+        }
+        
+        // Set the evaluated height (fallback to 100 if no faces found)
+        const evaluatedHeight = maxHeight > 0 ? Math.ceil(maxHeight).toString() : '100';
+        original.height = evaluatedHeight;
+      }
+    });
     
     this.configureScenes();
     this.captureCoordinatesAndDrawSvg();
@@ -1958,14 +2192,15 @@ class Isometric3D {
       return;
     }
     
-    // Create defs for arrow markers (one per color)
+    // Create defs for arrow markers (one per color, both regular and small)
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     const usedColors = new Set(connectors.map(c => c.color || '#4CAF50'));
     
     // Add gray marker for non-highlighted connectors
-    usedColors.add('#808080');
+    usedColors.add('#80808000');
     
     usedColors.forEach(color => {
+      // Regular arrow marker
       const markerId = `arrowhead-${color.replace('#', '')}`;
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
       marker.setAttribute('id', markerId);
@@ -1981,17 +2216,61 @@ class Isometric3D {
       arrowPath.setAttribute('fill', color);
       marker.appendChild(arrowPath);
       defs.appendChild(marker);
+      
+      // Small arrow marker (30% smaller)
+      const markerIdSmall = `arrowhead-small-${color.replace('#', '')}`;
+      const markerSmall = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+      markerSmall.setAttribute('id', markerIdSmall);
+      markerSmall.setAttribute('markerWidth', '7');
+      markerSmall.setAttribute('markerHeight', '7');
+      markerSmall.setAttribute('refX', '6.3');
+      markerSmall.setAttribute('refY', '2.1');
+      markerSmall.setAttribute('orient', 'auto');
+      markerSmall.setAttribute('markerUnits', 'strokeWidth');
+      
+      const arrowPathSmall = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      arrowPathSmall.setAttribute('d', 'M0,0 L0,4.2 L6.3,2.1 z');
+      arrowPathSmall.setAttribute('fill', color);
+      markerSmall.appendChild(arrowPathSmall);
+      defs.appendChild(markerSmall);
     });
     
     svg.appendChild(defs);
     
     // Draw each connector
     connectors.forEach((connector, index) => {
-      const fromElement = document.getElementById(connector.from);
-      const toElement = document.getElementById(connector.to);
+      // Support simplified syntax: ids="from,to" or legacy from/to properties
+      let fromId, toId, fromPoint, toPoint, edgeAt;
+      
+      if (connector.ids) {
+        const [from, to] = connector.ids.split(',').map(s => s.trim());
+        fromId = from;
+        toId = to;
+      } else {
+        fromId = connector.from;
+        toId = connector.to;
+      }
+      
+      if (connector.positions) {
+        const [from, to] = connector.positions.split(',').map(s => s.trim());
+        fromPoint = from;
+        toPoint = to;
+      } else {
+        fromPoint = connector.fromPoint;
+        toPoint = connector.toPoint;
+      }
+      
+      if (connector.vertices) {
+        edgeAt = connector.vertices;
+      } else {
+        edgeAt = connector.edgeAt;
+      }
+      
+      const fromElement = document.getElementById(fromId);
+      const toElement = document.getElementById(toId);
       
       if (!fromElement || !toElement) {
-        console.warn(`  ⚠ Connector ${index}: Could not find elements ${connector.from} -> ${connector.to}`);
+        console.warn(`  ⚠ Connector ${index}: Could not find elements ${fromId} -> ${toId}`);
         return;
       }
       
@@ -2004,41 +2283,58 @@ class Isometric3D {
       }
       
       // Check for fromCenter and toCenter options
-      const fromCenter = connector.fromCenter || false;
-      const toCenter = connector.toCenter || false;
+      // Support simplified syntax: positions="center,top" means fromCenter=true
+      const fromCenter = connector.fromCenter || fromPoint === 'center';
+      const toCenter = connector.toCenter || toPoint === 'center';
       
       // Calculate start point based on fromPoint
       const startPoint = this.getConnectionPoint(
         fromCorners, 
-        connector.fromPoint, 
+        fromPoint, 
         fromCenter, 
-        fromCenter ? connector.fromPoint : null
+        fromCenter ? fromPoint : null
       );
       
       // Calculate end point based on toPoint
       const endPoint = this.getConnectionPoint(
         toCorners, 
-        connector.toPoint, 
+        toPoint, 
         toCenter, 
-        toCenter ? connector.toPoint : null
+        toCenter ? toPoint : null
       );
       
       // Determine routing direction based on connection points
       // left/right → horizontal first, top/bottom → vertical first, center → depends on opposite end
-      const startOrientation = this.getPointOrientation(connector.fromPoint, connector.toPoint, startPoint, endPoint);
-      const endOrientation = this.getPointOrientation(connector.toPoint, connector.fromPoint, endPoint, startPoint);
+      const startOrientation = this.getPointOrientation(fromPoint, toPoint, startPoint, endPoint);
+      const endOrientation = this.getPointOrientation(toPoint, fromPoint, endPoint, startPoint);
       
       // Draw connector line with rounded corners
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const color = connector.color || '#4CAF50';
       const baseCornerRadius = 10;
       
-      // Line style options
-      const showArrow = connector.showArrow !== false; // Default true
-      const showStartCircle = connector.showStartCircle || false; // Default false
-      const showEndCircle = connector.showEndCircle || false; // Default false
-      const animated = connector.animated || false; // Default false
-      const lineStyle = connector.lineStyle || 'solid'; // Default solid ('solid' or 'dashed')
+      // Support compact syntax: endStyles="start,end" or individual startLine/endLine
+      let startLine, endLine;
+      
+      if (connector.endStyles) {
+        const [start, end] = connector.endStyles.split(',').map(s => s.trim());
+        startLine = start || undefined;
+        endLine = end || undefined;
+      } else {
+        // Legacy: showArrow, showStartCircle, showEndCircle
+        // Current: startLine, endLine
+        startLine = connector.startLine || 
+          (connector.showStartCircle ? 'circle' : 
+           (connector.showArrow === false ? undefined : this.connectorDefaults.startLine));
+        
+        endLine = connector.endLine || 
+          (connector.showEndCircle ? 'circle' : 
+           (connector.showArrow === false ? undefined : this.connectorDefaults.endLine));
+      }
+      
+      const lineStyle = connector.lineStyle || this.connectorDefaults.lineStyle;
+      const animationStyle = connector.animationStyle || connector.lineAnimated || 
+        (connector.animated ? 'circle' : this.connectorDefaults.animationStyle);
       
       // Calculate direction and distance
       const deltaY = endPoint.y - startPoint.y;
@@ -2061,14 +2357,14 @@ class Isometric3D {
       
       let pathData;
       
-      // Parse edgeAt parameter if provided: "startOffset,endOffset" in pixels
+      // Parse edgeAt/vertices parameter if provided: "startOffset,endOffset" in pixels
       // e.g., "50,40" = edge after 50px from start, edge 40px before end
       // e.g., ",60" = no edge at start, edge 60px before end (single corner)
       let edgeStart = null;
       let edgeEnd = null;
       
-      if (connector.edgeAt) {
-        const edges = connector.edgeAt.split(',');
+      if (edgeAt) {
+        const edges = edgeAt.split(',');
         edgeStart = edges[0] ? parseFloat(edges[0]) : null;
         edgeEnd = edges[1] ? parseFloat(edges[1]) : null;
       }
@@ -2081,11 +2377,10 @@ class Isometric3D {
         // Case: Straight vertical line (same X)
         pathData = `M ${startPoint.x},${startPoint.y} L ${endPoint.x},${endPoint.y}`;
       } else if (edgeStart !== null && edgeEnd !== null) {
-        // Case: Two edges at specified pixel offsets
+        // Case: Two edges at specified pixel offsets with straight segment in middle
         // Route based on start orientation
         if (startOrientation === 'horizontal') {
-          // Start → horizontal(edgeStart px) → corner1 ↓ vertical ↓ corner2 → horizontal(edgeEnd px) → End
-          // edgeStart/edgeEnd are always positive pixel values
+          // Start → horizontal(edgeStart px) → corner1 ↓ vertical (straight middle) ↓ corner2 → horizontal(edgeEnd px) → End
           const corner1X = startPoint.x + xDir * edgeStart;
           const corner2X = endPoint.x - xDir * edgeEnd;
           
@@ -2100,14 +2395,13 @@ class Isometric3D {
             M ${startPoint.x},${startPoint.y}
             L ${corner1X - xDir * cornerRadius},${startPoint.y}
             Q ${corner1X},${startPoint.y} ${corner1X},${startPoint.y + yDir * cornerRadius}
-            L ${corner2X},${endPoint.y - yDir * cornerRadius2}
-            Q ${corner2X},${endPoint.y} ${corner2X + xDir * cornerRadius2},${endPoint.y}
+            L ${corner1X},${endPoint.y - yDir * cornerRadius2}
+            Q ${corner1X},${endPoint.y} ${corner1X + xDir * cornerRadius2},${endPoint.y}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         } else {
-          // Start ↓ vertical(edgeStart px) ↓ corner1 → horizontal → corner2 ↓ vertical(edgeEnd px) ↓ End
+          // Start ↓ vertical(edgeStart px) ↓ corner1 → horizontal (straight middle) → corner2 ↓ vertical(edgeEnd px) ↓ End
           const corner1Y = startPoint.y + yDir * edgeStart;
-          const corner2Y = endPoint.y - yDir * edgeEnd;
           
           // Calculate safe radius for both corners
           const verticalDist1 = Math.abs(edgeStart);
@@ -2116,18 +2410,12 @@ class Isometric3D {
           const cornerRadius = getSafeRadius(verticalDist1, horizontalDist);
           const cornerRadius2 = getSafeRadius(horizontalDist, verticalDist2);
           
-          const corner1BeforeY = corner1Y - yDir * cornerRadius;
-          const corner1AfterX = startPoint.x + xDir * cornerRadius;
-          
-          const corner2BeforeX = endPoint.x - xDir * cornerRadius2;
-          const corner2AfterY = corner2Y + yDir * cornerRadius2;
-          
           pathData = `
             M ${startPoint.x},${startPoint.y}
-            L ${startPoint.x},${corner1BeforeY}
-            Q ${startPoint.x},${corner1Y} ${corner1AfterX},${corner1Y}
-            L ${corner2BeforeX},${corner2Y}
-            Q ${endPoint.x},${corner2Y} ${endPoint.x},${corner2AfterY}
+            L ${startPoint.x},${corner1Y - yDir * cornerRadius}
+            Q ${startPoint.x},${corner1Y} ${startPoint.x + xDir * cornerRadius},${corner1Y}
+            L ${endPoint.x - xDir * cornerRadius2},${corner1Y}
+            Q ${endPoint.x},${corner1Y} ${endPoint.x},${corner1Y + yDir * cornerRadius2}
             L ${endPoint.x},${endPoint.y}
           `.trim();
         }
@@ -2265,20 +2553,19 @@ class Isometric3D {
         path.setAttribute('stroke-dasharray', '8,4');
       }
       
-      // Apply arrow marker only if showArrow is true
-      if (showArrow) {
-        path.setAttribute('marker-end', `url(#arrowhead-${color.replace('#', '')})`);
-      }
-      
       // Store original color as data attribute for later restoration
       path.setAttribute('data-original-color', color);
       
       // Add data attributes and class for highlighting
-      path.setAttribute('data-connector-from', connector.from);
-      path.setAttribute('data-connector-to', connector.to);
+      path.setAttribute('data-connector-from', fromId);
+      path.setAttribute('data-connector-to', toId);
       
-      // Support both 'key' (single) and 'keys' (array) for flexibility
-      const keys = connector.key ? [connector.key] : (connector.keys || []);
+      // Support: 'groups' (new, string or array), 'keys' (legacy), or 'key' (single, legacy)
+      let keys = connector.groups || connector.keys || (connector.key ? [connector.key] : []);
+      // If groups is a string, split it into an array
+      if (typeof keys === 'string') {
+        keys = keys.split(',').map(k => k.trim());
+      }
       if (keys.length > 0) {
         path.setAttribute('data-connector-keys', keys.join(','));
       }
@@ -2286,40 +2573,61 @@ class Isometric3D {
       
       svg.appendChild(path);
       
-      // Add start circle if specified
-      if (showStartCircle) {
-        const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        startCircle.setAttribute('cx', startPoint.x);
-        startCircle.setAttribute('cy', startPoint.y);
-        startCircle.setAttribute('r', '6');
-        startCircle.setAttribute('fill', color);
-        startCircle.setAttribute('opacity', '0.8');
-        startCircle.setAttribute('data-original-color', color);
-        startCircle.classList.add('connector-marker');
-        if (keys.length > 0) {
-          startCircle.setAttribute('data-connector-keys', keys.join(','));
+      // Helper function to create line endings (arrows, circles)
+      const createLineEnding = (lineType, point, isStart) => {
+        if (!lineType) return;
+        
+        const marker = isStart ? 'start' : 'end';
+        
+        switch(lineType) {
+          case 'arrow':
+            path.setAttribute(`marker-${marker}`, `url(#arrowhead-${color.replace('#', '')})`);
+            break;
+          case 'arrowSmall':
+            // Use small arrow marker (30% smaller than regular arrow)
+            path.setAttribute(`marker-${marker}`, `url(#arrowhead-small-${color.replace('#', '')})`);
+            break;
+          case 'circle': {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', point.x);
+            circle.setAttribute('cy', point.y);
+            circle.setAttribute('r', '6');
+            circle.setAttribute('fill', color);
+            circle.setAttribute('opacity', '0.8');
+            circle.setAttribute('data-original-color', color);
+            circle.classList.add('connector-marker');
+            if (keys.length > 0) {
+              circle.setAttribute('data-connector-keys', keys.join(','));
+            }
+            svg.appendChild(circle);
+            break;
+          }
+          case 'arrow-circle': {
+            // Add both arrow and circle
+            path.setAttribute(`marker-${marker}`, `url(#arrowhead-${color.replace('#', '')})`);
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', point.x);
+            circle.setAttribute('cy', point.y);
+            circle.setAttribute('r', '6');
+            circle.setAttribute('fill', color);
+            circle.setAttribute('opacity', '0.8');
+            circle.setAttribute('data-original-color', color);
+            circle.classList.add('connector-marker');
+            if (keys.length > 0) {
+              circle.setAttribute('data-connector-keys', keys.join(','));
+            }
+            svg.appendChild(circle);
+            break;
+          }
         }
-        svg.appendChild(startCircle);
-      }
+      };
       
-      // Add end circle if specified
-      if (showEndCircle) {
-        const endCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        endCircle.setAttribute('cx', endPoint.x);
-        endCircle.setAttribute('cy', endPoint.y);
-        endCircle.setAttribute('r', '6');
-        endCircle.setAttribute('fill', color);
-        endCircle.setAttribute('opacity', '0.8');
-        endCircle.setAttribute('data-original-color', color);
-        endCircle.classList.add('connector-marker');
-        if (keys.length > 0) {
-          endCircle.setAttribute('data-connector-keys', keys.join(','));
-        }
-        svg.appendChild(endCircle);
-      }
+      // Apply start and end line styles
+      createLineEnding(startLine, startPoint, true);
+      createLineEnding(endLine, endPoint, false);
       
       // Add animated circle that travels along the path if specified
-      if (animated) {
+      if (animationStyle === 'circle') {
         const animatedCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         animatedCircle.setAttribute('r', '4');
         animatedCircle.setAttribute('fill', color);
@@ -2555,6 +2863,7 @@ class Isometric3D {
     allConnectors.forEach(el => {
       if (connectorsToHighlight.has(el)) {
         el.classList.add('highlight');
+        el.classList.remove('dimmed');
         
         // Restore original color for highlighted elements
         const originalColor = el.getAttribute('data-original-color');
@@ -2566,57 +2875,71 @@ class Isometric3D {
             if (markerEnd && markerEnd.includes('808080')) {
               el.setAttribute('marker-end', `url(#arrowhead-${originalColor.replace('#', '')})`);
             }
+          } else if (el.classList.contains('connector-animated-marker')) {
+            el.setAttribute('fill', originalColor);
           } else {
             el.setAttribute('fill', originalColor);
           }
         }
       } else {
         el.classList.remove('highlight');
+        el.classList.add('dimmed');
         
-        // Change to gray for non-highlighted elements
+        // Change arrow marker to gray for non-highlighted paths
         if (el.classList.contains('connector-path')) {
-          el.setAttribute('stroke', '#808080');
-          // Change arrow marker to gray
           const markerEnd = el.getAttribute('marker-end');
           if (markerEnd) {
             el.setAttribute('marker-end', 'url(#arrowhead-808080)');
           }
-        } else {
-          el.setAttribute('fill', '#808080');
         }
       }
     });
     
-    // Handle scene highlighting separately
+    // Handle scene and face highlighting separately
     const allScenes = this.container.querySelectorAll('.scene');
     const scenesToHighlight = new Set();
+    const facesToHighlight = new Set();
+    const scenesWithHighlightedFaces = new Set();
     
     keyArray.forEach(key => {
-      // Highlight scenes with matching key (check comma-separated list in data-keys)
-      const scenes = this.container.querySelectorAll(`.scene[data-keys]`);
+      // Highlight scenes with matching key (check comma-separated list in data-groups or data-keys for legacy)
+      const scenes = this.container.querySelectorAll(`.scene[data-groups], .scene[data-keys]`);
       scenes.forEach(scene => {
-        const elementKeys = scene.getAttribute('data-keys').split(',').map(k => k.trim());
+        const groupsAttr = scene.getAttribute('data-groups') || scene.getAttribute('data-keys');
+        const elementKeys = groupsAttr.split(',').map(k => k.trim());
         if (elementKeys.includes(key)) {
           scenesToHighlight.add(scene);
         }
       });
       
-      // Highlight faces with matching key (check comma-separated list in data-keys) - but highlight the parent scene instead
-      const faces = this.container.querySelectorAll(`.face[data-keys]`);
+      // Highlight faces with matching key and track their parent scenes
+      const faces = this.container.querySelectorAll(`.face[data-groups], .face[data-keys]`);
       faces.forEach(face => {
-        const elementKeys = face.getAttribute('data-keys').split(',').map(k => k.trim());
+        const groupsAttr = face.getAttribute('data-groups') || face.getAttribute('data-keys');
+        const elementKeys = groupsAttr.split(',').map(k => k.trim());
         if (elementKeys.includes(key)) {
+          facesToHighlight.add(face);
           const parentScene = face.closest('.scene');
           if (parentScene) {
-            scenesToHighlight.add(parentScene);
+            scenesWithHighlightedFaces.add(parentScene);
           }
         }
       });
     });
     
-    // Apply scene highlighting explicitly
+    // Apply face highlighting
+    const allFaces = this.container.querySelectorAll('.face');
+    allFaces.forEach(face => {
+      if (facesToHighlight.has(face)) {
+        face.classList.add('highlight');
+      } else {
+        face.classList.remove('highlight');
+      }
+    });
+    
+    // Apply scene highlighting - but NOT if the scene has highlighted faces
     allScenes.forEach(scene => {
-      if (scenesToHighlight.has(scene)) {
+      if (scenesToHighlight.has(scene) && !scenesWithHighlightedFaces.has(scene)) {
         scene.classList.add('highlight');
       } else {
         scene.classList.remove('highlight');
@@ -2624,16 +2947,27 @@ class Isometric3D {
     });
     
     // Control animations based on highlighting
-    // Only start animations for highlighted connectors, stop all others
+    // Only keep animations running for highlighted connectors, pause all others
     allAnimatedMarkers.forEach(marker => {
       const animateMotion = marker.querySelector('animateMotion');
       if (animateMotion) {
         if (marker.classList.contains('highlight')) {
-          // Start animation for highlighted markers
-          animateMotion.beginElement();
+          // Restore visibility and keep/start animation for highlighted markers
+          marker.setAttribute('opacity', '0.9');
+          try {
+            animateMotion.beginElement();
+          } catch (e) {
+            // Animation might already be running, that's okay
+          }
         } else {
-          // Stop animation for non-highlighted markers
-          animateMotion.endElement();
+          // Pause animation for non-highlighted markers by stopping and hiding
+          try {
+            animateMotion.endElement();
+          } catch (e) {
+            // Animation might already be stopped, that's okay
+          }
+          // Also hide the marker to make it clear there's no animation
+          marker.setAttribute('opacity', '0');
         }
       }
     });
@@ -2655,6 +2989,10 @@ class Isometric3D {
     const highlighted = this.container.querySelectorAll('.highlight');
     highlighted.forEach(el => el.classList.remove('highlight'));
     
+    // Remove dimmed class from all connectors
+    const dimmed = this.container.querySelectorAll('.dimmed');
+    dimmed.forEach(el => el.classList.remove('dimmed'));
+    
     // Restore original colors for all connectors
     const allConnectors = this.container.querySelectorAll('[data-original-color]');
     allConnectors.forEach(el => {
@@ -2673,14 +3011,25 @@ class Isometric3D {
       }
     });
     
-    // When clearing highlights (returning to default view), restart all animations
+    // When clearing highlights (returning to default view), restart all animations and restore visibility
     const allAnimatedMarkers = this.container.querySelectorAll('.connector-animated-marker');
     allAnimatedMarkers.forEach(marker => {
+      // Restore visibility
+      marker.setAttribute('opacity', '0.9');
+      
       const animateMotion = marker.querySelector('animateMotion');
       if (animateMotion) {
-        animateMotion.endElement(); // Stop current animation
+        try {
+          animateMotion.endElement(); // Stop current animation
+        } catch (e) {
+          // Ignore if already stopped
+        }
         setTimeout(() => {
-          animateMotion.beginElement(); // Restart animation after brief pause
+          try {
+            animateMotion.beginElement(); // Restart animation after brief pause
+          } catch (e) {
+            // Ignore if animation can't be started
+          }
         }, 50);
       }
     });

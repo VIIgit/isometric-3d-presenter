@@ -12,7 +12,7 @@
  * @param {number} options.scrollDuration - Scroll animation duration in ms (default: 1800)
  * @param {number} options.debounceDelay - Debounce delay for navigation updates in ms (default: 100)
  * @param {string} options.sectionSelector - CSS selector for content sections (default: '.description-section')
- * @param {string} options.dataIdAttribute - Attribute name for linking 3D elements to sections (default: 'data-id')
+ * @param {string} options.dataSectionAttribute - Attribute name for linking 3D elements to sections (default: 'data-section')
  */
 class ScrollSync {
     constructor(controller, options = {}) {
@@ -22,7 +22,7 @@ class ScrollSync {
             scrollDuration: 1800,
             debounceDelay: 100,
             sectionSelector: '.description-section',
-            dataIdAttribute: 'data-id',
+            dataSectionAttribute: 'data-section',
             ...options
         };
         
@@ -42,7 +42,7 @@ class ScrollSync {
     setupBidirectionalSync() {
         // 1. Navigation → Scroll: When 3D navigation changes, scroll to description
         this.controller.on('navigationChange', (data) => {
-            const sectionId = data.element.getAttribute(this.options.dataIdAttribute);
+            const sectionId = data.element.getAttribute(this.options.dataSectionAttribute);
             if (sectionId && !this.programmaticScroll) {
                 this.scrollToSection(sectionId);
             }
@@ -60,12 +60,15 @@ class ScrollSync {
         const sections = document.querySelectorAll(this.options.sectionSelector);
 
         // Build a map from section IDs to their corresponding 3D elements
-        const sectionToNavElement = {};
+        // Support multiple elements with the same data-section
+        const sectionToNavElements = {};
         sections.forEach(section => {
             const sectionId = section.id;
-            const navElement = document.querySelector(`[${this.options.dataIdAttribute}="${sectionId}"]`);
-            if (navElement) {
-                sectionToNavElement[sectionId] = navElement;
+            const navElements = document.querySelectorAll(
+                `[${this.options.dataSectionAttribute}="${sectionId}"]`
+            );
+            if (navElements.length > 0) {
+                sectionToNavElements[sectionId] = Array.from(navElements);
             }
         });
 
@@ -117,16 +120,17 @@ class ScrollSync {
                 // Use the most visible section
                 if (sortedEntries.length > 0) {
                     const [sectionId, state] = sortedEntries[0];
-                    const navElement = sectionToNavElement[sectionId];
+                    const navElements = sectionToNavElements[sectionId];
                     
-                    if (navElement && sectionId) {
+                    if (navElements && navElements.length > 0 && sectionId) {
                         // Only update if the target section has changed
                         if (this.currentNavigationTarget !== sectionId) {
                             this.currentNavigationTarget = sectionId;
                             
-                            // Trigger click on the navigation element to handle everything consistently
+                            // Trigger click on the first navigation element to handle everything consistently
                             // (navigation, highlighting, URL update with hash)
-                            navElement.click();
+                            // All elements with the same data-section will be highlighted together
+                            navElements[0].click();
                         }
                     }
                 } else {

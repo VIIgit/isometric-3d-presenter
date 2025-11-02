@@ -1,6 +1,7 @@
 .isometric-container {
   background-color: beige;
 }
+
 .isometric-perspective {
   background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
   border: 3px solid #333;
@@ -19,14 +20,12 @@
   background: rgba(181, 15, 15, 0.908);
 }
 
-.face.nav-selected,
-.scene.nav-selected {
-  outline: 2px solid rgba(82, 82, 82, 0.5);
-  outline-offset: 5px;
-  border-radius: 6px;
-}
 
 /* Default face colors - can be overridden by instances */
+.face {
+  padding: 5px;
+}
+
 .face.front {
   background: rgba(255, 107, 107, 0.8);
 }
@@ -109,4 +108,40 @@
 .label[data-position="bottom"] {
   /* Will be positioned below the cube */
   text-align: center;
+}
+
+
+/* typical custom styles */
+
+.face.highlight {
+  border-bottom: 3px solid rgba(255, 0, 0, 0.8);
+}
+
+.scene.highlight:not(:has(> .face)) {
+  border-bottom: 3px solid rgba(255, 0, 0, 0.8);
+}
+
+/* Add animation to selected element */
+.face.nav-selected,
+.scene.nav-selected {
+  outline: 3px solid rgb(255, 0, 225);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Only apply pulse animation if element or parent has data-highlight-keys */
+.face.nav-selected[data-highlight-keys],
+.scene.nav-selected[data-highlight-keys],
+.scene[data-highlight-keys]>.face.nav-selected {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    outline-color: rgba(255, 0, 225, 0.8);
+  }
+
+  50% {
+    outline-color: rgba(255, 0, 255, 0.3);
+  }
 }
