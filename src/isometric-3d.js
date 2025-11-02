@@ -531,7 +531,7 @@ class Isometric3D {
       }
       
       // IMPORTANT: Only add nav-selected to elements that belong to the same scene as activeElement
-      // This prevents issues when multiple elements share the same data-id across different scenes
+      // This prevents issues when multiple elements share the same data-section across different scenes
       const activeElementScene = activeElement.classList.contains('scene') 
         ? activeElement 
         : activeElement.closest('.scene');
@@ -550,9 +550,7 @@ class Isometric3D {
         element: activeElement,
         navSelectedElement: targetElement,
         id: activeElement.id || null,
-        key: activeElement.getAttribute('data-section') || 
-             activeElement.getAttribute('data-id') || 
-             activeElement.id || null
+        key: activeElement.getAttribute('data-section') || activeElement.id || null
       });
     }
   }
@@ -581,16 +579,16 @@ class Isometric3D {
     });
   }
 
-  // Navigate to element by ID or data-id attribute
+  // Navigate to element by ID or data-section attribute
   navigateByKey(key) {
     const navigableElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
     
     // Try to find element by ID first
     let targetElement = this.container.querySelector(`#${key}`);
     
-    // If not found by ID, try data-id attribute
+    // If not found by ID, try data-section attribute
     if (!targetElement || (!targetElement.hasAttribute('data-nav-xyz') && !targetElement.hasAttribute('data-nav-zoom') && !targetElement.hasAttribute('data-nav-pan'))) {
-      targetElement = this.container.querySelector(`[data-id="${key}"]`);
+      targetElement = this.container.querySelector(`[data-section="${key}"]`);
     }
     
     // If still not found, try to find a child with nav attributes
@@ -1092,9 +1090,7 @@ class Isometric3D {
       const xyz = targetElement.getAttribute('data-nav-xyz');
       const zoom = targetElement.getAttribute('data-nav-zoom');
       const pan = targetElement.getAttribute('data-nav-pan');
-      // Support both new (data-activate) and legacy (data-highlight-keys) attributes
-      const autoHighlight = targetElement.getAttribute('data-activate') || 
-                           targetElement.getAttribute('data-highlight-keys');
+      const autoHighlight = targetElement.getAttribute('data-activate');
 
       if (xyz || zoom || pan) {
         navData = { xyz, zoom, pan, element: targetElement };
@@ -1139,22 +1135,20 @@ class Isometric3D {
       targetTranslation.y = y;
     }
 
-    // Check if source element has data-section (new) or data-id (legacy) for hash-based navigation
+    // Check if source element has data-section for hash-based navigation
     let targetHash = null;
     if (sourceElement) {
-      targetHash = sourceElement.getAttribute('data-section') || 
-                  sourceElement.getAttribute('data-id');
+      targetHash = sourceElement.getAttribute('data-section');
       // If not on element itself, check parent scene
       if (!targetHash) {
         const parentScene = sourceElement.closest('.scene');
         if (parentScene) {
-          targetHash = parentScene.getAttribute('data-section') || 
-                      parentScene.getAttribute('data-id');
+          targetHash = parentScene.getAttribute('data-section');
         }
       }
     }
 
-    // Update URL: use hash if data-id exists, otherwise skip URL update
+    // Update URL: use hash if data-section exists, otherwise skip URL update
     // (manual navigation will update via updateUrlWithRotation)
     if (targetHash) {
       // Navigate using hash anchor (for clicked navigation elements)
@@ -1172,15 +1166,13 @@ class Isometric3D {
 
     // Handle auto-highlighting if source element is provided
     if (sourceElement) {
-      // Check face first, then parent scene for activate groups (new) or highlight-keys (legacy)
-      let autoHighlightKeys = sourceElement.getAttribute('data-activate') || 
-                             sourceElement.getAttribute('data-highlight-keys');
+      // Check face first, then parent scene for activate groups
+      let autoHighlightKeys = sourceElement.getAttribute('data-activate');
       let sourceScene = sourceElement.closest('.scene');
       
       // If not found on the element itself, check parent scene
       if (!autoHighlightKeys && sourceScene) {
-        autoHighlightKeys = sourceScene.getAttribute('data-activate') || 
-                           sourceScene.getAttribute('data-highlight-keys');
+        autoHighlightKeys = sourceScene.getAttribute('data-activate');
       }
       
       if (autoHighlightKeys) {
@@ -1203,12 +1195,12 @@ class Isometric3D {
       this.clearHighlights();
     }
     
-    // IMPORTANT: Highlight all elements with the same data-section/data-id AFTER all other highlighting
+    // IMPORTANT: Highlight all elements with the same data-section AFTER all other highlighting
     // This ensures section-based highlights aren't cleared by highlightByKey()
     if (targetHash && sourceElement) {
-      // Query for both new (data-section) and legacy (data-id) attributes
+      // Query for data-section attributes
       const elementsWithSameId = this.container.querySelectorAll(
-        `[data-section="${targetHash}"], [data-id="${targetHash}"]`
+        `[data-section="${targetHash}"]`
       );
       const scenesWithHighlightedFaces = new Set();
       
@@ -2902,10 +2894,10 @@ class Isometric3D {
     const scenesWithHighlightedFaces = new Set();
     
     keyArray.forEach(key => {
-      // Highlight scenes with matching key (check comma-separated list in data-groups or data-keys for legacy)
-      const scenes = this.container.querySelectorAll(`.scene[data-groups], .scene[data-keys]`);
+      // Highlight scenes with matching key (check comma-separated list in data-groups)
+      const scenes = this.container.querySelectorAll(`.scene[data-groups]`);
       scenes.forEach(scene => {
-        const groupsAttr = scene.getAttribute('data-groups') || scene.getAttribute('data-keys');
+        const groupsAttr = scene.getAttribute('data-groups');
         const elementKeys = groupsAttr.split(',').map(k => k.trim());
         if (elementKeys.includes(key)) {
           scenesToHighlight.add(scene);
@@ -2913,9 +2905,9 @@ class Isometric3D {
       });
       
       // Highlight faces with matching key and track their parent scenes
-      const faces = this.container.querySelectorAll(`.face[data-groups], .face[data-keys]`);
+      const faces = this.container.querySelectorAll(`.face[data-groups]`);
       faces.forEach(face => {
-        const groupsAttr = face.getAttribute('data-groups') || face.getAttribute('data-keys');
+        const groupsAttr = face.getAttribute('data-groups');
         const elementKeys = groupsAttr.split(',').map(k => k.trim());
         if (elementKeys.includes(key)) {
           facesToHighlight.add(face);

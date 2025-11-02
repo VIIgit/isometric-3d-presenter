@@ -129,10 +129,10 @@
   border-radius: 4px;
 }
 
-/* Only apply pulse animation if element or parent has data-highlight-keys */
-.face.nav-selected[data-highlight-keys],
-.scene.nav-selected[data-highlight-keys],
-.scene[data-highlight-keys]>.face.nav-selected {
+/* Only apply pulse animation if element or parent has data-activate */
+.face.nav-selected[data-activate],
+.scene.nav-selected[data-activate],
+.scene[data-activate]>.face.nav-selected {
   animation: pulse 2s infinite;
 }
 
