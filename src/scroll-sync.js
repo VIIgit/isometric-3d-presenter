@@ -157,13 +157,47 @@ class ScrollSync {
     }
 
     /**
+     * Checks if an element is visible in the viewport
+     * @param {HTMLElement} element - The element to check
+     * @param {number} marginTop - Top margin to consider (e.g., for sticky headers)
+     * @returns {boolean} True if the element's top portion is visible
+     * @private
+     */
+    isElementVisible(element, marginTop = 0) {
+        if (!element) return false;
+        
+        const rect = element.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // Check if the top portion of the element is visible
+        // Element is considered visible if its top is below the margin and above the bottom of viewport
+        return rect.top >= marginTop && rect.top < viewportHeight;
+    }
+
+    /**
      * Smoothly scrolls to a specific content section
+     * Only scrolls if the isometric container or target section is not already visible
      * @param {string} sectionId - The ID of the section to scroll to
      * @public
      */
     scrollToSection(sectionId) {
         const section = document.getElementById(sectionId);
         if (!section) return;
+
+        // Check if both the isometric container and the section are already visible
+        const isometricContainer = this.controller.container;
+        const isContainerVisible = this.isElementVisible(isometricContainer, 0);
+        const isSectionVisible = this.isElementVisible(section, this.options.stickyThreshold);
+        
+        // If both are visible, no need to scroll
+        if (isContainerVisible && isSectionVisible) {
+            // Just mark as programmatic to prevent scroll detection interference
+            this.programmaticScroll = true;
+            setTimeout(() => {
+                this.programmaticScroll = false;
+            }, 100);
+            return;
+        }
 
         // Cancel any in-progress scroll animation
         if (this.scrollAnimationFrame) {

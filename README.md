@@ -129,21 +129,79 @@ mouseSensitivity: {
 <div class="scene" data-z-axis="80">2D Content</div>
 ```
 
+### Layout Utilities for Face Content
+
+The library provides flex layout utility classes for organizing content within faces:
+
+#### `.flex-row` and `.flex-column`
+
+Organize child elements in horizontal or vertical layouts with automatic spacing:
+
+```html
+<div class="face front flex-column">
+  <div>Item 1</div>
+  <div>Item 2</div>
+  <div>Item 3</div>
+</div>
+
+<div class="face top flex-row">
+  <div>Column 1</div>
+  <div>Column 2</div>
+  <div>Column 3</div>
+</div>
+```
+
+**Features:**
+
+- Automatic 5px gap between items
+- Child elements scale to 1.1x on hover for interactive feedback
+- Elements are positioned with `position: initial` and `width: 100%` for proper flex layout
+- Works perfectly with automatic height calculation (when `data-height` is omitted)
+
+**Example with automatic height calculation:**
+
+```html
+<div class="scene" 
+     data-width="200" 
+     data-depth="100">
+  <div class="face left flex-column">
+    <div>Dashboard</div>
+    <div>Settings</div>
+    <div>Profile</div>
+    <div>Logout</div>
+  </div>
+  <div class="face right flex-row">
+    <div>📊</div>
+    <div>⚙️</div>
+    <div>👤</div>
+  </div>
+  <div class="face top">Menu</div>
+  <div class="face bottom">Footer</div>
+</div>
+```
+
+**Use cases:**
+
+- ✅ Lists of items (flex-column)
+- ✅ Navigation buttons (flex-row)
+- ✅ Dashboard widgets (flex-row/flex-column)
+- ✅ Feature lists with icons
+- ✅ Dynamic content that needs to flow vertically or horizontally
+
 ### Data Attributes
 
 - `data-width` - Width of the 3D scene
-- `data-height` - Height of the 3D scene (numeric value in pixels, or `"evaluate"` for dynamic calculation)
+- `data-height` - Height of the 3D scene (numeric value in pixels). If omitted, height is automatically calculated from content
 - `data-depth` - Depth of the 3D scene
 - `data-z-axis` - Z-axis offset (elevation)
 
-#### Dynamic Height Evaluation
+#### Automatic Height Calculation
 
-Instead of manually calculating the height based on dynamic content, you can use `data-height="evaluate"` to automatically measure and set the height based on the actual rendered content of the side faces.
+When `data-height` is not specified, the system automatically measures and calculates the height based on the actual rendered content of the side faces (front, back, left, right). This is perfect for dynamic content where you don't know the height in advance.
 
 ```html
 <div id="cube1" class="scene" 
      data-width="100" 
-     data-height="evaluate" 
      data-depth="100">
   <div class="face front">Front content</div>
   <div class="face back">Back content</div>
@@ -163,17 +221,17 @@ Instead of manually calculating the height based on dynamic content, you can use
 **How it works:**
 
 1. During initialization, the scene temporarily renders with no 3D transforms
-2. The actual height of `.face.left`, `.face.right`, `.face.front`, and `.face.back` is measured
-3. The maximum height among these faces becomes the scene's height
-4. The scene is then configured with the evaluated height
-5. A console log displays the measurements: `📏 Evaluated height for scene #cube1: { measurements: {...}, maxHeight: "350px" }`
+2. The actual `scrollHeight` of `.face.left`, `.face.right`, `.face.front`, and `.face.back` is measured
+3. The maximum height among these side faces becomes the scene's height (top/bottom faces are excluded)
+4. The scene is then configured with the calculated height
 
 **Use cases:**
 
-- ✅ Flex layouts with variable number of items
-- ✅ Dynamic content loaded from APIs
+- ✅ Flex layouts (`flex-column`/`flex-row`) with variable number of items
+- ✅ Dynamic content loaded from APIs or user input
 - ✅ Responsive text that changes based on viewport
 - ✅ Nested elements with unknown combined height
+- ✅ Lists, menus, or navigation with varying content
 - ✅ Ensuring top/bottom faces align with the tallest side face
 
 ## Navigation
@@ -194,10 +252,65 @@ Instead of manually calculating the height based on dynamic content, you can use
 
 - `data-nav-xyz` - Target rotation (format: "x.y.z" with dots)
 - `data-nav-zoom` - Target zoom level (e.g., "1.2")
-- `data-nav-pan` - Target pan/translation (format: "x,y" with comma)
+- `data-nav-pan` - Target pan/translation (format: "x,y" with comma) - **Optional**
 - `data-section` - Unique section identifier for navigation
 
-**Note:** When navigating, if `data-nav-pan` is not defined, the pan position automatically resets to (0,0).
+**Auto-Centering:** When `data-nav-pan` is not defined, the system automatically calculates the pan position to center the clicked element in the viewport while maintaining the specified rotation and zoom. This ensures the element is always perfectly centered without manual pan calculations.
+
+```html
+<!-- Auto-centered navigation (recommended) -->
+<div class="face top" 
+     data-nav-xyz="45.0.-35" 
+     data-nav-zoom="1.2"
+     data-section="intro">
+  <!-- Element will be centered automatically -->
+</div>
+
+<!-- Manual pan override (when specific positioning is needed) -->
+<div class="face top" 
+     data-nav-xyz="45.0.-35" 
+     data-nav-zoom="1.2"
+     data-nav-pan="100,-50"
+     data-section="custom-position">
+  <!-- Element positioned at specific pan coordinates -->
+</div>
+```
+
+#### Navigation Bar Behavior
+
+The navigation bar displays circular indicators for each unique navigation point. The system automatically:
+
+1. **Deduplicates** - If multiple elements share the same `data-section` value, only one navigation dot appears
+2. **Sorts alphabetically** - Navigation dots are ordered alphanumerically by `data-section` name
+
+**Naming Recommendations:**
+
+To control the order of navigation dots, use prefixed numbering in your `data-section` names:
+
+```html
+<!-- ✅ Good: Ordered presentation flow -->
+<div class="face top" data-section="01-intro" data-nav-xyz="45.0.-35">Introduction</div>
+<div class="face top" data-section="02-features" data-nav-xyz="30.0.-45">Features</div>
+<div class="face top" data-section="03-demo" data-nav-xyz="15.0.-55">Demo</div>
+<div class="face top" data-section="04-conclusion" data-nav-xyz="0.0.-35">Conclusion</div>
+
+<!-- ✅ Good: Topic-based grouping -->
+<div class="face top" data-section="api-overview" data-nav-xyz="45.0.0">API Overview</div>
+<div class="face top" data-section="api-endpoints" data-nav-xyz="45.0.-30">API Endpoints</div>
+<div class="face top" data-section="database-schema" data-nav-xyz="30.0.0">Database</div>
+
+<!-- ❌ Avoid: Unordered naming -->
+<div class="face top" data-section="conclusion" data-nav-xyz="0.0.-35">Conclusion</div>
+<div class="face top" data-section="intro" data-nav-xyz="45.0.-35">Introduction</div>
+<!-- Navigation bar will show: conclusion → intro (alphabetical, not logical order) -->
+```
+
+**Common Naming Patterns:**
+
+- **Sequential**: `"01-intro"`, `"02-overview"`, `"03-details"`, `"04-summary"`
+- **Hierarchical**: `"1.1-setup"`, `"1.2-config"`, `"2.1-usage"`, `"2.2-advanced"`
+- **Categorized**: `"a-frontend"`, `"b-backend"`, `"c-database"`, `"d-infrastructure"`
+- **Semantic**: `"intro"`, `"main"`, `"conclusion"` (works when natural alphabetical order matches presentation order)
 
 ### Navigation API Methods
 
