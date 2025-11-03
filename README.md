@@ -56,6 +56,196 @@ npm install isometric-3d-presenter
 </html>
 ```
 
+### Basic CSS Setup
+
+Customize the appearance of your 3D scenes with different colors for each face and highlight effects:
+
+```html
+<style>
+  /* Container styling */
+  .isometric-container {
+    height: 500px;
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  /* Default face styling with semi-transparent colors */
+  .face {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+
+  /* Different colors for each face */
+  .face.front {
+    background: rgba(52, 152, 219, 0.7);  /* Blue */
+  }
+
+  .face.back {
+    background: rgba(46, 204, 113, 0.7);  /* Green */
+  }
+
+  .face.left {
+    background: rgba(155, 89, 182, 0.7);  /* Purple */
+  }
+
+  .face.right {
+    background: rgba(241, 196, 15, 0.7);  /* Yellow */
+  }
+
+  .face.top {
+    background: rgba(231, 76, 60, 0.7);   /* Red */
+  }
+
+  .face.bottom {
+    background: rgba(52, 73, 94, 0.7);    /* Dark blue */
+  }
+
+  /* Highlighted state - brighter and more opaque */
+  .scene.highlight .face,
+  .face.highlight {
+    opacity: 1 !important;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  }
+
+  /* Make highlighted faces more vibrant */
+  .face.front.highlight {
+    background: rgba(52, 152, 219, 0.95);
+  }
+
+  .face.back.highlight {
+    background: rgba(46, 204, 113, 0.95);
+  }
+
+  .face.left.highlight {
+    background: rgba(155, 89, 182, 0.95);
+  }
+
+  .face.right.highlight {
+    background: rgba(241, 196, 15, 0.95);
+  }
+
+  .face.top.highlight {
+    background: rgba(231, 76, 60, 0.95);
+  }
+
+  .face.bottom.highlight {
+    background: rgba(52, 73, 94, 0.95);
+  }
+
+  /* Currently selected navigation target */
+  .face.nav-selected {
+    outline: 3px solid rgba(255, 0, 191, 0.9);
+    outline-offset: 3px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  /* Dimming non-highlighted elements */
+  .isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight) > .face {
+    opacity: 0.2;  /* Dim to 20% when other elements are highlighted */
+    filter: grayscale(50%);
+  }
+
+  /* Dim child content inside non-highlighted scenes */
+  .isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight) > *:not(.face) {
+    opacity: 0.3;
+  }
+
+  /* Scene styling */
+  .scene {
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    color: white;
+    font-weight: bold;
+  }
+
+  /* Hover effect for navigable elements */
+  [data-nav-xyz]:hover,
+  [data-nav-zoom]:hover {
+    transform: scale(1.02);
+  }
+</style>
+```
+
+**CSS Customization Tips:**
+
+1. **Face Colors**: Use `rgba()` colors with alpha channel (0.7) for semi-transparency
+2. **Highlighting**: Increase opacity to 0.95 and add `box-shadow` for highlighted state
+3. **Dimming**: Non-highlighted faces automatically dim to `opacity: 0.2` (default)
+4. **Borders**: Use `rgba(255, 255, 255, 0.3)` for subtle borders
+5. **Animations**: Add `@keyframes` for pulse effects on selected elements
+6. **Backdrop Filter**: Use `backdrop-filter: blur(10px)` for frosted glass effect
+
+**Complete Example with Highlighting:**
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="node_modules/isometric-3d-presenter/src/isometric-3d.css">
+  <style>
+    .isometric-container {
+      height: 500px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .face {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .face.front { background: rgba(52, 152, 219, 0.7); }
+    .face.back { background: rgba(46, 204, 113, 0.7); }
+    .face.left { background: rgba(155, 89, 182, 0.7); }
+    .face.right { background: rgba(241, 196, 15, 0.7); }
+    .face.top { background: rgba(231, 76, 60, 0.7); }
+    .face.bottom { background: rgba(52, 73, 94, 0.7); }
+
+    .face.highlight {
+      opacity: 1 !important;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="demo" class="isometric-container">
+    <div class="isometric-perspective">
+      <div class="scene" data-width="100" data-height="100" data-depth="100" data-groups="cube1">
+        <div class="face front">Front</div>
+        <div class="face back">Back</div>
+        <div class="face left">Left</div>
+        <div class="face right">Right</div>
+        <div class="face top" 
+             data-nav-xyz="45.0.-35" 
+             data-nav-zoom="1.2"
+             data-activate="cube1">
+          Click Me
+        </div>
+        <div class="face bottom">Bottom</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="node_modules/isometric-3d-presenter/src/isometric-3d.js"></script>
+  <script>
+    createIsometric3D('demo', {
+      showCompactControls: true
+    });
+  </script>
+</body>
+</html>
+```
+
 ## Configuration Options
 
 ### Core Options
@@ -255,7 +445,11 @@ When `data-height` is not specified, the system automatically measures and calcu
 - `data-nav-pan` - Target pan/translation (format: "x,y" with comma, or `"current"` to keep current pan) - **Optional**
 - `data-section` - Unique section identifier for navigation
 
-#### Using `"current"` for Selection Without Navigation
+#### Using Special Keywords for Navigation Control
+
+The navigation system supports special keywords for fine-grained control over camera behavior:
+
+##### `"current"` - Keep Current Value
 
 To enable element selection and highlighting **without changing the camera position**, use the keyword `"current"` for any navigation attribute:
 
@@ -288,20 +482,57 @@ To enable element selection and highlighting **without changing the camera posit
 </div>
 ```
 
+##### `"default"` - Reset to Initial Value
+
+Use `"default"` to return to the initial/default camera position set during initialization:
+
+```html
+<!-- Return to default pan position (0,0,0) -->
+<div class="face" 
+     data-section="reset-view" 
+     data-nav-xyz="45.0.-35"
+     data-nav-zoom="1.0"
+     data-nav-pan="default">
+  Reset to home position
+</div>
+
+<!-- Keep current rotation/zoom but reset pan -->
+<div class="face" 
+     data-section="center-view" 
+     data-nav-xyz="current"
+     data-nav-zoom="current"
+     data-nav-pan="default">
+  Center view
+</div>
+```
+
+**Summary of Keywords:**
+
+| Keyword | Behavior | Example Use Case |
+|---------|----------|------------------|
+| `"current"` | Preserve current camera value | Selection without navigation, partial updates |
+| `"default"` | Reset to initial value from config | Return to home view, reset pan after zooming |
+| (omitted) | Auto-calculate (for pan only) | Automatic centering on clicked element |
+| Numeric | Set specific value | Precise camera positioning |
+
 **Use Cases:**
 
 - ✅ Nested faces inside flex-column/flex-row that should be selectable but not navigate
 - ✅ Interactive elements that trigger highlighting without camera movement
 - ✅ Menu items or navigation lists that activate different highlight groups
 - ✅ Partial navigation (e.g., change rotation but keep current zoom)
+- ✅ "Home" or "Reset" buttons that return to initial view
+- ✅ Combine keywords for complex behaviors (e.g., `data-nav-pan="default"` with `data-nav-zoom="current"`)
 
 **Behavior:**
 
-- Elements with `data-nav-xyz="current"` or `data-nav-zoom="current"` are still treated as navigable (get glass hover effect, appear in navigation bar)
-- Clicking them applies highlights via `data-activate` but preserves the current camera position
-- Can mix `"current"` with actual values (e.g., zoom to 1.5 but keep current rotation)
+- Elements with navigation keywords are still treated as navigable (get glass hover effect, appear in navigation bar)
+- Clicking them applies highlights via `data-activate`
+- Can mix keywords with actual values for fine control
+- `"current"` preserves the exact current state
+- `"default"` uses values from `defaultRotation`, `defaultZoom`, and `defaultTranslation` in config
 
-**Auto-Centering:** When `data-nav-pan` is not defined, the system automatically calculates the pan position to center the clicked element in the viewport while maintaining the specified rotation and zoom. This ensures the element is always perfectly centered without manual pan calculations.
+**Auto-Centering:** When `data-nav-pan` is not defined (neither keyword nor numeric value), the system automatically calculates the pan position to center the **parent scene** of the clicked element in the viewport. For faces, this means centering the entire cube rather than the individual face. This ensures optimal viewing without manual pan calculations.
 
 ```html
 <!-- Auto-centered navigation (recommended) -->

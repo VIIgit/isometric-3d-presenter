@@ -1185,17 +1185,32 @@ class Isometric3D {
     }
     // If zoomString is "current" or not provided, targetZoom already has current value
 
-    // Parse pan string (e.g., "100,-50" or "current" to keep current pan) - overrides the default
-    if (panString && panString !== 'current') {
+    // Parse pan string (e.g., "100,-50", "current", or "default") - overrides auto-centering
+    if (panString === 'current') {
+      // Explicitly keep current translation
+      targetTranslation = { ...this.currentTranslation };
+    } else if (panString === 'default') {
+      // Use the default/initial pan position
+      targetTranslation = { ...this.defaultTranslation };
+    } else if (panString && panString !== 'current' && panString !== 'default') {
+      // Explicit numeric pan values
       const [x, y] = panString.split(',').map(v => parseFloat(v) || 0);
       targetTranslation.x = x;
       targetTranslation.y = y;
-    } else if (panString === 'current') {
-      // Explicitly keep current translation
-      targetTranslation = { ...this.currentTranslation };
     } else if (sourceElement) {
-      // Auto-calculate pan to center the element when pan is not explicitly defined
-      targetTranslation = this.calculateCenterPan(sourceElement, targetRotation, targetZoom);
+      // Auto-calculate pan to center the parent scene when pan is not explicitly defined
+      // If the clicked element is a face, find its parent scene and center that
+      let elementToCenter = sourceElement;
+      
+      // If it's a face (not a scene itself), find the parent scene
+      if (sourceElement.classList.contains('face')) {
+        const parentScene = sourceElement.closest('.scene');
+        if (parentScene) {
+          elementToCenter = parentScene;
+        }
+      }
+      
+      targetTranslation = this.calculateCenterPan(elementToCenter, targetRotation, targetZoom);
     }
 
     // Check if source element has data-section for hash-based navigation
@@ -1623,7 +1638,13 @@ class Isometric3D {
       tempElement = tempPerspective.querySelector(`#${element.id}`);
     }
     
-    // Fallback: use same position in DOM tree if no ID
+    // Fallback: use data-section attribute if no ID
+    if (!tempElement && element.getAttribute('data-section')) {
+      const section = element.getAttribute('data-section');
+      tempElement = tempPerspective.querySelector(`[data-section="${section}"]`);
+    }
+    
+    // Fallback: use same position in DOM tree if no ID or data-section
     if (!tempElement) {
       const getElementIndex = (el) => Array.from(el.parentNode.children).indexOf(el);
       const path = [];
