@@ -1673,12 +1673,20 @@ class Isometric3D {
       
       // Get element position in the temporary scene
       const elementRect = tempElement.getBoundingClientRect();
-      const elementCenterX = elementRect.left - containerRect.left + (elementRect.width / 2);
-      const elementCenterY = elementRect.top - containerRect.top + (elementRect.height / 2);
+      
+      // Calculate element center in viewport coordinates
+      const elementCenterX = elementRect.left + (elementRect.width / 2);
+      const elementCenterY = elementRect.top + (elementRect.height / 2);
+      
+      // Calculate container center in viewport coordinates
+      const containerCenterXAbs = containerRect.left + containerCenterX;
+      const containerCenterYAbs = containerRect.top + containerCenterY;
       
       // Calculate pan needed to center the element
-      panX = (containerCenterX - elementCenterX) / targetZoom;
-      panY = (containerCenterY - elementCenterY) / targetZoom;
+      // The offset is the difference between where the element currently is
+      // and where we want it (container center)
+      panX = (containerCenterXAbs - elementCenterX) / targetZoom;
+      panY = (containerCenterYAbs - elementCenterY) / targetZoom;
     }
     
     // Remove temporary clone
