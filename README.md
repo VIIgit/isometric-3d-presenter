@@ -250,10 +250,56 @@ When `data-height` is not specified, the system automatically measures and calcu
 
 ### Navigation Data Attributes
 
-- `data-nav-xyz` - Target rotation (format: "x.y.z" with dots)
-- `data-nav-zoom` - Target zoom level (e.g., "1.2")
-- `data-nav-pan` - Target pan/translation (format: "x,y" with comma) - **Optional**
+- `data-nav-xyz` - Target rotation (format: "x.y.z" with dots, or `"current"` to keep current rotation)
+- `data-nav-zoom` - Target zoom level (e.g., "1.2", or `"current"` to keep current zoom)
+- `data-nav-pan` - Target pan/translation (format: "x,y" with comma, or `"current"` to keep current pan) - **Optional**
 - `data-section` - Unique section identifier for navigation
+
+#### Using `"current"` for Selection Without Navigation
+
+To enable element selection and highlighting **without changing the camera position**, use the keyword `"current"` for any navigation attribute:
+
+```html
+<!-- Select and highlight without moving camera -->
+<div class="face" 
+     data-section="featureA" 
+     data-activate="database"
+     data-nav-xyz="current" 
+     data-nav-zoom="current">
+  Feature A
+</div>
+
+<!-- Only lock rotation, allow zoom/pan to change -->
+<div class="face" 
+     data-section="featureB" 
+     data-activate="workflow"
+     data-nav-xyz="current" 
+     data-nav-zoom="1.5">
+  Feature B (zooms but doesn't rotate)
+</div>
+
+<!-- Lock zoom but allow rotation -->
+<div class="face" 
+     data-section="featureC" 
+     data-activate="integration"
+     data-nav-xyz="15.00.-45" 
+     data-nav-zoom="current">
+  Feature C (rotates but doesn't zoom)
+</div>
+```
+
+**Use Cases:**
+
+- ✅ Nested faces inside flex-column/flex-row that should be selectable but not navigate
+- ✅ Interactive elements that trigger highlighting without camera movement
+- ✅ Menu items or navigation lists that activate different highlight groups
+- ✅ Partial navigation (e.g., change rotation but keep current zoom)
+
+**Behavior:**
+
+- Elements with `data-nav-xyz="current"` or `data-nav-zoom="current"` are still treated as navigable (get glass hover effect, appear in navigation bar)
+- Clicking them applies highlights via `data-activate` but preserves the current camera position
+- Can mix `"current"` with actual values (e.g., zoom to 1.5 but keep current rotation)
 
 **Auto-Centering:** When `data-nav-pan` is not defined, the system automatically calculates the pan position to center the clicked element in the viewport while maintaining the specified rotation and zoom. This ensures the element is always perfectly centered without manual pan calculations.
 

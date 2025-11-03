@@ -133,14 +133,17 @@ class Isometric3D {
 
     scenes.forEach(scene => {
       const width = parseInt(scene.getAttribute('data-width')) || 100;
-      const height = parseInt(scene.getAttribute('data-height')) || 100;
+      const heightAttr = scene.getAttribute('data-height');
+      // If data-height is 'auto', skip parseInt and use 100 as temp value (will be updated after measurement)
+      const height = (heightAttr === 'auto') ? 20 : (parseInt(heightAttr) || 20);
       const depth = parseInt(scene.getAttribute('data-depth')) || 100;
 
       scene.style.width = `${width}px`;
       scene.style.height = `${depth}px`;
 
       // Configure each face - corrected dimensions
-      const faces = scene.querySelectorAll('.face');
+      // Use :scope > .face to only select direct child faces, not nested faces
+      const faces = scene.querySelectorAll(':scope > .face');
       faces.forEach(face => {
         const classList = face.classList;
 
@@ -1163,28 +1166,33 @@ class Isometric3D {
     const targetRotation = { ...this.currentRotation };
     let targetZoom = this.currentZoom;
 
-    // If sourceElement is provided (click navigation), default to 0,0,0 unless pan is specified
+    // If sourceElement is provided (click navigation), default to 0,0,0 unless pan is specified or "current"
     // If no sourceElement (manual navigation), maintain current position
     let targetTranslation = sourceElement ? { x: 0, y: 0, z: 0 } : { ...this.currentTranslation };
 
-    // Parse xyz string (e.g., "35.00.15")
-    if (xyzString) {
+    // Parse xyz string (e.g., "35.00.15" or "current" to keep current rotation)
+    if (xyzString && xyzString !== 'current') {
       const [x, y, z] = xyzString.split('.').map(v => parseFloat(v) || 0);
       targetRotation.x = x;
       targetRotation.y = y;
       targetRotation.z = z;
     }
+    // If xyzString is "current" or not provided, targetRotation already has current values
 
-    // Parse zoom string (e.g., "2.3")
-    if (zoomString) {
+    // Parse zoom string (e.g., "2.3" or "current" to keep current zoom)
+    if (zoomString && zoomString !== 'current') {
       targetZoom = parseFloat(zoomString) || this.defaultZoom;
     }
+    // If zoomString is "current" or not provided, targetZoom already has current value
 
-    // Parse pan string (e.g., "100,-50") - overrides the default
-    if (panString) {
+    // Parse pan string (e.g., "100,-50" or "current" to keep current pan) - overrides the default
+    if (panString && panString !== 'current') {
       const [x, y] = panString.split(',').map(v => parseFloat(v) || 0);
       targetTranslation.x = x;
       targetTranslation.y = y;
+    } else if (panString === 'current') {
+      // Explicitly keep current translation
+      targetTranslation = { ...this.currentTranslation };
     } else if (sourceElement) {
       // Auto-calculate pan to center the element when pan is not explicitly defined
       targetTranslation = this.calculateCenterPan(sourceElement, targetRotation, targetZoom);
@@ -2129,8 +2137,10 @@ class Isometric3D {
       };
       this.sceneOriginalData.set(scene, original);
 
+      // For scenes without data-height, don't set any temporary value yet
+      // We'll measure the natural content height first
       if (!original.height) {
-        scene.dataset.height = '1000'; // Temporary large value for measurement
+        scene.dataset.height = 'auto'; // Let faces render at natural size
       } else {
         scene.dataset.height = '0';
       }
@@ -2211,13 +2221,18 @@ class Isometric3D {
             const originalFaceTransform = face.style.transform;
             face.style.transform = 'none';
 
-            // Use scrollHeight for content-based height, especially for flex-column
-            // This gives us the actual content height, not the constrained bounding box
-            const contentHeight = face.scrollHeight;
+            // Force the face to render at natural height (not constrained by parent)
+            const originalFaceHeight = face.style.height;
+            face.style.height = 'auto';
+
+            // Use offsetHeight which gives the actual rendered height including padding
+            // This is more accurate than scrollHeight for measuring true content height
+            const contentHeight = face.offsetHeight;
             measurements[name] = contentHeight;
             maxHeight = Math.max(maxHeight, contentHeight);
 
-            // Restore face transform
+            // Restore face properties
+            face.style.height = originalFaceHeight;
             face.style.transform = originalFaceTransform;
           }
         });
