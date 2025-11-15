@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connector Showcase - Isometric 3D Presenter</title>
+  <link rel="stylesheet" href="../src/isometric-3d.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .description {
+      text-align: center;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    #demo {
+      width: 95vw;
+      height: 80vh;
+      margin: 0 auto;
+    }
+
+    /* Grid layout for the perspective */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 20px;
+      width: 800px;
+      height: 600px;
+      padding: 20px;
+    }
+
+    /* Cuboid styling - Modern tech colors */
+    .cuboid {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    #cuboid1 .face {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+    }
+
+    #cuboid2 .face {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      font-weight: 600;
+    }
+
+    #cuboid3 .face {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+      font-weight: 600;
+    }
+
+    /* Scene styling - Modern vibrant colors */
+    #sceneA {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      color: white;
+      font-weight: 600;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    #sceneB {
+      background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+      color: white;
+      font-weight: 600;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    #sceneC {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      color: #333;
+      font-weight: 600;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    #sceneD {
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+      color: #333;
+      font-weight: 600;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      grid-column: span 2; /* Span 2 columns */
+    }
+
+    #sceneE {
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      color: #333;
+      font-weight: 600;
+      padding: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Grid positioning */
+    #cuboid1 { grid-column: 1; grid-row: 1; }
+    #sceneA { grid-column: 2; grid-row: 1; }
+    #cuboid2 { grid-column: 3; grid-row: 1; }
+    #sceneB { grid-column: 4; grid-row: 1; }
+    
+    #sceneC { grid-column: 1; grid-row: 2; }
+    #sceneD { grid-column: 2 / span 2; grid-row: 2; opacity: 0.8; } /* Spans columns 2-3 */
+    #cuboid3 { grid-column: 4; grid-row: 2; }
+    
+    #sceneE { grid-column: 2; grid-row: 3; }
+
+    /* Label styling */
+    .label {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      white-space: nowrap;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔗 Connector Showcase</h1>
+  <p class="description">Demonstrating various connector configurations with different styles, markers, and animations</p>
+
+  <div id="demo" class="isometric-container">
+    <div class="isometric-perspective" data-connectors='[
+      {"ids": "cuboid1,sceneA", "positions": "right,left", "vertices": "10,10", "color": "#000eea", "endStyles": "circle,arrowSmall", "animationStyle": "circle"},
+      {"ids": "cuboid1,cuboid2", "positions": "center,center", "color": "#f5576c", "lineStyle": "dashed", "endStyles": "arrow,arrow"},
+      {"ids": "cuboid1,sceneB", "positions": "center,center", "color": "#00f2fe", "lineStyle": "dotted", "endStyles": "circle,circle"},
+      {"ids": "cuboid2,cuboid3", "positions": "center,center", "color": "#4facfe", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
+      {"ids": "sceneA,sceneD", "positions": "center,center", "vertices": "50", "color": "#fa709a", "endStyles": ",arrow"},
+      {"ids": "sceneC,sceneD", "positions": "center,center", "color": "#30cfd0", "lineStyle": "dashed", "endStyles": "arrow,arrow"},
+      {"ids": "sceneD,cuboid3", "positions": "center,center", "color": "#fecfef", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
+      {"ids": "cuboid3,sceneE", "positions": "center,center", "color": "#fcb69f", "lineStyle": "dotted", "endStyles": "circle,circle"},
+      {"ids": "sceneE,sceneC", "positions": "center,center", "vertices": "30", "color": "#a8edea", "lineStyle": "dashed", "endStyles": ",arrow"},
+      {"ids": "sceneB,cuboid2", "positions": "center,center", "color": "#fee140", "lineStyle": "dashed", "endStyles": "circle,arrow", "animationStyle": "circle"},
+      {"ids": "sceneA,sceneB", "positions": "center,center", "vertices": "40", "color": "#ff6b6b", "lineStyle": "dashed", "endStyles": "circle,arrow", "animationStyle": "circle"},
+      {"ids": "sceneB,sceneC", "positions": "center,center", "color": "#4ecdc4", "lineStyle": "dashed", "endStyles": "arrow,arrow", "animationStyle": "circle"},
+      {"ids": "sceneC,sceneE", "positions": "center,center", "vertices": "60", "color": "#ffe66d", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
+      {"ids": "sceneE,sceneA", "positions": "center,center", "color": "#a8dadc", "lineStyle": "dashed", "endStyles": "circle,circle", "animationStyle": "circle"},
+      {"ids": "sceneD,sceneB", "positions": "center,center", "color": "#f1faee", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
+      {"ids": "sceneE,sceneD", "positions": "center,center", "color": "#e63946", "lineStyle": "dashed", "endStyles": "circle,arrow", "animationStyle": "circle"}
+    ]'>
+      
+      <div class="grid-layout">
+        
+        <!-- Cuboid 1 - Purple gradient -->
+        <div id="cuboid1" class="cuboid" 
+             data-width="140" 
+             data-height="80" 
+             data-depth="140"
+             data-z-axis="20">
+          <div class="front">API Gateway</div>
+          <div class="back">API Gateway</div>
+          <div class="left">API</div>
+          <div class="right">API</div>
+          <div class="top">🌐 Gateway</div>
+          <div class="bottom"></div>
+        </div>
+
+        <!-- Scene A - Pink/Yellow gradient -->
+        <div id="sceneA" class="scene" data-z-axis="15">
+          ☁️ Cloud Storage
+        </div>
+
+        <!-- Cuboid 2 - Pink/Red gradient -->
+        <div id="cuboid2" class="cuboid" 
+             data-width="140" 
+             data-height="90" 
+             data-depth="140"
+             data-z-axis="25">
+          <div class="front">Database</div>
+          <div class="back">Database</div>
+          <div class="left">DB</div>
+          <div class="right">DB</div>
+          <div class="top">🗄️ Database</div>
+          <div class="bottom"></div>
+        </div>
+
+        <!-- Scene B - Blue gradient -->
+        <div id="sceneB" class="scene" data-z-axis="10">
+          📊 Analytics
+        </div>
+
+        <!-- Scene C - Cyan/Pink gradient -->
+        <div id="sceneC" class="scene" data-z-axis="30">
+          🔐 Auth Service
+        </div>
+
+        <!-- Scene D - Pink gradient (spans 2 columns) -->
+        <div id="sceneD" class="scene" data-z-axis="35">
+          🚀 Load Balancer
+        </div>
+
+        <!-- Cuboid 3 - Blue gradient -->
+        <div id="cuboid3" class="cuboid" 
+             data-width="140" 
+             data-height="70" 
+             data-depth="140"
+             data-z-axis="15">
+          <div class="front">Cache</div>
+          <div class="back">Cache</div>
+          <div class="left">Cache</div>
+          <div class="right">Cache</div>
+          <div class="top">⚡ Redis Cache</div>
+          <div class="bottom"></div>
+        </div>
+
+        <!-- Scene E - Orange gradient -->
+        <div id="sceneE" class="scene" data-z-axis="20">
+          📧 Message Queue
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../src/isometric-3d.js"></script>
+  <script>
+    // Initialize the isometric 3D presenter
+    // Connectors are defined in the HTML data-connectors attribute
+    const iso3d = new Isometric3D('demo', {
+      rotation: { x: 45, y: 0, z: -35 },
+      zoom: 0.8,
+      translation: { x: 0, y: 0, z: 0 }
+    });
+
+    console.log('🔗 Connector Showcase initialized with 16 connectors (10 animated) via HTML data-connectors!');
+    console.log('ISO3D instance:', iso3d);
+    
+    // Debug: Check if elements exist and connectors are drawn
+    setTimeout(() => {
+      console.log('Cuboid1:', document.getElementById('cuboid1'));
+      console.log('SceneA:', document.getElementById('sceneA'));
+      console.log('SceneB:', document.getElementById('sceneB'));
+      console.log('SVG container:', document.querySelector('.connector-svg'));
+      console.log('All connector paths:', document.querySelectorAll('.connector-path'));
+    }, 1000);
+  
+  </script>
+</body>
+</html>

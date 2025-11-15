@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nested Scenes - Isometric 3D Presenter</title>
+  <link rel="stylesheet" href="../src/isometric-3d.css">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    /* Container styling */
+    .isometric-container {
+      height: 600px;
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin-bottom: 40px;
+    }
+
+    /* Perspective background */
+    .isometric-perspective {
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(207, 35, 35, 0.8) 100%);
+      border-radius: 8px;
+    }
+
+    .scene{
+      border: 1px solid #000000;
+      margin: 5px;
+    }
+    /* Default face styling with semi-transparent colors */
+    .face {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    /* Different colors for each face */
+    .face.front {
+      background: rgba(52, 152, 219, 0.7);  /* Blue */
+    }
+
+    .face.back {
+      background: rgba(46, 204, 113, 0.7);  /* Green */
+    }
+
+    .face.left {
+      background: rgba(155, 89, 182, 0.7);  /* Purple */
+    }
+
+    .face.right {
+      background: rgba(241, 196, 15, 0.7);  /* Yellow */
+    }
+
+    .face.top {
+      background: rgba(231, 76, 60, 0.7);   /* Red */
+    }
+
+    .face.bottom {
+      background: rgba(52, 73, 94, 0.7);    /* Dark blue */
+    }
+
+    /* Nested faces - different color scheme */
+    .scene .scene .face.front {
+      background: rgba(255, 107, 107, 0.8);  /* Coral */
+    }
+
+    .scene .scene .face.back {
+      background: rgba(78, 205, 196, 0.8);   /* Turquoise */
+    }
+
+    .scene .scene .face.left {
+      background: rgba(255, 159, 243, 0.8);  /* Pink */
+    }
+
+    .scene .scene .face.right {
+      background: rgba(255, 234, 167, 0.8);  /* Light yellow */
+    }
+
+    .scene .scene .face.top {
+      background: rgba(255, 118, 117, 0.8);  /* Light red */
+    }
+
+    .scene .scene .face.bottom {
+      background: rgba(99, 110, 114, 0.8);   /* Gray */
+    }
+
+
+    /* Sub-faces on front face - bright colors */
+    .face.front.flex-column > div {
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      color: #333;
+      font-weight: bold;
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+      transform-style: preserve-3d;
+    }
+
+    .face.front.flex-column > div:nth-child(1) {
+      background: rgba(255, 99, 132, 0.9);  /* Red */
+      color: white;
+    }
+
+    .face.front.flex-column > div:nth-child(2) {
+      background: rgba(54, 162, 235, 0.9);  /* Blue */
+      color: white;
+    }
+
+    .face.front.flex-column > div:nth-child(3) {
+      background: rgba(75, 192, 192, 0.9);  /* Green */
+      color: white;
+    }
+
+    /* Only the selected sub-face gets the bright border and glow */
+    .face.front.flex-column > div.nav-selected {
+      border: 3px solid rgba(255, 255, 255, 0.9) !important;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.8) !important;
+      /* Don't use transform to avoid breaking 3D context */
+      margin: -2px;
+      padding: 7px;
+    }
+
+    /* Highlighted state - brighter and more opaque */
+    .scene.highlight .face,
+    .face.highlight {
+      opacity: 1 !important;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Make highlighted faces more vibrant */
+    .face.front.highlight {
+      background: rgba(52, 152, 219, 0.95);
+    }
+
+    .face.back.highlight {
+      background: rgba(46, 204, 113, 0.95);
+    }
+
+    .face.left.highlight {
+      background: rgba(155, 89, 182, 0.95);
+    }
+
+    .face.right.highlight {
+      background: rgba(241, 196, 15, 0.95);
+    }
+
+    .face.top.highlight {
+      background: rgba(231, 76, 60, 0.95);
+    }
+
+    .face.bottom.highlight {
+      background: rgba(52, 73, 94, 0.95);
+    }
+
+    /* Currently selected navigation target */
+    .face.nav-selected {
+      outline: 3px solid rgba(255, 0, 191, 0.9);
+      outline-offset: 3px;
+    }
+
+
+    /* Dimming non-highlighted elements */
+    /* Only dim top-level scenes (B and C) when they're not highlighted */
+    .isometric-perspective:has(.highlight[data-activate]) > .scene:not(.highlight) > .face,
+    .isometric-perspective:has(.highlight[data-activate]) > * > .scene:not(.highlight) > .face {
+      opacity: 0.2 !important;
+      filter: grayscale(50%) !important;
+    }
+    
+    /* Dim nested scenes (A1, A2) when they're not highlighted */
+    .isometric-perspective:has(.highlight[data-activate]) .scene .scene:not(.highlight) > .face {
+      opacity: 0.2 !important;
+      filter: grayscale(50%) !important;
+    }
+    
+    /* Always keep highlighted scenes fully visible (works for both top-level and nested) */
+    .isometric-perspective:has(.highlight[data-activate]) .scene.highlight > .face {
+      opacity: 1 !important;
+      filter: none !important;
+    }
+    
+    /* DON'T dim the flex-column face itself - only dim its children to avoid opacity stacking */
+
+    .isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight):not(:has(.highlight)) > *:not(.face) {
+      opacity: 0.3 !important;
+    }
+    
+    /* Dim child divs in flex-column faces when their parent scene is not highlighted */
+    .isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight) .face.front.flex-column > div {
+      opacity: 0.2 !important;
+      filter: grayscale(80%) brightness(0.5) !important;
+      background: rgba(100, 100, 100, 0.5) !important; /* Force dimmed gray background */
+    }
+    
+    /* Also target Scene C's child divs specifically */
+    .isometric-perspective:has(.highlight[data-activate]) #sceneC:not(.highlight) .face.front.flex-column > div {
+      opacity: 0.2 !important;
+      filter: grayscale(80%) brightness(0.5) !important;
+      background: rgba(100, 100, 100, 0.5) !important; /* Force dimmed gray background */
+    }
+    
+    /* Catch child divs that don't have highlight class, regardless of parent */
+    .isometric-perspective:has(.highlight[data-activate]) .face.front.flex-column > div:not(.highlight):not([data-section="sceneC"]) {
+      opacity: 0.2 !important;
+      filter: grayscale(80%) brightness(0.5) !important;
+      background: rgba(100, 100, 100, 0.5) !important; /* Force dimmed gray background */
+    }
+
+    /* Scene styling */
+    .scene {
+      font-family: 'Arial', sans-serif;
+      font-size: 14px;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* Hover effect for navigable elements */
+    [data-nav-xyz]:hover,
+    [data-nav-zoom]:hover {
+      /* Don't use transform to avoid breaking 3D context */
+      opacity: 0.9;
+    }
+
+    /* Highlighted state for non-face elements with data-activate */
+    [data-activate].highlight {
+      opacity: 1 !important;
+      border: 2px solid rgba(255, 255, 255, 0.8) !important;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5) !important;
+    }
+
+    /* Nav-selected state for non-face elements */
+    [data-activate].nav-selected,
+    [data-section].nav-selected {
+      outline: 3px solid rgba(255, 0, 191, 0.9);
+      outline-offset: 3px;
+    }
+
+    /* Instructions section */
+    .instructions {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .instructions h2 {
+      color: #667eea;
+      margin-top: 0;
+    }
+
+    .instructions ul {
+      line-height: 1.8;
+    }
+
+    .instructions code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .scene-label {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <h1>Nested Scenes Example</h1>
+
+  <div id="demo" class="isometric-container">
+    <div class="isometric-perspective">
+      
+      <!-- Scene A (Parent) -->
+      <div id="sceneA" class="scene" 
+           data-width="200" 
+           data-depth="120" 
+           data-z-axis="0"
+           data-groups="groupA">
+        
+        <!-- Scene A1 (Nested in A) -->
+        <div id="sceneA1" class="scene" 
+             data-width="80" 
+             data-height="60" 
+            data-depth="50" 
+             data-z-axis="20"
+             data-groups="groupA1,groupA">
+          <div class="scene-label">A1</div>
+          <div class="face front">A1 Front</div>
+          <div class="face back">A1 Back</div>
+          <div class="face left">A1 Left</div>
+          <div class="face right">A1 Right</div>
+          <div class="face top" 
+               data-nav-xyz="30.0.-45" 
+               data-nav-zoom="1.5"
+               data-activate="groupA1"
+               data-section="sceneA1">A1 Top</div>
+          <div class="face bottom">A1 Bottom</div>
+        </div>
+
+        <!-- Scene A2 (Nested in A, positioned next to A1) -->
+        <div id="sceneA2" class="scene" 
+             data-width="80" 
+             data-height="60" 
+             data-depth="50" 
+             data-z-axis="20"
+             style="transform: translateX(100px);"
+             data-groups="groupA2">
+          <div class="scene-label">A2</div>
+          <div class="face front">A2 Front</div>
+          <div class="face back">A2 Back</div>
+          <div class="face left">A2 Left</div>
+          <div class="face right">A2 Right</div>
+          <div class="face top" 
+               data-nav-xyz="30.0.-30" 
+               data-nav-zoom="1.5"
+               data-activate="groupA2"
+               data-section="sceneA2">A2 Top</div>
+          <div class="face bottom">A2 Bottom</div>
+        </div>
+      </div>
+
+      <!-- Scene B (Standalone) -->
+      <div id="sceneB" class="scene" 
+           data-width="100" 
+           data-height="120" 
+           data-depth="100" 
+           data-z-axis="50"
+           style="transform: translateX(250px) translateY(-50px);"
+           data-groups="groupB">
+        <div class="scene-label">B</div>
+        <div class="face front">B Front</div>
+        <div class="face back">B Back</div>
+        <div class="face left">B Left</div>
+        <div class="face right">B Right</div>
+        <div class="face top" 
+             data-nav-xyz="45.0.-35" 
+             data-nav-zoom="1.3"
+             data-activate="groupB"
+             data-section="sceneB">B Top</div>
+        <div class="face bottom">B Bottom</div>
+      </div>
+
+      <!-- Scene C (With sub-faces on front) -->
+      <div id="sceneC" class="scene" 
+           data-width="100"  
+           data-depth="80" 
+           data-z-axis="10"
+           style="transform: translateX(-150px) translateY(100px);"
+           data-groups="groupC">
+        <div class="scene-label">C</div>
+        <div class="face front flex-column">
+          <!-- Three sub-faces without sides (just flat divs) -->
+          <div 
+               data-nav-xyz="current" 
+               data-nav-zoom="current"
+               data-activate="subface1"
+               data-section="subface1">Sub-face 1</div>
+          <div 
+               data-nav-xyz="current" 
+               data-nav-zoom="current"
+               data-activate="subface2"
+               data-section="subface2">Sub-face 2</div>
+          <div  
+               data-nav-xyz="current" 
+               data-nav-zoom="current"
+               data-activate="subface3"
+               data-section="subface3">Sub-face 3</div>
+        </div>
+        <div class="face back">C Back</div>
+        <div class="face left">C Left</div>
+        <div class="face right">
+
+          <div  
+               data-nav-xyz="50.00.50" 
+               data-nav-zoom="current"
+               data-activate="subface4"
+               data-section="subface4">Sub-face Right 4</div>
+
+        </div>
+        <div class="face top" 
+             data-nav-xyz="60.0.-20" 
+             data-nav-zoom="1.4"
+             data-activate="groupC"
+             data-section="sceneC">C Top</div>
+        <div class="face bottom">C Bottom</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="instructions">
+    <h2>Nested Scenes Example</h2>
+    <p>This example demonstrates complex nested scene structures with multiple features.</p>
+    
+    <h3>Scene Structure:</h3>
+    <ul>
+      <li><strong>Scene A</strong> (Parent scene, 200x150x120)
+        <ul>
+          <li><strong>Scene A1</strong> (Nested cube with all 6 faces, 80x60x50)</li>
+          <li><strong>Scene A2</strong> (Nested cube with all 6 faces, 80x60x50, positioned next to A1)</li>
+        </ul>
+      </li>
+      <li><strong>Scene B</strong> (Standalone cube with all 6 faces, 100x120x100)</li>
+      <li><strong>Scene C</strong> (Cube with 6 faces, front face contains 3 sub-faces without sides, 120x100x80)</li>
+    </ul>
+
+    <h3>What to try:</h3>
+    <ul>
+      <li><strong>Click "A1 Top"</strong> - Navigates and highlights Scene A1 (coral colors)</li>
+      <li><strong>Click "A2 Top"</strong> - Navigates and highlights Scene A2 (turquoise colors)</li>
+      <li><strong>Click "B Top"</strong> - Navigates and highlights Scene B</li>
+      <li><strong>Click "C Top"</strong> - Navigates and highlights Scene C</li>
+      <li><strong>Click sub-faces on Scene C front</strong> - Highlights specific sub-face with "current" navigation (no camera movement)</li>
+      <li><strong>Drag to rotate</strong> - See how nested scenes maintain proper 3D positioning</li>
+      <li><strong>Use navigation dots</strong> - Jump between different scenes</li>
+    </ul>
+
+    <h3>Features demonstrated:</h3>
+    <ul>
+      <li>✅ <strong>Parent-child scene hierarchy</strong> - Scene A contains A1 and A2</li>
+      <li>✅ <strong>Multiple nested cubes</strong> - Each with all 6 faces</li>
+      <li>✅ <strong>Standalone scenes</strong> - Scene B positioned independently</li>
+      <li>✅ <strong>Sub-faces without 3D sides</strong> - Scene C front face has 3 flat clickable areas</li>
+      <li>✅ <strong>Different color schemes</strong> - Nested scenes use coral/turquoise palette</li>
+      <li>✅ <strong>Flex-column layout</strong> - Sub-faces arranged vertically on Scene C</li>
+      <li>✅ <strong>"current" keyword</strong> - Sub-faces use selection without camera movement</li>
+      <li>✅ <strong>Auto-centering</strong> - No manual pan specified for main scenes</li>
+      <li>✅ <strong>Relative positioning</strong> - Scenes positioned with translateX/translateY</li>
+      <li>✅ <strong>Scene labels</strong> - Visual indicators for each scene</li>
+    </ul>
+
+    <h3>Highlight Groups:</h3>
+    <ul>
+      <li><code>groupA</code> - Scene A (parent)</li>
+      <li><code>groupA1</code> - Scene A1 (nested in A)</li>
+      <li><code>groupA2</code> - Scene A2 (nested in A)</li>
+      <li><code>groupB</code> - Scene B (standalone)</li>
+      <li><code>groupC</code> - Scene C (with sub-faces)</li>
+      <li><code>subface1, subface2, subface3</code> - Individual sub-faces on Scene C front</li>
+    </ul>
+
+    <h3>Technical Details:</h3>
+    <ul>
+      <li>Nested scenes use relative positioning within parent</li>
+      <li>Sub-faces on Scene C front are flat divs styled as clickable areas</li>
+      <li>Each scene has unique z-axis positioning for proper depth layering</li>
+      <li>Color scheme changes for nested vs parent scenes for visual clarity</li>
+      <li>Scene labels positioned absolutely for identification</li>
+    </ul>
+  </div>
+
+  <script src="../src/isometric-3d.js"></script>
+  <script>
+    const controller = createIsometric3D('demo', {
+      defaultRotation: { x: 45, y: 0, z: -35 },
+      defaultZoom: 1.0,
+      showCompactControls: true,
+      navSelectedTarget: 'bottom'
+    });
+
+    console.log('Nested scenes example loaded successfully!');
+    console.log('Scene hierarchy:');
+    console.log('- Scene A (parent)');
+    console.log('  - Scene A1 (nested)');
+    console.log('  - Scene A2 (nested)');
+    console.log('- Scene B (standalone)');
+    console.log('- Scene C (with sub-faces on front)');
+  </script>
+</body>
+</html>

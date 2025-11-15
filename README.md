@@ -257,6 +257,65 @@ Customize the appearance of your 3D scenes with different colors for each face a
 | `showCompactControls` | Boolean | `false` | Show spherical controller |
 | `bookmarkPrefix` | String | `containerId_` | URL parameter prefix |
 | `navSelectedTarget` | String | `'clicked'` | Which face gets `.nav-selected` class: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
+| `dimmingAlpha` | Object | See below | Alpha values for dimming non-highlighted elements |
+
+### Dimming Configuration
+
+Control the transparency of non-highlighted elements during highlighting mode:
+
+```javascript
+const presenter = createIsometric3D('presentation', {
+  dimmingAlpha: {
+    backgroundColor: 0.2,  // 20% opacity for backgrounds (default: 0.2)
+    borderColor: 0.2,      // 20% opacity for borders (default: 0.2)
+    color: 0.3,            // 30% opacity for text - more readable (default: 0.3)
+    svg: 0.25              // 25% opacity for SVG stroke/fill (default: 0.25)
+  }
+});
+```
+
+**How it works:**
+
+- When elements are highlighted, non-highlighted elements are dimmed by reducing the **alpha channel** of their colors
+- Uses JavaScript color manipulation instead of CSS `opacity` to preserve 3D transforms
+- Original colors are stored and restored when clearing highlights
+- Smooth CSS transitions (0.3s ease) for all color changes
+
+**Benefits of alpha-based dimming:**
+
+- ✅ Preserves `transform-style: preserve-3d` on nested elements
+- ✅ No CSS stacking context issues
+- ✅ Maintains 3D depth and perspective
+- ✅ Smooth color transitions
+- ✅ Works with any color format (rgb, rgba, hex)
+
+**Customization examples:**
+
+```javascript
+// More dramatic dimming
+dimmingAlpha: {
+  backgroundColor: 0.1,  // 10% - very faint
+  borderColor: 0.1,
+  color: 0.2,
+  svg: 0.15
+}
+
+// Subtle dimming
+dimmingAlpha: {
+  backgroundColor: 0.4,  // 40% - still quite visible
+  borderColor: 0.4,
+  color: 0.5,
+  svg: 0.45
+}
+
+// Text-focused dimming
+dimmingAlpha: {
+  backgroundColor: 0.15,
+  borderColor: 0.15,
+  color: 0.6,  // Keep text more readable
+  svg: 0.2
+}
+```
 
 ### Navigation Selected Target
 
@@ -380,10 +439,17 @@ Organize child elements in horizontal or vertical layouts with automatic spacing
 
 ### Data Attributes
 
-- `data-width` - Width of the 3D scene
-- `data-height` - Height of the 3D scene (numeric value in pixels). If omitted, height is automatically calculated from content
-- `data-depth` - Depth of the 3D scene
-- `data-z-axis` - Z-axis offset (elevation)
+#### For Cuboids (`.cuboid`)
+
+- `data-width` - Width of the cuboid
+- `data-height` - Height of the cuboid (numeric value in pixels). If omitted, height is automatically calculated from content
+- `data-depth` - Depth of the cuboid
+
+#### For Scenes (`.scene`)
+
+- `data-z-axis` - Z-axis offset for elevation and shadow effects (only for `.scene` elements)
+
+**Important:** The `data-z-axis` attribute is specifically for scene elements to control shadows and elevation.
 
 #### Automatic Height Calculation
 
@@ -432,7 +498,7 @@ When `data-height` is not specified, the system automatically measures and calcu
 <div class="face top" 
      data-nav-xyz="45.00.-35" 
      data-nav-zoom="1.2"
-     data-nav-pan="100,-50"
+     data-nav-pan="100.-50"
      data-section="section1">
   Click to navigate
 </div>
@@ -442,7 +508,7 @@ When `data-height` is not specified, the system automatically measures and calcu
 
 - `data-nav-xyz` - Target rotation (format: "x.y.z" with dots, or `"current"` to keep current rotation)
 - `data-nav-zoom` - Target zoom level (e.g., "1.2", or `"current"` to keep current zoom)
-- `data-nav-pan` - Target pan/translation (format: "x,y" with comma, or `"current"` to keep current pan) - **Optional**
+- `data-nav-pan` - Target pan/translation (format: "x.y" with dot separator, or `"current"` to keep current pan) - **Optional**
 - `data-section` - Unique section identifier for navigation
 
 #### Using Special Keywords for Navigation Control
@@ -547,7 +613,7 @@ Use `"default"` to return to the initial/default camera position set during init
 <div class="face top" 
      data-nav-xyz="45.0.-35" 
      data-nav-zoom="1.2"
-     data-nav-pan="100,-50"
+     data-nav-pan="100.-50"
      data-section="custom-position">
   <!-- Element positioned at specific pan coordinates -->
 </div>
@@ -1043,17 +1109,54 @@ const scrollSync = new ScrollSync(viewer, {
 | `↑` `↓` | X-axis rotation |
 | `Shift` + `←` `→` | Y-axis rotation |
 | `Shift` + `↑` `↓` | Zoom in/out |
-| `Ctrl/Cmd` + `←` `→` `↑` `↓` | Pan view (translate) |
+| `Alt` + `←` `→` `↑` `↓` | Pan view (translate) |
 | `+` `-` | Zoom controls |
 | `Space` | Reset to default view |
 | `Tab` | Navigate through navigation points |
+| `P` | Toggle auto-play (cycles through navigation points) |
+
+### Auto-Play Mode
+
+Press `P` to automatically cycle through navigation points every 5 seconds:
+
+- Starts from the current navigation position
+- Advances to the next point automatically
+- Loops back to the beginning after reaching the end
+- Press `P` again to pause
+
+**Perfect for:**
+
+- ✅ Automated presentations and demos
+- ✅ Trade show displays and kiosks
+- ✅ Continuous looping through features
+- ✅ Hands-free walkthroughs
+
+**Example:**
+
+```javascript
+const presenter = createIsometric3D('demo', {
+  showCompactControls: true
+});
+
+// Auto-play will cycle through all elements with data-nav-xyz attributes
+```
+
+**Behavior:**
+
+- Only works when navigation points exist (`data-nav-xyz`, `data-nav-zoom`, or `data-nav-pan`)
+- Timing: 5 seconds per navigation point
+- Automatically applies highlights if `data-activate` is present
+- Stops when manually interacting (clicking, dragging)
+- Resume by pressing `P` again
 
 ## Mouse Controls
 
 - **Left drag**: X and Z-axis rotation
 - **Middle drag**: Pan/translate view
 - **Right drag**: Y-axis rotation + zoom
-- **Mouse wheel**: Zoom in/out
+- **Mouse wheel**: X-axis rotation
+- **Shift + Wheel**: Zoom in/out
+- **Alt + Wheel**: Pan up/down
 - **Click navigation point**: Navigate to preset view
 
 ## Styling
@@ -1160,8 +1263,63 @@ Applied to the specific element that was clicked or navigated to. Only one eleme
   }
 }
 
-/* Add background highlight instead of outline 
+/* Add background highlight instead of outline */
+.face.nav-selected,
+.scene.nav-selected {
+  background-color: rgba(255, 215, 0, 0.2); /* Gold background */
+}
 ```
+
+#### `.hover-highlight` Class
+
+**Automatically applied** via JavaScript when hovering over non-highlighted elements during highlighting mode. This provides instant visual feedback by temporarily restoring the opacity of dimmed elements when the user hovers over them.
+
+**Behavior:**
+
+- Applied when mouse enters a non-highlighted cuboid or scene while highlighting is active
+- Removed when mouse leaves the element
+- Makes dimmed elements (opacity: 0.2) temporarily fully visible (opacity: 1)
+- Includes smooth transition: `opacity 0.2s ease`
+
+**Default styles:**
+
+```css
+/* Hover highlight - applied via JavaScript */
+.hover-highlight > .face,
+.hover-highlight.scene {
+  opacity: 1 !important;
+  transition: opacity 0.2s ease;
+}
+
+.hover-highlight > *:not(.face) {
+  opacity: 1 !important;
+  transition: opacity 0.2s ease;
+}
+```
+
+**Customization:**
+
+```css
+/* Change hover effect intensity */
+.hover-highlight > .face,
+.hover-highlight.scene {
+  opacity: 0.8 !important; /* Partial visibility instead of full */
+  background-color: rgba(255, 255, 255, 0.05); /* Subtle background */
+}
+
+/* Add hover glow effect */
+.hover-highlight > .face {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Slower transition */
+.hover-highlight > .face,
+.hover-highlight.scene {
+  transition: opacity 0.5s ease, box-shadow 0.5s ease;
+}
+```
+
+**Note:** The `.hover-highlight` class is managed automatically by the library. You don't need to add or remove it manually - just hover over any dimmed element to see it temporarily highlighted.
 
 #### Complete Theme Example
 
@@ -1247,17 +1405,22 @@ example.html#cube1-description
 
 This provides semantic navigation to specific content sections using the element's `data-section` attribute.
 
-#### 2. Query Parameter Navigation (Manual Manipulation)
+#### 2. Query Parameter Navigation (Index + Manual Adjustments)
 
-When manually rotating, zooming, or panning the view, the URL updates with query parameters after 3 seconds:
+When navigating via navigation points or manually adjusting the view, the URL updates with query parameters:
 
-- `{prefix}xyz` - Rotation (e.g., "45.00.-35")
-- `{prefix}zoom` - Zoom level (e.g., "1.2")
-- `{prefix}pan` - Pan position (e.g., "100,-50" with comma separator)
+- `{prefix}nav` - Navigation point index (1-based, e.g., "1" for first point, "2" for second)
+- `{prefix}xyz` - Rotation delta from navigation point (e.g., "45.00.-35")
+- `{prefix}zoom` - Zoom level delta from navigation point (e.g., "1.2")
+- `{prefix}pan` - Pan position delta from navigation point (e.g., "100.-50" with dot separator)
 
-Example: `?presentationxyz=45.00.-35&presentationzoom=1.2&presentationpan=100,-50`
+**URL Format Examples:**
 
-**Note:** Hash navigation and query parameter navigation are mutually exclusive. Clicking an element removes query parameters, and manual navigation removes the hash.
+- First navigation point: `example.html#section?demo-nav=1`
+- Second point with section: `example.html#A2?demo-nav=2`
+- With manual adjustments: `example.html#D?demo-nav=4&demo-xyz=60.00.-20&demo-zoom=0.8&demo-pan=-58.-64`
+
+**Note:** The navigation index (`demo-nav`) uses **1-based numbering** for user clarity (first point = 1, second point = 2, etc.). Manual adjustment parameters (xyz, zoom, pan) are only added when the view differs from the base navigation point.
 
 ## Examples
 

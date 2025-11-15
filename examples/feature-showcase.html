@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Showcase - Isometric 3D Presenter</title>
+  <link rel="stylesheet" href="../src/isometric-3d.css">
+  <style>
+    .isometric-container {
+      height: 500px;
+      background: white;
+      border: 2px solid var(--color-border);
+      position: relative;
+      overflow: hidden;
+    }
+
+
+    /* Wireframe styling - default for most examples - Sketch Style */
+    .wireframe .face {
+      background: rgba(255, 255, 255, 0.818);
+      border: 1px dashed #221F19;
+      color: #221F19;
+      font-weight: 600;
+
+    }
+
+    /* Grid Layout for Highlighting Example - Sketch Style */
+    .grid-hl {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 50px;
+      border: 2px dashed #221F19;
+      padding: 20px;
+      background: white;
+    }
+
+    .grid-hl .cuboid {
+      border: 1px dashed #9AA09A;
+      x-min-height: 120px;
+    }
+
+    /* Navigation hint styling */
+    .nav-hint {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--color-text-primary);
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      color: var(--color-bg-primary);
+      border: 1px solid var(--color-neutral);
+      z-index: 1000;
+    }
+
+    .nav-hint::before {
+      content: "💡 ";
+    }
+
+    /* Code example box */
+    .code-example {
+      margin-top: 15px;
+      display: flex;
+      gap: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+    }
+
+    .code-example>div {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .code-column {
+      background: var(--color-text-primary);
+      border-radius: 8px;
+      border: 1px solid var(--color-neutral);
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .code-column strong {
+      display: block;
+      color: var(--color-accent-1);
+      margin-bottom: 10px;
+      font-size: 0.95em;
+      font-family: 'Segoe UI', sans-serif;
+      font-weight: 600;
+      border-bottom: 1px solid var(--color-neutral);
+      padding-bottom: 5px;
+    }
+
+    .code-column pre {
+      margin: 0;
+      color: var(--color-bg-primary);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .setup-section {
+      background: var(--color-accent-1);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .setup-section h3 {
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+
+    .setup-section code {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .nav-point.active {
+      background: var(--color-accent-2);
+    }
+
+    /* Flex layout with 3D context preservation */
+    .flex-column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transform-style: preserve-3d;
+    }
+
+    .flex-column>div {
+      position: initial;
+      width: 100%;
+    }
+  </style>
+  <style>
+    /* Highlighting example styling - Sketch Style */
+    .wireframe .face {
+      background: white;
+      border: 2px solid #221F19;
+      transition: all 0.3s ease;
+      color: #221F19;
+    }
+
+    .wireframe .face.highlight {
+      background: #221F19;
+      border: 3px solid #221F19;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #221F19;
+      color: white;
+      transform: scale(1.02);
+    }
+
+    .wireframe .scene.highlight {
+      background: #221F19 !important;
+      border: 3px solid #221F19 !important;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #221F19;
+      color: rgb(255, 255, 255) !important;
+    }
+
+
+
+    .wireframe .scene:not(:has(> .face)) {
+      background: white;
+      border: 2px solid #221F19;
+      padding: 15px;
+      color: #221F19;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+
+
+
+    /* Colored example styling */
+    .colored .face.front {
+      background: rgba(222, 160, 58, 0.8);
+      border-color: var(--color-accent-1);
+      color: white;
+    }
+
+    .colored .face.back {
+      background: rgba(185, 78, 58, 0.8);
+      border-color: var(--color-accent-2);
+      color: white;
+    }
+
+    .colored .face.left {
+      background: rgba(154, 160, 154, 0.8);
+      border-color: var(--color-neutral);
+      color: white;
+    }
+
+    .colored .face.right {
+      background: rgba(235, 238, 235, 0.9);
+      border-color: var(--color-border);
+      color: var(--color-text-primary);
+    }
+
+    .colored .face.top {
+      background: rgba(34, 31, 25, 0.9);
+      border-color: var(--color-text-primary);
+      color: white;
+    }
+
+    .colored .face.bottom {
+      background: rgba(154, 160, 154, 0.9);
+      border-color: var(--color-neutral);
+      color: white;
+    }
+
+
+
+
+
+    /* Face styles */
+
+
+
+    :root {
+      /* Color Palette Variables */
+      --color-bg-primary: #EBEEEB;
+      /* Light background */
+      --color-bg-secondary: #F5F7F5;
+      /* Slightly lighter variant */
+      --color-text-primary: #221F19;
+      /* Dark text */
+      --color-text-secondary: #4A4640;
+      /* Medium dark text */
+      --color-accent-1: #DEA03A;
+      /* Golden accent */
+      --color-accent-2: #B94E3A;
+      /* Red accent */
+      --color-neutral: #9AA09A;
+      /* Gray-green */
+      --color-border: #C5CBC5;
+      /* Light border */
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      padding: 20px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px;
+      background: var(--color-text-primary);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      border: 2px solid var(--color-neutral);
+    }
+
+    .page-header h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+      color: var(--color-accent-1);
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .page-header p {
+      font-size: 1.2em;
+      color: var(--color-bg-primary);
+      opacity: 0.95;
+    }
+
+    .feature-section {
+      margin-bottom: 60px;
+      background: var(--color-bg-secondary);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 30px;
+      border: 2px solid var(--color-border);
+    }
+
+    .feature-section h2 {
+      font-size: 2em;
+      margin-bottom: 15px;
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .feature-section h2::before {
+      content: "▶";
+      color: var(--color-accent-1);
+    }
+
+    .feature-description {
+      margin-bottom: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      border-left: 4px solid var(--color-accent-1);
+    }
+
+    .feature-description h3 {
+      color: var(--color-accent-2);
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+
+    .feature-description ul {
+      list-style-position: inside;
+      line-height: 1.8;
+      color: var(--color-text-primary);
+    }
+
+    .feature-description code {
+      background: var(--color-neutral);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: white;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-header">
+    <h1>🎨 Isometric 3D Presenter - Feature Showcase</h1>
+    <p>Explore all features with interactive examples and wireframe visualization</p>
+  </div>
+
+  <!-- Setup Section -->
+  <div class="feature-section">
+    <h2>📦 Initial Setup</h2>
+    <div class="setup-section">
+      <h3>Required Files</h3>
+      <p>Include these files in your HTML <code>&lt;head&gt;</code> section:</p>
+      <pre style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin-top: 10px;">
+&lt;link rel="stylesheet" href="isometric-3d.css"&gt;
+&lt;script src="isometric-3d.js"&gt;&lt;/script&gt;</pre>
+      <p style="margin-top: 10px;">The library automatically initializes all <code>.isometric-perspective</code>
+        elements on page load. No additional JavaScript is needed for basic functionality!</p>
+      <p style="margin-top: 10px;"><strong>Note:</strong> The library automatically adds the <code>.face</code> class to
+        all cuboid faces (front, back, left, right, top, bottom). Use <code>.cuboid .face</code> to style all faces, or
+        target specific faces like <code>.cuboid .front</code> for individual styling.</p>
+    </div>
+  </div>
+
+  <!-- Feature 1: Basic Flat Scene -->
+  <div class="feature-section">
+    <h2>Flat 2D Scenes</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>A flat scene is a simple 2D element positioned in 3D space without cube faces. Perfect for labels, titles, or
+        simple content.</p>
+      <ul>
+        <li>Uses <code>data-z-axis</code> for vertical positioning</li>
+        <li>No <code>data-width</code>, <code>data-height</code>, or <code>data-depth</code> needed</li>
+        <li>Content flows naturally like a regular div</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;!-- Include library --&gt;
+&lt;link rel="stylesheet" 
+  href="isometric-3d.css"&gt;
+&lt;script src="isometric-3d.js"&gt;
+&lt;/script&gt;
+
+&lt;!-- Your content --&gt;
+&lt;div class="isometric-perspective"&gt;
+  &lt;div class="scene" 
+       data-z-axis="20" 
+       style="margin: 10px;"&gt;
+    📄 Flat Scene at Z=20
+  &lt;/div&gt;
+  &lt;div class="scene" 
+       
+       style="margin: 10px;"&gt;
+    📄 Flat Scene at Z=0
+  &lt;/div&gt;
+  &lt;div class="scene" 
+       data-z-axis="40" 
+       style="margin: 10px;"&gt;
+    📄 Flat Scene at Z=40
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Sketch-style scenes */
+.scene {
+  background: white;
+  border: 2px solid #221F19;
+  padding: 15px;
+  color: #221F19;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Auto-initializes on load!
+// No code needed.
+
+// Optional: Manual init
+createIsometric3D('demo1', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 1.0
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo1" class="isometric-container wireframe">
+      <div class="nav-hint">Click to rotate view</div>
+      <div class="isometric-perspective">
+        <div class="scene" data-z-axis="20" style="margin: 10px;">
+          📄 Flat Scene at Z=20
+        </div>
+        <div class="scene" style="margin: 10px;">
+          📄 Flat Scene at Z=0
+        </div>
+        <div class="scene" data-z-axis="40" style="margin: 10px;">
+          📄 Flat Scene at Z=40
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 2: Basic Cuboid with Faces -->
+  <div class="feature-section">
+    <h2>3D Cuboids with Six Faces</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>A complete 3D cube with six faces (front, back, left, right, top, bottom). This creates true 3D objects in your
+        presentation.</p>
+      <ul>
+        <li>Use <code>data-width</code>, <code>data-height</code>, <code>data-depth</code> for dimensions</li>
+        <li>Each face can have different content using <code>.face</code> class</li>
+        <li>Wireframe styling shows structure clearly</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="isometric-perspective"&gt;
+  &lt;div class="cuboid" 
+       data-width="120" 
+       data-height="80" 
+       data-depth="120" 
+      &gt;
+    &lt;div class="front"&gt;
+      FRONT
+    &lt;/div&gt;
+    &lt;div class="back"&gt;BACK&lt;/div&gt;
+    &lt;div class="left"&gt;LEFT&lt;/div&gt;
+    &lt;div class="right"&gt;RIGHT&lt;/div&gt;
+    &lt;div class="top"&gt;TOP&lt;/div&gt;
+    &lt;div class="bottom"&gt;
+      BOTTOM
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Sketch-style faces */
+/* .face class auto-added */
+.cuboid .face {
+  background: white;
+  border: 2px solid #221F19;
+  color: #221F19;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Optional: specific faces */
+.cuboid .front {
+  /* Custom styling */
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Auto-initializes!
+
+// Optional: custom init
+createIsometric3D('myDemo', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 1.2
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo2" class="isometric-container wireframe">
+      <div class="nav-hint">Drag to explore all six faces</div>
+      <div class="isometric-perspective">
+        <div class="cuboid" data-width="120" data-height="80" data-depth="120">
+          <div class="front">
+            FRONT
+          </div>
+          <div class="back">BACK</div>
+          <div class="left">
+            LEFT
+          </div>
+          <div class="right">RIGHT</div>
+          <div class="top">TOP</div>
+          <div class="bottom">
+            BOTTOM
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 3: Multiple Cuboids in One Scene -->
+  <div class="feature-section">
+    <h2>Multiple Cuboids in a Scene Container</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Multiple cuboids can be grouped inside a single <code>.scene</code> container. This allows complex arrangements
+        and nested structures.</p>
+      <ul>
+        <li>Scene acts as a container with <code>transform-style: preserve-3d</code></li>
+        <li>Each cuboid has its own dimensions and z-axis position</li>
+        <li>Useful for creating modular layouts or grouped elements</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="isometric-perspective"&gt;
+  &lt;div class="cuboid" 
+       data-width="80" 
+       data-height="60" 
+       data-depth="80" 
+      &gt;
+    &lt;div class="front"&gt;Cube 1&lt;/div&gt;
+    &lt;div class="back"&gt;Cube 1&lt;/div&gt;
+    &lt;div class="left"&gt;Cube 1&lt;/div&gt;
+    &lt;div class="right"&gt;Cube 1&lt;/div&gt;
+    &lt;div class="top"&gt;Level 1&lt;/div&gt;
+    &lt;div class="bottom"&gt;Bottom&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class="cuboid" 
+       data-width="80" 
+       data-height="60" 
+       data-depth="80" 
+       data-z-axis="80"&gt;
+    &lt;div class="front"&gt;Cube 2&lt;/div&gt;
+    &lt;div class="back"&gt;Cube 2&lt;/div&gt;
+    &lt;div class="left"&gt;Cube 2&lt;/div&gt;
+    &lt;div class="right"&gt;Cube 2&lt;/div&gt;
+    &lt;div class="top"&gt;Level 2&lt;/div&gt;
+    &lt;div class="bottom"&gt;Bottom&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Sketch-style faces */
+.cuboid .face {
+  background: white;
+  border: 2px solid #221F19;
+  color: #221F19;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Auto-handles multiple 
+// cuboids on page load!
+
+createIsometric3D('demo3', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 1.0
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo3" class="isometric-container wireframe">
+      <div class="nav-hint">Three cuboids in one scene</div>
+      <div class="isometric-perspective">
+        <div class="cuboid" data-width="80" data-height="60" data-depth="80">
+          <div class="front">Cube 1</div>
+          <div class="back">Cube 1</div>
+          <div class="left">Cube 1</div>
+          <div class="right">Cube 1</div>
+          <div class="top">Level 1</div>
+          <div class="bottom">Bottom</div>
+        </div>
+        <div class="scene" data-z-axis="20" style="margin: 30px 0; padding: 0; border: none;">
+          <div class="cuboid" data-width="80" data-height="60" data-depth="80">
+            <div class="front">Cube 2</div>
+            <div class="back">Cube 2</div>
+            <div class="left">Cube 2</div>
+            <div class="right">Cube 2</div>
+            <div class="top">Level 2</div>
+            <div class="bottom">Bottom</div>
+          </div>
+        </div>
+        <div class="cuboid" data-width="80" data-height="60" data-depth="80">
+          <div class="front">Cube 3</div>
+          <div class="back">Cube 3</div>
+          <div class="left">Cube 3</div>
+          <div class="right">Cube 3</div>
+          <div class="top">Level 3</div>
+          <div class="bottom">Bottom</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 4: Mixed Scenes and Cuboids -->
+  <div class="feature-section">
+    <h2>Mixed Flat Scenes and 3D Cuboids</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Combine flat 2D scenes with 3D cuboids in the same 3D space. This creates dynamic presentations with varied
+        content types.</p>
+      <ul>
+        <li>Flat scenes work as labels or title cards</li>
+        <li>Cuboids add dimensional depth and detail</li>
+        <li>Mix them freely to create unique layouts</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="isometric-perspective"&gt;
+  &lt;!-- Flat scene label --&gt;
+  &lt;div class="scene" 
+      &gt;
+    📋 Project Overview
+  &lt;/div&gt;
+  
+  &lt;!-- 3D cuboid --&gt;
+  &lt;div class="cuboid" 
+       data-width="100" 
+       data-height="60" 
+       data-depth="100" 
+       data-z-axis="50"&gt;
+    &lt;div class="front"&gt;Database&lt;/div&gt;
+    &lt;div class="back"&gt;Database&lt;/div&gt;
+    &lt;div class="left"&gt;DB&lt;/div&gt;
+    &lt;div class="right"&gt;DB&lt;/div&gt;
+    &lt;div class="top"&gt;🗄️ Data&lt;/div&gt;
+    &lt;div class="bottom"&gt;Bottom&lt;/div&gt;
+  &lt;/div&gt;
+  
+  &lt;!-- Another flat scene --&gt;
+  &lt;div class="scene" 
+       data-z-axis="130"&gt;
+    🔗 API Layer
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Sketch-style scenes */
+.scene {
+  background: white;
+  border: 2px solid #221F19;
+  padding: 15px;
+  color: #221F19;
+  font-weight: 600;
+}
+
+/* Sketch-style cuboids */
+.cuboid .face {
+  background: white;
+  border: 2px solid #221F19;
+  color: #221F19;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Auto-handles mixed
+// flat and 3D content!
+
+createIsometric3D('demo4', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 0.9
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo4" class="isometric-container wireframe">
+      <div class="nav-hint">Flat scenes + 3D cuboids</div>
+      <div class="isometric-perspective">
+        <!-- Flat title -->
+        <div class="scene" data-z-axis="70">
+          📋 Project Overview
+        </div>
+
+        <!-- 3D cuboid wrapped in scene for elevation -->
+        <div class="scene" data-z-axis="40">
+          <div class="cuboid" data-width="100" data-height="60" data-depth="100">
+            <div class="front">Database</div>
+            <div class="back">Database</div>
+            <div class="left">DB</div>
+            <div class="right">DB</div>
+            <div class="top">🗄️ Data</div>
+            <div class="bottom">Bottom</div>
+          </div>
+        </div>
+
+        <!-- Another flat scene -->
+        <div class="scene">
+          🔗 API Layer
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 5: Navigation System -->
+  <div class="feature-section">
+    <h2>Interactive Navigation</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Click on faces to navigate to predefined camera positions. Perfect for guided presentations and storytelling.
+      </p>
+      <ul>
+        <li><code>data-nav-xyz</code> sets target rotation (format: "x.y.z")</li>
+        <li><code>data-nav-zoom</code> sets target zoom level</li>
+        <li><code>data-section</code> creates navigation points in the nav bar</li>
+        <li>Smooth animated transitions between views</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="cuboid" 
+     data-width="120" 
+     data-height="80" 
+     data-depth="120"&gt;
+  &lt;div class="front"&gt;Front&lt;/div&gt;
+  &lt;div class="back"&gt;Back&lt;/div&gt;
+  &lt;div class="left"&gt;Left&lt;/div&gt;
+  &lt;div class="right"&gt;Right&lt;/div&gt;
+  &lt;div class="top" 
+       data-nav-xyz="45.0.-35" 
+       data-nav-zoom="1.3"
+       data-section="top-view"&gt;
+    📍 Click: Top View
+  &lt;/div&gt;
+  &lt;div class="bottom" 
+       data-nav-xyz="-45.0.-35" 
+       data-nav-zoom="1.3"
+       data-section="bottom-view"&gt;
+    📍 Click: Bottom View
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Navigation faces */
+[data-nav-xyz] {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+[data-nav-xyz]:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px 
+    rgba(34, 31, 25, 0.3);
+}
+
+.cuboid .face {
+  background: white;
+  border: 2px solid #221F19;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Navigation works 
+// automatically!
+
+// Click face with 
+// data-nav-xyz to animate
+// to that rotation/zoom
+
+createIsometric3D('demo5', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 1.1,
+  showCompactControls: true
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo5" class="isometric-container wireframe">
+      <div class="nav-hint">Click on the colored faces to navigate</div>
+      <div class="isometric-perspective">
+        <div id="nav-cube" class="cuboid" data-width="120" data-height="80" data-depth="120">
+
+          <div class="front" data-nav-zoom="0.8" style="background: rgba(255, 100, 100, 0.3);"
+            data-section="front-view">
+            📍 Click: Front
+          </div>
+          <div class="back">Back</div>
+          <div class="left" style="background: rgba(100, 255, 100, 0.3);">
+            Left
+          </div>
+          <div class="right">Right</div>
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-section="top-view"
+            style="background: rgba(100, 100, 255, 0.3);">
+            📍 Click: Top
+          </div>
+          <div class="bottom" style="background: rgba(255, 255, 100, 0.3);">
+            Bottom
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 6: SVG Connectors -->
+  <div class="feature-section">
+    <h2>SVG Connector Lines</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Draw animated connection lines between elements to show relationships and data flow. Lines update dynamically
+        as you rotate the view.</p>
+      <ul>
+        <li>Connect elements by ID using <code>data-connectors</code> JSON</li>
+        <li>Choose connection points: top, bottom, left, right, center, corners</li>
+        <li>Customize colors, line styles (solid/dashed), and end markers (arrows/circles)</li>
+        <li>Add animated circle markers for emphasis</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="isometric-perspective"
+     data-connectors='[
+  {
+    "ids": "cube1,cube2",
+    "positions": "right,left",
+    "color": "#221F19",
+    "endStyles": "circle,arrow",
+    "lineStyle": "solid",
+    "animationStyle": "circle"
+  },
+  {
+    "ids": "cube2,cube3",
+    "positions": "top,bottom",
+    "color": "#4A4640",
+    "endStyles": ",arrowSmall",
+    "lineStyle": "dashed"
+  }
+]'&gt;
+  &lt;div id="cube1" 
+       class="cuboid" 
+       data-width="80"...&gt;
+    ...
+  &lt;/div&gt;
+  &lt;div id="cube2" ...&gt;&lt;/div&gt;
+  &lt;div id="cube3" ...&gt;&lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Connectors auto-styled */
+/* No CSS needed! */
+
+.cuboid .face {
+  background: white;
+  border: 2px solid #221F19;
+  color: #221F19;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Connectors auto-render
+// and update on rotation!
+
+createIsometric3D('demo6', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 0.9
+});
+
+// Access SVG if needed:
+const svg = document
+  .querySelector('svg.connectors');</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo6" class="isometric-container wireframe">
+      <div class="nav-hint">Connectors update as you rotate</div>
+      <div class="isometric-perspective" data-connectors='[
+                     {
+                         "ids": "conn-cube1,conn-cube2",
+                         "positions": "right,left",
+                         "vertices": "10",
+                         "color": "#221F19",
+                         "endStyles": "circle,arrow",
+                         "lineStyle": "solid",
+                         "animationStyle": "circle"
+                     },
+                     {
+                         "ids": "conn-cube2,conn-cube3",
+                         "positions": "bottom,top",
+                         "vertices": "30",
+                         "color": "#4A4640",
+                         "endStyles": ",arrowSmall",
+                         "lineStyle": "dashed"
+                     }
+                 ]'>
+        <div id="conn-cube1" class="cuboid" data-width="80" data-height="60" data-depth="80">
+          <div class="front">Input</div>
+          <div class="back">Input</div>
+          <div class="left">Input</div>
+          <div class="right">▶️</div>
+          <div class="top">Start</div>
+          <div class="bottom">Bottom</div>
+        </div>
+        <div id="conn-cube2" class="cuboid" data-width="80" data-height="60" data-depth="80"
+          style="margin-left: 150px;">
+          <div class="front">Process</div>
+          <div class="back">Process</div>
+          <div class="left">◀️</div>
+          <div class="right">Right</div>
+          <div class="top">⬆️</div>
+          <div class="bottom">Bottom</div>
+        </div>
+        <div class="scene" data-z-axis="80" style="margin-top: 30px; padding-top: 80px; background-color: #c6c6c69c;">
+          <div id="conn-cube3" class="cuboid" data-width="80" data-height="60" data-depth="80">
+            <div class="front">Output</div>
+            <div class="back">Output</div>
+            <div class="left">Left</div>
+            <div class="right">Right</div>
+            <div class="top">End</div>
+            <div class="bottom">⬇️</div>
+          </div>
+          <div>Scene with margin,<br>padding <br>and z-axis(shadow)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 7: Color Styling -->
+  <div class="feature-section">
+    <h2>Color Styling and Customization</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Each face can have custom colors, gradients, and transparency. Create vibrant, eye-catching 3D presentations.
+      </p>
+      <ul>
+        <li>Use CSS to style individual faces with different colors</li>
+        <li>Apply <code>rgba()</code> colors for transparency and depth</li>
+        <li>Add gradients, shadows, and backdrop filters</li>
+        <li>Combine with borders and hover effects</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="cuboid" 
+     data-width="100" 
+     data-height="70" 
+     data-depth="100"&gt;
+  &lt;div class="front"&gt;
+    🔵 Blue Front
+  &lt;/div&gt;
+  &lt;div class="back"&gt;
+    🟢 Green Back
+  &lt;/div&gt;
+  &lt;div class="left"&gt;
+    🟣 Purple Left
+  &lt;/div&gt;
+  &lt;div class="right"&gt;
+    🟡 Yellow Right
+  &lt;/div&gt;
+  &lt;div class="top"&gt;
+    🔴 Red Top
+  &lt;/div&gt;
+  &lt;div class="bottom"&gt;
+    ⚫ Dark Bottom
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Color each face */
+.cuboid .face.front {
+  background: rgba(222,160,58,0.8);
+  border-color: #DEA03A;
+  color: white;
+}
+.cuboid .face.back {
+  background: rgba(185,78,58,0.8);
+  border-color: #B94E3A;
+  color: white;
+}
+.cuboid .face.left {
+  background: rgba(154,160,154,0.8);
+  color: white;
+}
+.cuboid .face.top {
+  background: rgba(34,31,25,0.9);
+  color: white;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Pure CSS styling!
+// No JS needed.
+
+createIsometric3D('demo7', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 1.0
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo7" class="isometric-container colored">
+      <div class="nav-hint">Rotate to see colored faces</div>
+      <div class="isometric-perspective">
+        <div class="cuboid" data-width="100" data-height="70" data-depth="100">
+          <div class="front">🔵 Blue Front</div>
+          <div class="back">🟢 Green Back</div>
+          <div class="left">🟣 Purple Left</div>
+          <div class="right">🟡 Yellow Right</div>
+          <div class="top">🔴 Red Top</div>
+          <div class="bottom">⚫ Dark Bottom</div>
+        </div>
+        <div class="cuboid" data-width="80" data-height="60" data-depth="80" style="margin-left: 150px;">
+          <div class="front">Front</div>
+          <div class="back">Back</div>
+          <div class="left">Left</div>
+          <div class="right">Right</div>
+          <div class="top">Top</div>
+          <div class="bottom">Bottom</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 8: Highlighting System -->
+  <div class="feature-section">
+    <h2>Highlighting and Focus System</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Dynamically highlight specific elements while dimming others. Perfect for step-by-step presentations and guided
+        tours. This example uses a 3×3 grid layout with connector vertices for curved paths.</p>
+      <ul>
+        <li><code>data-groups</code> assigns elements to named groups</li>
+        <li><code>data-activate</code> on navigation triggers highlighting</li>
+        <li>Highlighted elements receive <code>.highlight</code> class</li>
+        <li>Non-highlighted elements receive <code>.dimmed</code> class and automatically dim</li>
+        <li>Works with cuboids, faces, and SVG connectors</li>
+        <li><strong>Vertices:</strong> Control connector path curves using <code>"vertices": "20,80"</code> values
+          (0-100, where 50 is center)</li>
+      </ul>
+      <h4>Customizing Dimming Effect</h4>
+      <p>Adjust the dimming intensity by modifying the CSS opacity values in <code>isometric-3d.css</code>:</p>
+      <div class="code-example">
+        <pre>/* Dim connectors (default: 0.1) */
+.connector-path.dimmed {
+  opacity: 0.1;
+}
+
+/* Dim scenes (default: 0.2) */
+.scene.dimmed {
+  opacity: 0.2;
+}
+
+/* Dim cuboid faces (default: 0.2) */
+.cuboid.dimmed > .face,
+.face.dimmed {
+  opacity: 0.2;
+}
+
+/* Dim cuboid content (default: 0.4) */
+.cuboid.dimmed > *:not(.face) {
+  opacity: 0.4;
+}</pre>
+      </div>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="isometric-perspective"
+     data-connectors='[{
+  "ids": "cube1,cube2",
+  "positions": "center,center",
+  "vertices": "35,65",
+  "color": "#221F19",
+  "groups": "step1"
+}]'&gt;
+  &lt;div id="cube1" 
+       class="cuboid"
+       data-groups="step1"
+       data-width="60"
+       data-height="50"
+       data-depth="60"&gt;
+    &lt;div class="front" 
+         data-groups="step1"&gt;
+      Start
+    &lt;/div&gt;
+    &lt;!-- other faces... --&gt;
+    &lt;div class="top" 
+         data-nav-xyz="45.0.-35" 
+         data-activate="step1" 
+         data-groups="step1"&gt;
+      📍 Step 1
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;!-- more cuboids... --&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Highlighting */
+.face.highlight {
+  background: #221F19 !important;
+  border: 3px solid #221F19 !important;
+  box-shadow: 0 0 0 2px white, 
+    0 0 0 4px #221F19;
+  color: white !important;
+  transform: scale(1.02);
+}
+
+/* Dimmed non-highlighted */
+.isometric-perspective:has(
+  .highlight[data-activate]
+) .cuboid:not(.highlight) 
+  > .face {
+  opacity: 0.3;
+  filter: grayscale(100%);
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Auto-handles highlighting!
+
+createIsometric3D('demo8', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 0.85,
+  showCompactControls: true
+});
+
+// Vertices in connectors:
+// "vertices": "35,65"
+// Controls curve through
+// 35% and 65% positions
+// (0-100 range, 50=center)</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo8" class="isometric-container wireframe">
+      <div class="isometric-perspective grid-hl" data-connectors='[
+                     {
+                         "ids": "hl-cube1,hl-cube5",
+                         "positions": "bottom,top",
+                         "vertices": "15,15",
+                         "color": "#221F19",
+                         "endStyles": "circle,arrowSmall",
+                         "groups": "step1",
+                         "animationStyle": "circle"
+                     },
+                     {
+                         "ids": "hl-cube5,hl-cube9",
+                         "positions": "bottom,top",
+                         "vertices": "15,5",
+                         "color": "#4A4640",
+                         "endStyles": "circle,arrowSmall",
+                         "groups": "step2",
+                         "animationStyle": "circle"
+                     },
+                     {
+                         "ids": "hl-cube9,hl-cube1",
+                         "positions": "left,bottom",
+                         "vertices": "40,30",
+                         "color": "#221F19",
+                         "endStyles": "circle,arrowSmall",
+                         "lineStyle": "dashed",
+                         "groups": "step3",
+                         "animationStyle": "circle"
+                     }
+                 ]'>
+        <div id="hl-cube1" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step1"
+          style="grid-area: 1 / 1 / 2 / 2;">
+          <div class="front" data-groups="step1"><span class="status-indicator"
+              style="font-size: 0.7em; color: #888;"></span></div>
+          <div class="back" data-groups="step1">Start</div>
+          <div class="left" data-groups="step1">Activate step1; Groups step1,step3</div>
+          <div class="right">DB</div>
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="step1" data-section="step1"
+            data-groups="step1">
+            📍 Step 1
+          </div>
+          <div class="bottom" data-groups="step1">Bottom</div>
+        </div>
+
+        <div id="hl-cube2" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step122"
+          style="grid-area: 1 / 2 / 2 / 3;">
+          <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
+          <div class="back">Cache</div>
+          <div class="left">Cache</div>
+          <div class="right">Cache</div>
+          <div class="top">Memory</div>
+          <div class="bottom">Bottom</div>
+        </div>
+
+        <div id="hl-cube3" style="grid-area: 1 / 3 / 2 / 4;">
+          <!-- Empty placeholder -->
+        </div>
+
+        <div id="hl-cube4" style="grid-area: 2 / 1 / 3 / 2;">
+          <!-- Empty placeholder -->
+        </div>
+
+        <div id="hl-cube5" class="scene" data-groups="step1,step2" data-nav-xyz="45.0.-35" data-nav-zoom="1.3"
+          data-activate="step2" data-section="step2"
+          style="border: 1px dashed #221F19; grid-area: 2 / 2 / 3 / 3; padding: 15px; cursor: pointer;">
+          📍 Step 2 - API
+        </div>
+
+        <div id="hl-cube6" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step2"
+          style="grid-area: 2 / 3 / 3 / 4;">
+          <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
+          <div class="back">Logic</div>
+          <div class="left">Logic</div>
+          <div class="right">Logic</div>
+          <div class="top">Business</div>
+          <div class="bottom">Bottom</div>
+        </div>
+
+        <div id="hl-cube7" style="grid-area: 3 / 1 / 4 / 2;">
+          <!-- Empty placeholder -->
+        </div>
+
+        <div id="hl-cube8" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step2,step3"
+          style="grid-area: 3 / 2 / 4 / 3;">
+          <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
+          <div class="back">Router</div>
+          <div class="left">cuboid group: step3, step2</div>
+          <div class="right">Route</div>
+          <div class="top">Gateway</div>
+          <div class="bottom">Bottom</div>
+        </div>
+
+        <div id="hl-cube9" class="cuboid" data-width="60" data-height="50" data-depth="60"
+          style="grid-area: 3 / 3 / 4 / 4;" data-groups="step3">
+          <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
+          <div class="back" data-groups="step3">UI</div>
+          <div class="left" data-groups="step3">group: step3</div>
+          <div class="right">group: none</div>
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="step3" data-section="step3"
+            data-groups="step3">
+            📍 Step 3
+          </div>
+          <div class="bottom" data-groups="step3">Bottom</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 9: Automatic Height Calculation -->
+  <div class="feature-section">
+    <h2>Automatic Height Calculation</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>When <code>data-height</code> is omitted, the system automatically calculates the height based on the face
+        content. Perfect for dynamic content.</p>
+      <ul>
+        <li>Omit <code>data-height</code> attribute to enable auto-calculation</li>
+        <li>System measures actual content height of side faces</li>
+        <li>Great for flex layouts with variable items</li>
+        <li>Content determines dimensions automatically</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;!-- Omit data-height! --&gt;
+&lt;div class="cuboid" 
+     data-width="130" 
+     data-depth="130" 
+    &gt;
+  &lt;div class="front"&gt;Front&lt;/div&gt;
+  &lt;div class="back"&gt;Back&lt;/div&gt;
+  &lt;div class="left flex-column"&gt;
+    &lt;div&gt;📌 Item 1&lt;/div&gt;
+    &lt;div&gt;📌 Item 2&lt;/div&gt;
+    &lt;div&gt;📌 Item 3&lt;/div&gt;
+    &lt;div&gt;📌 Item 4&lt;/div&gt;
+    &lt;div&gt;📌 Item 5&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class="right"&gt;Right&lt;/div&gt;
+  &lt;div class="top"&gt;Auto Height&lt;/div&gt;
+  &lt;div class="bottom"&gt;Bottom&lt;/div&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Flex layout for content */
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  transform-style: preserve-3d;
+}
+
+.flex-column > div {
+  padding: 8px;
+  background: rgba(0,0,0,0.05);
+  border: 1px solid #221F19;
+  border-radius: 3px;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Height calculated
+// automatically from 
+// content size!
+
+createIsometric3D('demo9', {
+  defaultRotation: {
+    x: 45, y: 0, z: -35
+  },
+  defaultZoom: 1.2
+});</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo9" class="isometric-container wireframe">
+      <div class="nav-hint">Height calculated from content</div>
+      <div class="isometric-perspective">
+        <div class="cuboid" data-width="auto">
+          <div class="front flex-row">
+            <div>📌 Item 1</div>
+            <div>📌 Item 2</div>
+            <div>📌 Item 3</div>
+            <div>📌 Item 4</div>
+            <div>📌 Item 5</div>
+          </div>
+          <div class="back">Back</div>
+          <div class="left flex-column">
+            <div>📌 Item 1</div>
+            <div>📌 Item 2</div>
+            <div>📌 Item 3</div>
+            <div>📌 Item 4</div>
+            <div>📌 Item 5</div>
+          </div>
+          <div class="right">Auto Height <br> Auto Depth<br>Auto Width</div>
+          <div class="top flex-column">
+            <div>📌 Item 1</div>
+            <div>📌 Item 2</div>
+            <div>📌 Item 3</div>
+            <div>📌 Item 4</div>
+            <div>📌 Item 5</div>
+          </div>
+          <div class="bottom">Bottom</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 10: Complex Architecture Example -->
+  <div class="feature-section">
+    <h2>Complete Architecture Diagram</h2>
+    <div class="feature-description">
+      <h3>What is it?</h3>
+      <p>Combine all features to create comprehensive architecture diagrams and system visualizations.</p>
+      <ul>
+        <li>Mix flat scenes for labels and 3D cuboids for components</li>
+        <li>Use connectors to show data flow and relationships</li>
+        <li>Apply navigation for guided tours through the system</li>
+        <li>Use highlighting to focus on specific subsystems</li>
+      </ul>
+      <div class="code-example">
+        <div class="code-column">
+          <strong>HTML</strong>
+          <pre>&lt;div class="isometric-perspective" 
+     data-connectors='[{
+  "ids": "client,api",
+  "positions": "right,left",
+  "color": "#221F19",
+  "endStyles": "circle,arrow",
+  "groups": "frontend"
+}]'&gt;
+  &lt;!-- Title --&gt;
+  &lt;div class="scene" 
+       data-z-axis="200"&gt;
+    🏗️ System Architecture
+  &lt;/div&gt;
+  
+  &lt;!-- Component --&gt;
+  &lt;div id="client" 
+       class="cuboid"
+       data-width="90"
+       data-height="60"
+       data-depth="90"
+       data-groups="frontend"&gt;
+    &lt;div class="front"&gt;React&lt;/div&gt;
+    &lt;div class="top" 
+         data-nav-xyz="30.0.-20"
+         data-nav-zoom="1.4"
+         data-activate="frontend"
+         data-section="frontend"&gt;
+      🖥️ Client
+    &lt;/div&gt;
+    &lt;!-- other faces... --&gt;
+  &lt;/div&gt;
+  &lt;!-- more components... --&gt;
+&lt;/div&gt;</pre>
+        </div>
+        <div class="code-column">
+          <strong>CSS</strong>
+          <pre>/* Sketch-style container */
+.isometric-container {
+  height: 500px;
+  background: white;
+  border: 2px solid #C5CBC5;
+}
+
+/* Sketch-style faces */
+.cuboid .face {
+  background: white;
+  border: 2px solid #221F19;
+  color: #221F19;
+  font-weight: 600;
+}
+
+/* Scene labels */
+.scene {
+  background: white;
+  border: 2px solid #221F19;
+  padding: 15px;
+  font-weight: 600;
+}</pre>
+        </div>
+        <div class="code-column">
+          <strong>JavaScript</strong>
+          <pre>// Combine everything!
+createIsometric3D('demo10', {
+  defaultRotation: {
+    x: 50, y: 0, z: -30
+  },
+  defaultZoom: 0.7,
+  showCompactControls: true
+});
+
+// Features used:
+// ✓ Flat scenes (labels)
+// ✓ 3D cuboids (components)
+// ✓ Connectors (data flow)
+// ✓ Navigation (guided tour)
+// ✓ Groups (highlighting)</pre>
+        </div>
+      </div>
+    </div>
+    <div id="demo10" class="isometric-container wireframe">
+      <div class="nav-hint">Click component tops to explore system</div>
+      <div class="isometric-perspective" data-connectors='[
+                     {
+                         "ids": "arch-client,arch-api",
+                         "positions": "right,left",
+                         "vertices": "15,15",
+                         
+                         "color": "#221F19",
+                         "endStyles": "circle,arrow",
+                         "animationStyle": "circle",
+                         "groups": "frontend"
+                     },
+                     {
+                         "ids": "arch-api,arch-db",
+                         "positions": "bottom,top",
+                         "color": "#221F19",
+                         "endStyles": ",arrow",
+                         "groups": "backend"
+                     },
+                     {
+                         "ids": "arch-api,arch-cache",
+                         "positions": "right,left",
+                         "color": "#4A4640",
+                         "endStyles": ",arrowSmall",
+                         "lineStyle": "dashed",
+                         "groups": "backend"
+                     }
+                 ]'>
+
+        <!-- Title -->
+        <div class="scene" data-z-axis="200">
+          🏗️ System Architecture
+        </div>
+
+        <!-- Frontend Layer -->
+        <div id="arch-client" class="cuboid" data-width="90" data-height="60" data-depth="90" data-groups="frontend">
+          <div class="front">React</div>
+          <div class="back">React</div>
+          <div class="left">UI</div>
+          <div class="right">▶️</div>
+          <div class="top" data-nav-xyz="30.0.-20" data-nav-zoom="1.4" data-activate="frontend" data-section="frontend">
+            🖥️ Client
+          </div>
+          <div class="bottom">Bottom</div>
+        </div>
+
+        <!-- API Layer -->
+        <div id="arch-api" class="cuboid" data-width="100" data-height="70" data-depth="100" style="margin-left: 150px;"
+          data-groups="frontend,backend">
+          <div class="front">REST API</div>
+          <div class="back">REST API</div>
+          <div class="left">◀️</div>
+          <div class="right">▶️</div>
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="frontend,backend"
+            data-section="api">
+            🔗 API Gateway
+          </div>
+          <div class="bottom">⬇️</div>
+        </div>
+
+        <!-- Database -->
+        <div class="scene" data-z-axis="-100" style="margin-left: 150px;">
+          <div id="arch-db" class="cuboid" data-width="90" data-height="80" data-depth="90" data-groups="backend">
+            <div class="front">PostgreSQL</div>
+            <div class="back">PostgreSQL</div>
+            <div class="left">DB</div>
+            <div class="right">DB</div>
+            <div class="top">⬆️</div>
+            <div class="bottom" data-nav-xyz="60.0.-35" data-nav-zoom="1.5" data-activate="backend"
+              data-section="database">
+              🗄️ Database
+            </div>
+          </div>
+        </div>
+
+        <!-- Cache -->
+        <div id="arch-cache" class="cuboid" data-width="70" data-height="50" data-depth="70" style="margin-left: 280px;"
+          data-groups="backend">
+          <div class="front">Redis</div>
+          <div class="back">Redis</div>
+          <div class="left">◀️</div>
+          <div class="right">Cache</div>
+          <div class="top" data-nav-xyz="20.0.-50" data-nav-zoom="1.6" data-activate="backend" data-section="cache">
+            ⚡ Cache
+          </div>
+          <div class="bottom">Bottom</div>
+        </div>
+
+        <!-- Layer Labels -->
+        <div class="scene" style="margin-top: -80px;">
+          📱 Presentation Layer
+        </div>
+        <div class="scene" style="margin-top: 20px; margin-left: 150px;">
+          ⚙️ Business Logic
+        </div>
+        <div class="scene" data-z-axis="-100" style="margin-top: 120px; margin-left: 150px;">
+          💾 Data Layer
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-header" style="margin-top: 60px;">
+    <h2>🎯 Key Takeaways</h2>
+    <p style="margin-top: 20px; font-size: 1.1em;">
+      The Isometric 3D Presenter combines simple wireframe aesthetics with powerful features for creating
+      interactive 3D presentations. From basic flat scenes to complex architecture diagrams with navigation
+      and highlighting, it provides everything you need for engaging visual storytelling.
+    </p>
+  </div>
+
+  <script src="../src/isometric-3d.js"></script>
+  <script>
+    // Initialize all demos
+    const demos = [
+      { id: 'demo1', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.0 },
+      { id: 'demo2', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.2 },
+      { id: 'demo3', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.0 },
+      { id: 'demo4', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.9 },
+      { id: 'demo5', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.1, showCompactControls: true },
+      { id: 'demo6', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.9 },
+      { id: 'demo7', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.0 },
+      { id: 'demo8', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.85, showCompactControls: true },
+      { id: 'demo9', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.2 },
+      { id: 'demo10', rotation: { x: 50, y: 0, z: -30 }, zoom: 0.7, showCompactControls: true }
+    ];
+
+    demos.forEach(config => {
+      const { id, rotation, zoom, showCompactControls } = config;
+      createIsometric3D(id, {
+        defaultRotation: rotation,
+        defaultZoom: zoom,
+        showCompactControls: showCompactControls || false
+      });
+    });
+
+    console.log('✨ All feature showcase demos initialized!');
+    console.log('💡 Tips:');
+    console.log('  - Click and drag to rotate any scene');
+    console.log('  - Use mouse wheel to zoom');
+    console.log('  - Click on colored/labeled faces to navigate');
+    console.log('  - Watch connectors update dynamically');
+    console.log('  - Try the highlighting system in demo 8');
+
+    // Function to update status indicators for highlighting demo
+    function updateHighlightingStatusIndicators() {
+      const demo8Container = document.getElementById('demo8');
+      if (!demo8Container) return;
+
+      const cuboids = demo8Container.querySelectorAll('.cuboid[id^="hl-cube"]');
+
+      cuboids.forEach(cuboid => {
+        const statusIndicator = cuboid.querySelector('.front .status-indicator');
+        if (!statusIndicator) return;
+
+        const isHighlighted = cuboid.classList.contains('highlight');
+        const isDimmed = cuboid.classList.contains('dimmed');
+        const isSelected = cuboid.classList.contains('selected');
+
+        let statusText = '';
+        let statusColor = '#888';
+
+        if (isHighlighted) {
+          statusText = '✨ highlighted';
+          statusColor = '#4CAF50';
+        } else if (isDimmed) {
+          statusText = '🌑 dimmed';
+          statusColor = '#FF9800';
+        } else if (isSelected) {
+          statusText = '✓ selected';
+          statusColor = '#2196F3';
+        } else {
+          statusText = '○ default';
+          statusColor = '#888';
+        }
+
+        statusIndicator.textContent = statusText;
+        statusIndicator.style.color = statusColor;
+      });
+    }
+
+    // Observe class changes on demo8 container to update status indicators
+    const demo8Container = document.getElementById('demo8');
+    if (demo8Container) {
+      const observer = new MutationObserver(() => {
+        updateHighlightingStatusIndicators();
+      });
+
+      observer.observe(demo8Container, {
+        attributes: true,
+        attributeFilter: ['class'],
+        subtree: true
+      });
+
+      // Initial update
+      setTimeout(updateHighlightingStatusIndicators, 500);
+    }
+  </script>
+</body>
+
+</html>

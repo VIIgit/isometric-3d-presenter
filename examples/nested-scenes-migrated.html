@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nested Scenes Example - MIGRATED to Cuboid Structure</title>
+  <link rel="stylesheet" href="../src/isometric-3d.css">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .isometric-container {
+      height: 600px;
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin-bottom: 40px;
+    }
+
+    .isometric-perspective {
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(207, 35, 35, 0.8) 100%);
+      border-radius: 8px;
+    }
+
+    .scene {
+      border: 1px solid #000000;
+      margin: 5px;
+    }
+
+    /* Face styling - NEW: No .face class needed */
+    .cuboid>.front,
+    .cuboid>.back,
+    .cuboid>.left,
+    .cuboid>.right,
+    .cuboid>.top,
+    .cuboid>.bottom {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    /* Different colors for each face */
+    .cuboid>.front {
+      background: rgba(52, 152, 219, 0.7);
+    }
+
+    .cuboid>.back {
+      background: rgba(46, 204, 113, 0.7);
+    }
+
+    .cuboid>.left {
+      background: rgba(155, 89, 182, 0.7);
+    }
+
+    .cuboid>.right {
+      background: rgba(241, 196, 15, 0.7);
+    }
+
+    .cuboid>.top {
+      background: rgba(231, 76, 60, 0.7);
+    }
+
+    .cuboid>.bottom {
+      background: rgba(52, 73, 94, 0.7);
+    }
+
+    .scene-label {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>✅ Migrated to New Cuboid Structure</h1>
+
+  <div id="demo" class="isometric-container">
+    <div class="isometric-perspective">
+
+      <!-- Scene A (Parent Container) - NO dimensions, just container -->
+      <div id="sceneA" class="scene" data-groups="groupA">
+
+        <!-- Cuboid A1 (3D Box with faces) -->
+        <div class="scene" data-z-axis="20" data-groups="groupA1" data-section="A1">
+          <div class="cuboid" data-width="80" data-height="60" data-depth="50">
+            <div class="scene-label">A1</div>
+            <div class="front">A1 Front</div>
+            <div class="back">A1 Back</div>
+            <div class="left">A1 Left</div>
+            <div class="right">A1 Right</div>
+            <div class="top" data-nav-xyz="30.0.-45" data-nav-zoom="1.5" data-activate="groupA1">A1 Top</div>
+            <div class="bottom">A1 Bottom</div>
+          </div>
+        </div>
+
+        <!-- Cuboid A2 (3D Box with faces, positioned next to A1) -->
+        <div class="scene" data-z-axis="20" style="transform: translateX(100px);" data-groups="groupA2">
+          <div class="cuboid" data-width="80" data-height="60" data-depth="50">
+            <div class="scene-label">A2</div>
+            <div class="front">A2 Front</div>
+            <div class="back">A2 Back</div>
+            <div class="left">A2 Left</div>
+            <div class="right">A2 Right</div>
+            <div class="top" data-nav-xyz="30.0.-30" data-nav-zoom="1.5" data-activate="groupA2">A2 Top</div>
+            <div class="bottom">A2 Bottom</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene B (Standalone with shadow) -->
+      <div id="sceneB" class="scene" data-z-axis="50" style="transform: translateX(250px) translateY(-50px);"
+        data-groups="groupB,groupC" data-section="B">
+        <div class="cuboid" data-width="100" data-height="120" data-depth="100" data-groups="groupB,groupCX">
+          <div class="scene-label">B</div>
+          <div class="front">B Front</div>
+          <div class="back">B Back</div>
+          <div class="left">B Left</div>
+          <div class="right">B Right</div>
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="groupB">B Top</div>
+          <div class="bottom">B Bottom</div>
+        </div>
+      </div>
+
+      <!-- Scene C (With sub-elements on front face) -->
+      <div id="sceneC" class="scene" data-z-axis="10" style="transform: translateX(-150px) translateY(100px);"
+        data-groups="groupC" data-section="C">
+        <div class="cuboid" data-width="auto" data-height="auto" data-depth="auto">
+          <div class="scene-label">C</div>
+          <div class="front flex-column">
+            <!-- Sub-elements without .face class -->
+            <div data-nav-xyz="current" data-nav-zoom="current" data-activate="subface1">Sub-face 1</div>
+            <div data-nav-xyz="current" data-nav-zoom="current" data-activate="subface2">Sub-face 2</div>
+            <div data-nav-xyz="current" data-nav-zoom="current" data-activate="subface3">Sub-face 3</div>
+          </div>
+          <div class="back">C Back</div>
+          <div class="left">C Left</div>
+          <div class="right">C Right</div>
+          <div class="top" data-nav-xyz="60.0.-20" data-nav-zoom="1.4" data-activate="groupC">C Top</div>
+          <div class="bottom">C Bottom</div>
+        </div>
+      </div>
+
+      <div id="withoutScene" class="cuboid" data-width="auto" data-height="auto" data-depth="auto" data-section="D">
+        <div class="scene-label">D</div>
+        <div class="front flex-column">
+          <!-- Sub-elements without .face class -->
+          <div data-nav-xyz="current" data-nav-zoom="current" data-activate="subface1">Sub-face 1</div>
+          <div data-nav-xyz="current" data-nav-zoom="current" data-activate="groupC">Sub-face 2</div>
+          <div data-nav-xyz="current" data-nav-zoom="current" data-activate="subface3">Sub-face 3</div>
+        </div>
+        <div class="back">D Back</div>
+        <div class="left">D Left</div>
+        <div class="right">D Right</div>
+        <div class="top" data-nav-xyz="60.0.-20" data-nav-zoom="1.4" data-activate="groupC">D Top</div>
+        <div class="bottom">D Bottom</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: white; padding: 20px; border-radius: 8px; max-width: 900px; margin: 0 auto;">
+    <h2 style="color: #667eea;">✅ Migration Complete!</h2>
+    <p>This example demonstrates the new structure:</p>
+    <ul>
+      <li>✅ <code>.scene</code> elements are now containers (no dimensions)</li>
+      <li>✅ <code>.cuboid</code> elements have dimensions (data-width, data-height, data-depth)</li>
+      <li>✅ Face elements use direction classes only (.front, .back, .left, .right, .top, .bottom)</li>
+      <li>✅ No more <code>.face</code> class needed</li>
+      <li>✅ Shadows still attach to <code>.scene</code> elements via <code>data-z-axis</code></li>
+      <li>✅ Better semantic structure: scenes contain cuboids and other scenes</li>
+    </ul>
+
+    <h3>Structure:</h3>
+    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">
+Scene A (container)
+  ├─ Scene A1 (data-z-axis="20" - has shadow)
+  │   └─ Cuboid (80×60×50)
+  │       └─ 6 faces
+  └─ Scene A2 (data-z-axis="20" - has shadow)
+      └─ Cuboid (80×60×50)
+          └─ 6 faces
+
+Scene B (data-z-axis="50" - has shadow)
+  └─ Cuboid (100×120×100)
+      └─ 6 faces
+
+Scene C (data-z-axis="10" - has shadow)
+  └─ Cuboid (100×auto×80)
+      └─ 6 faces (front has 3 sub-elements)
+    </pre>
+  </div>
+
+  <script src="../src/isometric-3d.js"></script>
+  <script>
+    const controller = createIsometric3D('demo', {
+      defaultRotation: { x: 45, y: 0, z: -35 },
+      defaultZoom: 1.0,
+      showCompactControls: true,
+      navSelectedTarget: 'bottom'
+    });
+
+
+  </script>
+</body>
+
+</html>

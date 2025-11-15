@@ -183,60 +183,70 @@
                     <img src="logo.jpeg">
                 </div>
 
-                <div id="cube1" class="scene scene-a" data-width="100" data-depth="120" data-z-axis="80"
+                <!-- Cube 1 - Scene container with shadow -->
+                <div class="scene scene-a" data-z-axis="80"
                     data-activate="database" data-groups="database,integration">
-                    <div class="face front">front</div>
-                    <div class="face back">back</div>
-                    <div class="face left flex-column">
-                        left
-                        <div class="face" data-section="featureA" data-activate="database" 
-                             data-nav-xyz="current" data-nav-zoom="current">Feature A
-                        </div>
-                        <div class="face" data-nav-xyz="40.10.-65" data-nav-zoom="0.9" data-section="featureB">Feature B
-                        </div>
+                    <!-- Cuboid with dimensions -->
+                    <div id="cube1" class="cuboid" data-width="100" data-height="auto" data-depth="120">
+                        <div class="front">front</div>
+                        <div class="back">back</div>
+                        <div class="left flex-column">
+                            left
+                            <div data-section="featureA" data-activate="database" 
+                                 data-nav-xyz="current" data-nav-zoom="current">Feature A
+                            </div>
+                            <div data-nav-xyz="40.10.-65" data-nav-zoom="0.9" data-section="featureB">Feature B
+                            </div>
 
-                        <div class="face flex-row">
-                            <div class="face" data-section="featureA" data-activate="database"
-                                 data-nav-xyz="current" data-nav-zoom="current">A
-                            </div>
-                            <div class="face" data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-section="featureD">D
+                            <div class="flex-row">
+                                <div data-section="featureA" data-activate="database"
+                                     data-nav-xyz="current" data-nav-zoom="current">A
+                                </div>
+                                <div data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-section="featureD">D
+                                </div>
                             </div>
                         </div>
+                        <div class="right">right</div>
+                        <div class="top" data-nav-xyz="48.00.-79" data-nav-zoom="0.7" data-nav-pan="261,-31"
+                            data-focus="center" data-section="cube1-description">top 1</div>
+                        <div class="bottom">bottom</div>
                     </div>
-                    <div class="face right">right</div>
-                    <div class="face top" data-nav-xyz="48.00.-79" data-nav-zoom="0.7" data-nav-pan="261,-31"
-                        data-focus="center" data-section="cube1-description">top 1</div>
-                    <div class="face bottom">bottom</div>
                 </div>
                 <div style="transform-style: preserve-3d;"> Cube 2
-                    <div id="cube2" class="scene scene-b" data-width="30" data-height="260" data-depth="100"
-                        data-z-axis="10" data-groups="workflow">
-                        <div class="face front">front</div>
-                        <div class="face back">back</div>
-                        <div class="face left flex-column">
-                            left
-                            <div class="face" id="cube2-left-1" data-nav-xyz="35.00.-65" data-nav-zoom="0.8"
-                                data-section="featureA">Feature A</div>
-                            <div class="face" id="cube2-left-2" data-nav-xyz="40.10.-65" data-nav-zoom="0.9"
-                                data-section="featureB">Feature B</div>
-                            <div class="face" id="cube2-left-3" data-nav-xyz="45.20.-65" data-nav-zoom="1.0"
-                                data-section="featureC">Feature C</div>
+                    <!-- Scene container with shadow -->
+                    <div class="scene scene-b" data-z-axis="10" data-groups="workflow">
+                        <!-- Cuboid with dimensions -->
+                        <div id="cube2" class="cuboid" data-width="30" data-height="260" data-depth="100">
+                            <div class="front">front</div>
+                            <div class="back">back</div>
+                            <div class="left flex-column">
+                                left
+                                <div id="cube2-left-1" data-nav-xyz="35.00.-65" data-nav-zoom="0.8"
+                                    data-section="featureA">Feature A</div>
+                                <div id="cube2-left-2" data-nav-xyz="40.10.-65" data-nav-zoom="0.9"
+                                    data-section="featureB">Feature B</div>
+                                <div id="cube2-left-3" data-nav-xyz="45.20.-65" data-nav-zoom="1.0"
+                                    data-section="featureC">Feature C</div>
+                            </div>
+                            <div class="right">right</div>
+                            <div class="top" id="cube2-top" data-z-axis="180" data-nav-xyz="00.00.15"
+                                data-nav-zoom="0.8" data-section="cube2-top-description">top 2</div>
+                            <div class="bottom">bottom</div>
                         </div>
-                        <div class="face right">right</div>
-                        <div class="face top" id="cube2-top" data-z-axis="180" data-nav-xyz="00.00.15"
-                            data-nav-zoom="0.8" data-section="cube2-top-description">top 2</div>
-                        <div class="face bottom">bottom</div>
                     </div>
                 </div>
-                <div id="cube3" class="scene scene-c" data-width="200" data-height="40" data-depth="80"
-                    data-z-axis="50">
-                    <div class="face front">front</div>
-                    <div class="face back">back</div>
-                    <div class="face left">left</div>
-                    <div class="face right">right</div>
-                    <div class="face top" data-nav-xyz="15.00.-15" data-nav-zoom="0.8" data-focus="center"
-                        data-section="cube3-description" data-activate="workflow,integration">top cube3</div>
-                    <div class="face bottom">bottom</div>
+                <!-- Cube 3 - Scene container with shadow -->
+                <div class="scene scene-c" data-z-axis="50">
+                    <!-- Cuboid with dimensions -->
+                    <div id="cube3" class="cuboid" data-width="200" data-height="40" data-depth="80">
+                        <div class="front">front</div>
+                        <div class="back">back</div>
+                        <div class="left">left</div>
+                        <div class="right">right</div>
+                        <div class="top" data-nav-xyz="15.00.-15" data-nav-zoom="0.8" data-focus="center"
+                            data-section="cube3-description" data-activate="workflow,integration">top cube3</div>
+                        <div class="bottom">bottom</div>
+                    </div>
                 </div>
             </div>
 

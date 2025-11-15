@@ -9,15 +9,23 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  cursor: grab;
 }
 
-.isometric-container:active {
-  cursor: grabbing;
+/* Visual feedback when container has focus for keyboard navigation */
+.isometric-container:focus {
+  outline: 2px solid rgba(74, 158, 255, 0.5);
+  outline-offset: -2px;
 }
+
+.isometric-container:focus-visible {
+  outline: 2px solid rgba(74, 158, 255, 0.8);
+  outline-offset: -2px;
+}
+
+
 
 .isometric-perspective {
-
+  cursor: grab;
   transform-style: preserve-3d;
 
   /* Hide initially until 3D transforms are ready */
@@ -62,7 +70,13 @@
   pointer-events: none;
 }
 
+/* Scene - container only, can hold cuboids and other scenes */
 .scene {
+  position: relative;
+}
+
+/* Cuboid - 3D box with up to 6 faces */
+.cuboid {
   position: relative;
   transform-style: preserve-3d;
   transform-origin: center center;
@@ -72,42 +86,41 @@
   -webkit-backface-visibility: hidden;
 }
 
-/* Make all child elements inside scenes transparent to pointer events
-   so clicks and hovers pass through to the scene itself.
-   This prevents images, divs, and other content from interfering with scene interactions.
-   Exception: .face elements should remain interactive */
-.scene>*:not(.face) {
+/* Make all child elements inside cuboids transparent to pointer events
+   so clicks and hovers pass through to the cuboid itself.
+   This prevents images, divs, and other content from interfering with cuboid interactions.
+   Exception: face elements should remain interactive */
+.cuboid>*:not(.face) {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Prevent image dragging and selection inside scenes */
-.scene img {
+/* Prevent image dragging and selection inside the isometric perspective */
+.isometric-perspective img {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
-/* Faces should remain interactive */
-.scene>.face {
+/* Face elements (.face class added programmatically) should remain interactive */
+.cuboid > .face {
   pointer-events: auto;
-}
-
-.face {
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-
   cursor: default;
-  /* Default cursor for faces */
-
   left: 50%;
   top: 50%;
-  /*transform-style: preserve-3d;*/
   box-sizing: border-box;
-  /*opacity: 0.9;*/
+}
+
+/* Non-clickable faces and scenes show grab cursor on hover to indicate draggable area */
+.cuboid > .face:not(.nav-clickable):hover,
+.scene:not(.nav-clickable):hover {
+  cursor: grab;
 }
 
 .flex-row {
@@ -128,19 +141,7 @@
   width: 100%;
 }
 
-.flex-column>div:hover,.flex-row>div:hover {
-  scale: 1.1;
-}
-
-
-
 /* ========= WIREFRAME STYLES - Core 3D Structure ========= */
-
-/* Navigation elements - show pointer cursor on hover */
-[data-nav-xyz], [data-nav-zoom] {
-  cursor: pointer !important;
-}
-
 
 /* ========= COMPACT CONTROLS WITH GLASS EFFECT ========= */
 
@@ -155,6 +156,50 @@
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: 99;
+}
+
+/* Modifier key info display */
+.modifier-info {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 6px;
+  color: white;
+  font-size: 12px;
+  font-family: 'Arial', sans-serif;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modifier-info.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.modifier-info strong {
+  color: #4a9eff;
+  font-weight: bold;
+}
+
+/* Keyboard hint - appears when hovering compact controls but container not focused */
+.modifier-info.keyboard-hint {
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+/* Show keyboard hint when active */
+.modifier-info.keyboard-hint.active {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Show compact-controls only on hover */
@@ -173,7 +218,7 @@
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 5px;
-  background: rgba(0, 0, 0, 0.3);
+  background-color: rgba(0, 0, 0, 0.3);
   color: white;
   font-family: 'Arial', sans-serif;
   font-size: 10px;
@@ -192,7 +237,7 @@
   width: 40px;
   height: 40px;
   background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.663);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -200,7 +245,7 @@
   box-shadow:
     inset 0 2px 4px rgba(255, 255, 255, 0.1),
     0px 0px 2px 0px #000000;
-
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .center-dot {
@@ -322,54 +367,26 @@
   transform: translateY(-50%) scale(1.1);
 }
 
-/* Zoom Controls */
-.zoom-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Pressed state for direction indicators (keyboard or click) */
+.direction-indicator.pressed {
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 1)) brightness(1.5);
 }
 
-.zoom-button {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  height: 24px;
-  width: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  pointer-events: auto;
-  user-select: none;
-  box-shadow:
-    inset 0 2px 4px rgba(255, 255, 255, 0.1),
-    0px 0px 2px 0px #000000;
+.direction-indicator.up.pressed {
+  border-bottom-color: rgba(255, 255, 255, 1);
 }
 
-.zoom-button:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+.direction-indicator.down.pressed {
+  border-top-color: rgba(255, 255, 255, 1);
 }
 
-.zoom-button:active {
-  transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.4);
+.direction-indicator.left.pressed {
+  border-right-color: rgba(255, 255, 255, 1);
 }
 
-.zoom-in {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.zoom-out {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  border-top: none;
+.direction-indicator.right.pressed {
+  border-left-color: rgba(255, 255, 255, 1);
 }
 
 .help-button {
@@ -393,6 +410,8 @@
   box-shadow:
     inset 0 2px 4px rgba(255, 255, 255, 0.1),
     0px 0px 2px 0px #000000;
+
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .help-button:hover {
@@ -475,23 +494,11 @@
 /* ========= NAVIGATION GLASS OVERLAY EFFECT ========= */
 
 .nav-clickable {
-  position: relative;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transform-style: preserve-3d !important;
 }
 
-/* Make child elements transparent to pointer events to prevent hover flickering
-   UNLESS they are also scenes or faces (which should remain clickable) */
-.nav-clickable>*:not(.scene):not(.face) {
-  pointer-events: none;
-}
-
-/* Restore pointer events for nested scenes and faces */
-.nav-clickable .scene,
-.nav-clickable .face {
-  pointer-events: auto;
-}
-
+/* Glass overlay effect for navigable elements */
 .nav-clickable::before {
   content: '';
   position: absolute;
@@ -500,9 +507,9 @@
   right: 0;
   bottom: 0;
   background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.2) 0%,
       rgba(255, 255, 255, 0) 50%,
-      rgba(255, 255, 255, 0.1) 100%);
+      rgba(255, 255, 255, 0.2) 100%);
   border: 2px solid rgba(109, 109, 109, 0.4);
   border-radius: 5px;
   opacity: 0;
@@ -516,43 +523,21 @@
     0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Show glass effect on hover */
 .nav-clickable:hover::before {
   opacity: 1;
-  transform: translateZ(15px) scale(1.02);
+  transform: translateZ(10px) scale(1.02);
 }
 
+/* Click feedback */
 .nav-clickable:active::before {
   opacity: 0.8;
   transform: translateZ(5px) scale(0.98);
 }
 
-/* Enhanced glass effect for faces */
-.face.nav-clickable::before, .scene.nav-clickable::before, .label.nav-clickable::before {
-  border-radius: 6px;
-  background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.25) 0%,
-      rgba(255, 255, 255, 0) 50%,
-      rgba(255, 255, 255, 0.25) 100%);
-}
-
 .label {
   user-select: none;
   -webkit-user-select: none;
-}
-
-/* Navigation indicator */
-.nav-clickable::after {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 10px;
-  opacity: 0;
-  transition: all 0.3s ease;
-  z-index: 11;
-}
-
-.nav-clickable:hover::after {
-  opacity: 0.8;
 }
 
 
@@ -561,12 +546,12 @@
   position: absolute;
   pointer-events: none;
   z-index: -1;
-  transform-style: preserve-3d;
+  transform-style: flat; /* Do NOT participate in 3D transform space */
   transform-origin: center center;
-
-  /* No background or styling needed since we use box-shadow for the actual shadow */
+  box-sizing: border-box; /* Include borders in width/height */
+  /* Shadow is invisible - only the box-shadow is visible */
   background: transparent;
-  border: none;
+  opacity: 1;
 }
 
 /* ========= NAVIGATION BAR ========= */
@@ -603,47 +588,19 @@
   background: rgba(255, 255, 255, 1);
 }
 
-/* Highlighting system for connectors and elements */
-.connector-path,
-.connector-marker,
-.connector-animated-marker,
-.face {
-  transition: opacity 0.3s ease, stroke 0.3s ease, fill 0.3s ease;
+/* ========= HIGHLIGHT AND DIMMING SYSTEM ========= */
+
+
+
+
+/* Give all scenes a base transform so they behave consistently with box-shadow */
+.scene {
+  --scene-translate-z: 0px;
+  --scene-hover-scale: 1;
+  transform: translateZ(var(--scene-translate-z)) scale(var(--scene-hover-scale));
 }
 
-/* Non-highlighted connectors when highlighting is active */
-.isometric-perspective:has(.highlight[data-activate]) .connector-path:not(.highlight),
-.connector-path:not(.highlight).dimmed {
-  opacity: 0.1;
-  stroke: #80808066 !important;
-}
-
-.isometric-perspective:has(.highlight[data-activate]) .connector-marker:not(.highlight),
-.isometric-perspective:has(.highlight[data-activate]) .connector-animated-marker:not(.highlight),
-.connector-marker:not(.highlight).dimmed,
-.connector-animated-marker:not(.highlight).dimmed {
-  opacity: 0.1;
-  fill: #808080 !important;
-}
-
-/* Don't dim scenes directly, as it would affect all child faces */
-/* Instead, we'll dim only the faces of non-highlighted scenes when a scene/face with data-activate is highlighted */
-.isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight)>.face {
-  opacity: 0.2;
-}
-
-/* Also dim all child elements inside non-highlighted scenes (images, divs, text, etc.) when a scene/face with data-activate is highlighted */
-.isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight)>*:not(.face) {
-  opacity: 0.4;
-}
-
-/* Highlighted scenes and faces at full opacity */
-.scene.highlight,
-.face.highlight {
-  opacity: 1 !important;
-}
-
-/* CSS variables for theming (currently unused but available for future dark mode) */
+/* CSS variables for theming */
 :root {
   --nav-bg-light: rgba(255, 255, 255, 0.5);
   --nav-bg-active-light: rgba(255, 255, 255, 1);
