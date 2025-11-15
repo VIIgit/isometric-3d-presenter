@@ -872,7 +872,6 @@ class Isometric3D {
       const prefix = this.urlPrefix.replace('_', '');
       const baseUrl = window.location.pathname;
       window.history.replaceState({}, '', `${baseUrl}?${prefix}-nav=0`);
-      console.log('🔗 Updated URL with overview nav index (0)');
       
       this.setActiveNavPoint(-1);
       this.resetToDefault();
@@ -2024,7 +2023,6 @@ class Isometric3D {
           const urlIndex = navIndex + 1;
           const baseUrl = window.location.pathname;
           window.history.replaceState({}, '', `${baseUrl}?${prefix}-nav=${urlIndex}`);
-          console.log('🔗 Updated URL with nav index only:', urlIndex);
         }
         
         // Cancel any pending query param updates
@@ -3033,14 +3031,6 @@ class Isometric3D {
     // Convert 1-based URL index to 0-based internal index
     const navIndex = navParam !== null ? parseInt(navParam, 10) - 1 : 0;
     
-    console.log('🔍 Loading from URL:', {
-      fullHash,
-      sectionHash,
-      queryString,
-      navIndex,
-      hasManualAdjustments: !!(xyzParam || zoomParam || panParam)
-    });
-    
     // Store the target URL to restore after navigation
     const targetUrl = window.location.href;
     
@@ -3128,14 +3118,12 @@ class Isometric3D {
       }
       
       if (hasAdjustments) {
-        console.log('✅ Smoothly animating to manual adjustments from URL');
         // Animate smoothly from base position to adjusted position
         this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, 1200, () => {
           // STEP 4: Restore the target URL without triggering page reload
           // This ensures the URL matches exactly what was requested
           if (window.location.href !== targetUrl) {
             window.history.replaceState({}, '', targetUrl);
-            console.log('🔗 Restored target URL:', targetUrl);
           }
           
           // Reset flag after a delay to allow future manual navigation to update URL normally
@@ -3147,7 +3135,6 @@ class Isometric3D {
         // No adjustments, just restore URL and reset flag
         if (window.location.href !== targetUrl) {
           window.history.replaceState({}, '', targetUrl);
-          console.log('🔗 Restored target URL:', targetUrl);
         }
         
         setTimeout(() => {
@@ -3184,21 +3171,12 @@ class Isometric3D {
       queryString = standardQuery;
     }
     
-    console.log('🔍 Applying manual adjustments from URL:', {
-      fullHash,
-      queryString,
-      windowSearch: window.location.search,
-      windowHash: window.location.hash
-    });
-    
     const params = new URLSearchParams(queryString);
     
     // Check for manual adjustment parameters
     const xyzParam = params.get(`${prefix}-xyz`);
     const zoomParam = params.get(`${prefix}-zoom`);
     const panParam = params.get(`${prefix}-pan`);
-    
-    console.log('📊 Found parameters:', { xyzParam, zoomParam, panParam });
     
     let hasAdjustments = false;
     
@@ -3235,16 +3213,8 @@ class Isometric3D {
     
     // Update scene if any adjustments were applied
     if (hasAdjustments) {
-      console.log('✅ Applied manual adjustments:', {
-        rotation: this.currentRotation,
-        zoom: this.currentZoom,
-        translation: this.currentTranslation
-      });
-      
       // Update scene (isClickNavigation flag is already set by loadFromUrl to prevent URL updates)
       this.updateScene();
-    } else {
-      console.log('⚠️ No manual adjustments found in URL');
     }
   }
 
