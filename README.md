@@ -1152,12 +1152,16 @@ const presenter = createIsometric3D('demo', {
 ## Mouse Controls
 
 - **Left drag**: X and Z-axis rotation
+- **Shift + drag**: Y-axis rotation (horizontal) + zoom (vertical, inverted)
+- **Alt + drag**: Pan/translate view
 - **Middle drag**: Pan/translate view
 - **Right drag**: Y-axis rotation + zoom
 - **Mouse wheel**: X-axis rotation
 - **Shift + Wheel**: Zoom in/out
 - **Alt + Wheel**: Pan up/down
 - **Click navigation point**: Navigate to preset view
+
+**Note**: Shift+drag has inverted zoom behavior (drag up = zoom out, drag down = zoom in) for intuitive "grab and move" interaction, while keyboard Shift+Arrow keys maintain traditional increment behavior (up = zoom in, down = zoom out).
 
 ## Styling
 

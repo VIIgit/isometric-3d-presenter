@@ -32,11 +32,14 @@
   opacity: 0;
 
   /* Center the 3D content properly within the container */
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
 
-  /* Ensure the perspective element itself is centered and has a reasonable size */
-  margin: auto;
-
+  /* Size based on content - use fit-content to wrap around child elements */
+  width: fit-content;
+  height: fit-content;
+  
   /* Performance optimizations to reduce flicker during dragging */
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -155,7 +158,7 @@
   -text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.3s ease;
-  z-index: 99;
+  z-index: 9999;
 }
 
 /* Modifier key info display */
@@ -373,18 +376,9 @@
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 1)) brightness(1.2);
 }
 
-.direction-indicator.up.pressed {
-  border-bottom-color: rgba(255, 255, 255, 1);
-}
-
-.direction-indicator.down.pressed {
-  border-top-color: rgba(255, 255, 255, 1);
-}
-
-.direction-indicator.left.pressed {
-  border-right-color: rgba(255, 255, 255, 1);
-}
-
+.direction-indicator.up.pressed ,
+.direction-indicator.down.pressed,
+.direction-indicator.left.pressed,
 .direction-indicator.right.pressed {
   border-left-color: rgba(255, 255, 255, 1);
 }
@@ -562,7 +556,7 @@
   bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
+  z-index: 10000;
 }
 
 .nav-points-container {

@@ -300,12 +300,12 @@ class Isometric3D {
       const widthAttr = cuboid.getAttribute('data-width');
       const depthAttr = cuboid.getAttribute('data-depth');
       const heightAttr = cuboid.getAttribute('data-height');
-      
+
       // Determine if we need to measure each dimension
       const needsWidthMeasurement = !widthAttr || widthAttr === 'auto';
       const needsDepthMeasurement = !depthAttr || depthAttr === 'auto';
       const needsHeightMeasurement = !heightAttr || heightAttr === 'auto';
-      
+
       // Use temporary values for measurement (will be updated with actual measurements)
       let width = needsWidthMeasurement ? 100 : parseInt(widthAttr);
       let depth = needsDepthMeasurement ? 100 : parseInt(depthAttr);
@@ -860,22 +860,22 @@ class Isometric3D {
     defaultPoint.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       // Focus container so keyboard controls work
       this.container.focus();
-      
+
       // Update autoplay index so it continues from this position
       this.currentNavIndex = -1;
-      
+
       // Mark as navigation button click and update URL with just nav index
       this.isNavButtonClick = true;
       const prefix = this.urlPrefix.replace('_', '');
       const baseUrl = window.location.pathname;
       window.history.replaceState({}, '', `${baseUrl}?${prefix}-nav=0`);
-      
+
       this.setActiveNavPoint(-1);
       this.resetToDefault();
-      
+
       // Reset flag
       this.isNavButtonClick = false;
     });
@@ -1070,22 +1070,22 @@ class Isometric3D {
    */
   updateUrlWithNavIndex(navIndex) {
     if (typeof window === 'undefined' || !window.history) return;
-    
+
     const prefix = this.urlPrefix.replace('_', '');
-    
+
     // Get section ID from the navigation element
     let sectionId = null;
     if (this.navElements && this.navElements[navIndex]) {
       const navElement = this.navElements[navIndex];
-      
+
       // Check element itself for data-section
       sectionId = navElement.getAttribute('data-section');
-      
+
       // If not found, check parent scene or cuboid
       if (!sectionId) {
         const parentScene = navElement.closest('.scene');
         const parentCuboid = navElement.closest('.cuboid');
-        
+
         if (parentScene && parentScene.hasAttribute('data-section')) {
           sectionId = parentScene.getAttribute('data-section');
         } else if (parentCuboid && parentCuboid.hasAttribute('data-section')) {
@@ -1093,22 +1093,22 @@ class Isometric3D {
         }
       }
     }
-    
+
     // Build URL manually to ensure correct format (hash before query string)
     const baseUrl = window.location.origin + window.location.pathname;
     let newUrl = baseUrl;
-    
+
     // Add hash if section found
     if (sectionId) {
       newUrl += '#' + sectionId;
     }
-    
+
     // Add query parameters if needed (navIndex >= 0)
     // Convert 0-based internal index to 1-based URL index for users
     if (navIndex >= 0) {
       newUrl += '?' + `${prefix}-nav=${navIndex + 1}`;
     }
-    
+
     // Update URL without reloading
     window.history.replaceState({}, '', newUrl);
   }
@@ -1218,7 +1218,7 @@ class Isometric3D {
     }
 
     this.isAutoPlaying = true;
-    
+
     // Find current active navigation point
     const activePoint = this.container.querySelector('.nav-point.active');
     if (activePoint) {
@@ -1431,7 +1431,7 @@ class Isometric3D {
     this.hashchangeHandler = () => {
       this.loadFromUrl();
     };
-    
+
     window.addEventListener('popstate', this.popstateHandler);
     window.addEventListener('hashchange', this.hashchangeHandler);
   }
@@ -1651,14 +1651,14 @@ class Isometric3D {
       if (modifierInfo.classList.contains('keyboard-hint')) return;
 
       const modifiers = [];
-      
+
       if (e.shiftKey) {
         modifiers.push({
           key: 'Shift',
           action: 'Y-Axis rotation <span class="key">←</span><span class="key">→</span> / Zoom <span class="key">↑</span><span class="key">↓</span>'
         });
       }
-      
+
       if (e.altKey) {
         modifiers.push({
           key: 'Alt',
@@ -1686,14 +1686,14 @@ class Isometric3D {
     // Listen to keydown/keyup on the container
     this.container.addEventListener('keydown', updateModifierInfo);
     this.container.addEventListener('keyup', updateModifierInfo);
-    
+
     // Also listen globally to catch modifiers pressed outside
     document.addEventListener('keydown', (e) => {
       if (document.activeElement === this.container || this.container.contains(document.activeElement)) {
         updateModifierInfo(e);
       }
     });
-    
+
     document.addEventListener('keyup', (e) => {
       if (document.activeElement === this.container || this.container.contains(document.activeElement)) {
         updateModifierInfo(e);
@@ -2017,19 +2017,19 @@ class Isometric3D {
         // For nav button clicks: ONLY add nav index, nothing else
         const prefix = this.urlPrefix.replace('_', '');
         const navIndex = this.currentNavIndex;
-        
+
         if (navIndex !== null && navIndex !== undefined) {
           // Convert to 1-based index for URL
           const urlIndex = navIndex + 1;
           const baseUrl = window.location.pathname;
           window.history.replaceState({}, '', `${baseUrl}?${prefix}-nav=${urlIndex}`);
         }
-        
+
         // Cancel any pending query param updates
         clearTimeout(this.urlUpdateTimeout);
         this.isClickNavigation = true;
         this.isNavButtonClick = false; // Reset flag
-        
+
         // Reset manual pan flag when navigating via nav button
         this.hasManualPanAdjustment = false;
       } else if (targetHash) {
@@ -2269,7 +2269,7 @@ class Isometric3D {
         // Animation finished - now update labels
         this.isAnimating = false;
         setTimeout(() => this.updateLabelPositions(), 100); // Update labels after animation completes
-        
+
         // Call completion callback if provided
         if (onComplete && typeof onComplete === 'function') {
           onComplete();
@@ -2288,32 +2288,32 @@ class Isometric3D {
 
   updateUrlWithRotation() {
     if (typeof window === 'undefined' || !window.history) return;
-    
+
     const url = new URL(window.location);
     const prefix = this.urlPrefix.replace('_', '');
-    
+
     // Use the tracked currentNavIndex from the instance (not from URL)
     // This ensures nav index stays in sync when clicking nav buttons
-    const currentNavIndex = this.currentNavIndex !== null && this.currentNavIndex !== undefined 
-      ? this.currentNavIndex 
+    const currentNavIndex = this.currentNavIndex !== null && this.currentNavIndex !== undefined
+      ? this.currentNavIndex
       : -1;
-    
+
     // Get section hash (remove the ? and everything after it if present)
     const hashPart = url.hash.split('?')[0].slice(1);
     const sectionHash = hashPart || null;
-    
+
     // Check if current values differ from navigation point's values
     let navPointRotation = this.defaultRotation;
     let navPointZoom = this.defaultZoom;
     let navPointPan = { x: 0, y: 0 };
-    
+
     // Get the target values from the current navigation element
     if (this.navElements && this.navElements[currentNavIndex]) {
       const navElement = this.navElements[currentNavIndex];
       const xyz = navElement.getAttribute('data-nav-xyz');
       const zoom = navElement.getAttribute('data-nav-zoom');
       const pan = navElement.getAttribute('data-nav-pan');
-      
+
       if (xyz && xyz !== 'current' && xyz !== 'default') {
         const [x, y, z] = xyz.split('.').map(v => parseFloat(v) || 0);
         navPointRotation = { x, y, z };
@@ -2326,37 +2326,37 @@ class Isometric3D {
         navPointPan = { x: px, y: py };
       }
     }
-    
+
     // Check if rotation differs from nav point
     const hasRotationDelta = (
       Math.abs(this.currentRotation.x - navPointRotation.x) > 1 ||
       Math.abs(this.currentRotation.y - navPointRotation.y) > 1 ||
       Math.abs(this.currentRotation.z - navPointRotation.z) > 1
     );
-    
+
     // Check if zoom differs from nav point
     const hasZoomDelta = Math.abs(this.currentZoom - navPointZoom) > 0.05;
-    
+
     // Check if pan differs from nav point
     const hasPanDelta = (
       Math.abs(this.currentTranslation.x - navPointPan.x) > 5 ||
       Math.abs(this.currentTranslation.y - navPointPan.y) > 5
     );
-    
+
     // Build query parameters for deltas
     const params = [];
-    
+
     // Add nav index if >= 0 (convert 0-based to 1-based for URL)
     if (currentNavIndex >= 0) {
       params.push(`${prefix}-nav=${currentNavIndex + 1}`);
     }
-    
+
     // Add rotation delta if present
     if (hasRotationDelta) {
       const x = Math.round(this.currentRotation.x);
       const y = Math.round(this.currentRotation.y);
       const z = Math.round(this.currentRotation.z);
-      
+
       const formatAngle = (angle) => {
         if (angle < 0) {
           const abs = Math.abs(angle);
@@ -2367,16 +2367,16 @@ class Isometric3D {
           return angle.toString();
         }
       };
-      
+
       const rotationValue = `${formatAngle(x)}.${formatAngle(y)}.${formatAngle(z)}`;
       params.push(`${prefix}-xyz=${rotationValue}`);
     }
-    
+
     // Add zoom delta if present
     if (hasZoomDelta) {
       params.push(`${prefix}-zoom=${this.currentZoom.toFixed(1)}`);
     }
-    
+
     // Add pan delta ONLY if it was manually adjusted by the user
     // (auto-calculated pan positions should not be included in URL)
     if (hasPanDelta && this.hasManualPanAdjustment) {
@@ -2384,21 +2384,21 @@ class Isometric3D {
       const panY = Math.round(this.currentTranslation.y);
       params.push(`${prefix}-pan=${panX}.${panY}`);
     }
-    
+
     // Build URL with hash before query string
     const baseUrl = window.location.origin + window.location.pathname;
     let newUrl = baseUrl;
-    
+
     // Add hash if present
     if (sectionHash) {
       newUrl += '#' + sectionHash;
     }
-    
+
     // Add query string if we have parameters
     if (params.length > 0) {
       newUrl += '?' + params.join('&');
     }
-    
+
     window.history.replaceState({}, '', newUrl);
   }
 
@@ -2471,7 +2471,7 @@ class Isometric3D {
 
     // Clear all highlights when resetting to default position
     this.clearHighlights();
-    
+
     // Reset manual pan flag since we're going back to default
     this.hasManualPanAdjustment = false;
   }
@@ -2904,7 +2904,7 @@ class Isometric3D {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '+', '=', '-', ' ', 'r', 'R'].includes(e.key)) {
       e.preventDefault();
       e.stopPropagation();
-      
+
       // Pause autoplay when user manually interacts with keyboard controls
       if (this.isAutoPlaying) {
         this.stopAutoPlay();
@@ -3002,14 +3002,14 @@ class Isometric3D {
 
   loadFromUrl() {
     if (typeof window === 'undefined') return;
-    
+
     const prefix = this.urlPrefix.replace('_', '');
-    
+
     // STEP 1: Read the complete URL and parse all parameters
     const fullHash = window.location.hash.slice(1); // Remove leading '#'
     let sectionHash = null;
     let queryString = window.location.search.slice(1); // Remove leading '?'
-    
+
     // Handle both formats: #section?params or ?params#section
     if (fullHash.includes('?')) {
       const parts = fullHash.split('?');
@@ -3020,27 +3020,27 @@ class Isometric3D {
     } else if (fullHash) {
       sectionHash = fullHash;
     }
-    
+
     // Parse all URL parameters upfront
     const params = new URLSearchParams(queryString);
     const navParam = params.get(`${prefix}-nav`);
     const xyzParam = params.get(`${prefix}-xyz`);
     const zoomParam = params.get(`${prefix}-zoom`);
     const panParam = params.get(`${prefix}-pan`);
-    
+
     // Convert 1-based URL index to 0-based internal index
     const navIndex = navParam !== null ? parseInt(navParam, 10) - 1 : 0;
-    
+
     // Store the target URL to restore after navigation
     const targetUrl = window.location.href;
-    
+
     // Prevent ANY URL updates during the entire load process
     this.isClickNavigation = true;
-    
+
     // Find the navigation element to use
     let navElement = null;
     let finalNavIndex = 0;
-    
+
     if (!isNaN(navIndex) && this.navElements && this.navElements[navIndex]) {
       navElement = this.navElements[navIndex];
       finalNavIndex = navIndex;
@@ -3050,43 +3050,43 @@ class Isometric3D {
         const matchingNav = this.navElements.find(nav => {
           const section = nav.getAttribute('data-section');
           if (section === sectionHash) return true;
-          
+
           const parentScene = nav.closest('.scene');
           const parentCuboid = nav.closest('.cuboid');
-          
+
           if (parentScene && parentScene.getAttribute('data-section') === sectionHash) return true;
           if (parentCuboid && parentCuboid.getAttribute('data-section') === sectionHash) return true;
-          
+
           return false;
         });
-        
+
         if (matchingNav) {
           navElement = matchingNav;
           finalNavIndex = Array.from(this.navElements).indexOf(matchingNav);
         }
       }
-      
+
       // Fallback to first element
       if (!navElement) {
         navElement = this.navElements[0];
         finalNavIndex = 0;
       }
     }
-    
+
     if (!navElement) return;
-    
+
     // STEP 2: Navigate to base position (navigation index) without URL updates
     const baseXyz = navElement.getAttribute('data-nav-xyz');
     const baseZoom = navElement.getAttribute('data-nav-zoom');
     const basePan = navElement.getAttribute('data-nav-pan');
-    
+
     this.navigateToPosition(baseXyz, baseZoom, navElement, basePan, () => {
       // STEP 3: Apply manual adjustments (if any) with smooth animation
       const targetRotation = { ...this.currentRotation };
       let targetZoom = this.currentZoom;
       const targetTranslation = { ...this.currentTranslation };
       let hasAdjustments = false;
-      
+
       // Parse manual adjustments from URL
       if (xyzParam) {
         const [x, y, z] = xyzParam.split('.').map(v => parseFloat(v) || 0);
@@ -3097,7 +3097,7 @@ class Isometric3D {
           hasAdjustments = true;
         }
       }
-      
+
       if (zoomParam) {
         const zoom = parseFloat(zoomParam);
         if (!isNaN(zoom)) {
@@ -3105,7 +3105,7 @@ class Isometric3D {
           hasAdjustments = true;
         }
       }
-      
+
       if (panParam) {
         const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
         if (!isNaN(x) && !isNaN(y)) {
@@ -3116,7 +3116,7 @@ class Isometric3D {
           this.hasManualPanAdjustment = true;
         }
       }
-      
+
       if (hasAdjustments) {
         // Animate smoothly from base position to adjusted position
         this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, 1200, () => {
@@ -3125,7 +3125,7 @@ class Isometric3D {
           if (window.location.href !== targetUrl) {
             window.history.replaceState({}, '', targetUrl);
           }
-          
+
           // Reset flag after a delay to allow future manual navigation to update URL normally
           setTimeout(() => {
             this.isClickNavigation = false;
@@ -3136,50 +3136,50 @@ class Isometric3D {
         if (window.location.href !== targetUrl) {
           window.history.replaceState({}, '', targetUrl);
         }
-        
+
         setTimeout(() => {
           this.isClickNavigation = false;
         }, 100);
       }
     }, true);
-    
+
     // Update navigation bar (skip URL update)
     this.setActiveNavPoint(finalNavIndex, true);
   }
-  
+
   /**
    * Apply manual rotation/zoom/pan adjustments from URL parameters
    * @deprecated This method is no longer used. Manual adjustments are now applied directly in loadFromUrl()
    */
   applyManualAdjustmentsFromUrl() {
     if (typeof window === 'undefined') return;
-    
+
     const prefix = this.urlPrefix.replace('_', '');
-    
+
     // Parse query parameters - handle BOTH formats: #section?params AND ?params
     const fullHash = window.location.hash.slice(1);
     const standardQuery = window.location.search.slice(1);
     let queryString = '';
-    
+
     // Priority 1: Query string in hash (format: #section?params)
     if (fullHash.includes('?')) {
       const parts = fullHash.split('?');
       queryString = parts[1];
-    } 
+    }
     // Priority 2: Standard query string (format: ?params)
     else if (standardQuery) {
       queryString = standardQuery;
     }
-    
+
     const params = new URLSearchParams(queryString);
-    
+
     // Check for manual adjustment parameters
     const xyzParam = params.get(`${prefix}-xyz`);
     const zoomParam = params.get(`${prefix}-zoom`);
     const panParam = params.get(`${prefix}-pan`);
-    
+
     let hasAdjustments = false;
-    
+
     // Apply rotation adjustment
     if (xyzParam) {
       const [x, y, z] = xyzParam.split('.').map(v => parseFloat(v) || 0);
@@ -3191,7 +3191,7 @@ class Isometric3D {
         hasAdjustments = true;
       }
     }
-    
+
     // Apply zoom adjustment
     if (zoomParam) {
       const zoom = parseFloat(zoomParam);
@@ -3200,7 +3200,7 @@ class Isometric3D {
         hasAdjustments = true;
       }
     }
-    
+
     // Apply pan adjustment
     if (panParam) {
       const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
@@ -3210,7 +3210,7 @@ class Isometric3D {
         hasAdjustments = true;
       }
     }
-    
+
     // Update scene if any adjustments were applied
     if (hasAdjustments) {
       // Update scene (isClickNavigation flag is already set by loadFromUrl to prevent URL updates)
@@ -3354,20 +3354,20 @@ class Isometric3D {
     });
 
     this.configureCuboids();
-    
+
     // Capture initial 2D positions BEFORE any 3D transforms are applied
     // This is the ONLY time we should capture positions from the DOM
     this.captureInitialConnectorPositions();
-    
+
     // Now draw the SVG using the captured initial positions
     this.captureCoordinatesAndDrawSvg();
-    
+
     // Phase 2: Capture coordinates and draw SVG, then restore scene data (z-axis only, after DOM updates)
     setTimeout(() => {
 
       // Scene data already restored above before first configureCuboids call
       // No need to restore again here
-      
+
       // Rotation, zoom, and pan already applied before first configureCuboids call
       // No need to apply again here
 
@@ -3383,7 +3383,7 @@ class Isometric3D {
 
         // Start all animations for default view
         this.startAllAnimations();
-        
+
         // Load navigation state from URL if present
         this.loadFromUrl();
       }, 50); // Small delay to ensure updateScene has completed
@@ -3396,25 +3396,25 @@ class Isometric3D {
   captureInitialConnectorPositions() {
     const perspective = this.container.querySelector('.isometric-perspective');
     if (!perspective) return;
-    
+
     const connectorsData = perspective.getAttribute('data-connectors');
     if (!connectorsData) return;
-    
+
     let connectors;
     try {
       connectors = JSON.parse(connectorsData);
     } catch (e) {
       return;
     }
-    
+
     // Store initial positions AND configuration for all connector endpoints
     this.initialConnectorPositions = new Map();
     const perspectiveRect = perspective.getBoundingClientRect();
-    
+
     connectors.forEach((connector, index) => {
       // Parse connector IDs and positions
       let fromId, toId, fromPoint, toPoint;
-      
+
       if (connector.ids) {
         const [from, to] = connector.ids.split(',').map(s => s.trim());
         fromId = from;
@@ -3423,7 +3423,7 @@ class Isometric3D {
         fromId = connector.from;
         toId = connector.to;
       }
-      
+
       if (connector.positions) {
         const [from, to] = connector.positions.split(',').map(s => s.trim());
         fromPoint = from;
@@ -3432,32 +3432,32 @@ class Isometric3D {
         fromPoint = connector.fromPoint;
         toPoint = connector.toPoint;
       }
-      
+
       const fromElement = document.getElementById(fromId);
       const toElement = document.getElementById(toId);
-      
+
       if (!fromElement || !toElement) return;
-      
+
       // Capture initial 2D positions
       const fromCorners = this.getTransformedCorners(fromElement, perspectiveRect);
       const toCorners = this.getTransformedCorners(toElement, perspectiveRect);
-      
+
       const startPoint = this.getConnectionPoint(fromCorners, fromPoint || 'center');
       const endPoint = this.getConnectionPoint(toCorners, toPoint || 'center');
-      
+
       // Store positions AND original configuration (including groups and animationStyle)
       const connectorKey = `${index}-${fromId}-${toId}`;
-      
+
       // Extract groups/keys
       let keys = connector.groups || connector.keys || (connector.key ? [connector.key] : []);
       if (typeof keys === 'string') {
         keys = keys.split(',').map(k => k.trim());
       }
-      
+
       // Extract animation style
       const animationStyle = connector.animationStyle || connector.lineAnimated ||
         (connector.animated ? 'circle' : this.connectorDefaults?.animationStyle);
-      
+
       this.initialConnectorPositions.set(connectorKey, {
         startPoint: { x: startPoint.x, y: startPoint.y },
         endPoint: { x: endPoint.x, y: endPoint.y },
@@ -3590,9 +3590,9 @@ class Isometric3D {
       // Use stored initial 2D positions instead of recalculating from transformed state
       const connectorKey = `${index}-${fromId}-${toId}`;
       const cachedPositions = this.initialConnectorPositions?.get(connectorKey);
-      
+
       let startPoint, endPoint;
-      
+
       if (cachedPositions) {
         // Use the stored initial 2D positions
         startPoint = cachedPositions.startPoint;
@@ -4045,27 +4045,27 @@ class Isometric3D {
       path.classList.add('connector-path');
 
       svg.appendChild(path);
-      
+
       // Check if this path should be dimmed based on current highlight state
       // Use the stored configuration from cachedPositions (already retrieved above)
       const hasHighlights = this.currentHighlightKeys && this.currentHighlightKeys.length > 0;
       let shouldDimThisPath = false;
-      
+
       if (hasHighlights && cachedPositions && cachedPositions.groups && cachedPositions.groups.length > 0) {
         // Check if ANY of the connector's groups match ANY of the REQUESTED highlight keys
         // (not the groups of highlighted elements, which may include additional groups)
-        const hasMatchingHighlight = cachedPositions.groups.some(connectorKey => 
+        const hasMatchingHighlight = cachedPositions.groups.some(connectorKey =>
           this.currentHighlightKeys.includes(connectorKey.trim())
         );
-        
+
         shouldDimThisPath = !hasMatchingHighlight;
-        
+
         // If this path should be dimmed, add the dimmed class (for CSS styling)
         if (shouldDimThisPath) {
           path.classList.add('dimmed');
         }
       }
-      
+
       // Use stored animation style from initial configuration
       const shouldHaveAnimation = cachedPositions?.animationStyle === 'circle';
 
@@ -4128,7 +4128,7 @@ class Isometric3D {
       // 1. The stored initial config says it should have animation
       // 2. AND the path is not currently dimmed
       const shouldAddAnimation = shouldHaveAnimation && !shouldDimThisPath;
-      
+
       if (shouldAddAnimation) {
         const animatedCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         animatedCircle.setAttribute('r', '4');
@@ -4333,7 +4333,7 @@ class Isometric3D {
   highlightByKey(keys) {
     // Ensure keys is an array
     const keyArray = Array.isArray(keys) ? keys : [keys];
-    
+
     // Store the requested keys for connector matching
     this.currentHighlightKeys = keyArray;
 
@@ -4351,7 +4351,7 @@ class Isometric3D {
     Array.from(perspective.children).forEach(child => {
       this.processElementRecursive(child, keyArray, undefined);
     });
-    
+
     // Redraw SVG to properly show/hide animations based on highlight state
     this.captureCoordinatesAndDrawSvg();
   }
@@ -4366,7 +4366,7 @@ class Isometric3D {
   processElementRecursive(element, selectedKeys, parentState) {
     // Step 1: Check if current element matches any of the selected keys
     const currentMatches = this.elementMatchesCriteria(element, selectedKeys);
-    
+
     // Step 2: Determine current state based on parent state and match
     let currentState;
     if (parentState === 'highlighted') {
@@ -4379,32 +4379,32 @@ class Isometric3D {
       // No match and parent not highlighted
       currentState = 'not-highlighted';
     }
-    
+
     // Step 3: Apply .highlighted class if current element matches
     if (currentMatches) {
       element.classList.add('highlighted');
-      
+
       // Restore original colors if previously dimmed
       this.restoreElementColors(element);
     }
-    
+
     // Step 4: Recursively process all direct children
     let anyChildMatched = false;
     Array.from(element.children).forEach(child => {
       const childMatched = this.processElementRecursive(child, selectedKeys, currentState);
       anyChildMatched = anyChildMatched || childMatched;
     });
-    
+
     // Step 5: Determine if this element or any descendant matched
     const hasMatch = currentMatches || anyChildMatched;
-    
+
     // Step 6: Apply dimming logic using alpha channel modification
     // Only dim if:
     // - Element itself didn't match
     // - No descendant matched
     // - Parent is not highlighted (children of highlighted parents stay in default state)
     const shouldDim = !hasMatch && parentState !== 'highlighted';
-    
+
     if (shouldDim) {
       // Apply alpha-based dimming (preserves 3D transforms, no stacking context)
       this.applyAlphaDimming(element);
@@ -4413,7 +4413,7 @@ class Isometric3D {
       // Restore original colors if previously dimmed
       this.restoreElementColors(element);
     }
-    
+
     // Step 7: Return whether this subtree had any match
     return hasMatch;
   }
@@ -4433,7 +4433,7 @@ class Isometric3D {
         return true;
       }
     }
-    
+
     // Check data-activate attribute
     const activateAttr = element.getAttribute('data-activate');
     if (activateAttr) {
@@ -4442,7 +4442,7 @@ class Isometric3D {
         return true;
       }
     }
-    
+
     // Check data-connector-keys attribute (for SVG connectors)
     const connectorKeysAttr = element.getAttribute('data-connector-keys');
     if (connectorKeysAttr) {
@@ -4451,7 +4451,7 @@ class Isometric3D {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -4473,23 +4473,23 @@ class Isometric3D {
       };
       element.setAttribute('data-original-styles', JSON.stringify(originalStyles));
     }
-    
+
     // Get original styles
     const storedStyles = JSON.parse(element.getAttribute('data-original-styles') || '{}');
-    
+
     // Apply dimmed colors with configured alpha values
     if (storedStyles.backgroundColor && storedStyles.backgroundColor !== 'rgba(0, 0, 0, 0)') {
       element.style.backgroundColor = this.modifyColorAlpha(storedStyles.backgroundColor, this.dimmingAlpha.backgroundColor);
     }
-    
+
     if (storedStyles.borderColor && storedStyles.borderColor !== 'rgba(0, 0, 0, 0)') {
       element.style.borderColor = this.modifyColorAlpha(storedStyles.borderColor, this.dimmingAlpha.borderColor);
     }
-    
+
     if (storedStyles.color) {
       element.style.color = this.modifyColorAlpha(storedStyles.color, this.dimmingAlpha.color);
     }
-    
+
     // Handle SVG elements (paths, circles)
     if (element.tagName === 'path' || element.tagName === 'circle') {
       if (storedStyles.stroke) {
@@ -4499,7 +4499,7 @@ class Isometric3D {
         element.setAttribute('fill', this.modifyColorAlpha(storedStyles.fill, this.dimmingAlpha.svg));
       }
     }
-    
+
     // Mark as dimmed for state tracking
     element.setAttribute('data-dimmed', 'true');
   }
@@ -4510,24 +4510,24 @@ class Isometric3D {
    */
   restoreElementColors(element) {
     const storedStyles = JSON.parse(element.getAttribute('data-original-styles') || '{}');
-    
+
     if (!element.hasAttribute('data-dimmed')) {
       return; // Not dimmed, nothing to restore
     }
-    
+
     // Restore original colors
     if (storedStyles.backgroundColor) {
       element.style.backgroundColor = storedStyles.backgroundColor;
     }
-    
+
     if (storedStyles.borderColor) {
       element.style.borderColor = storedStyles.borderColor;
     }
-    
+
     if (storedStyles.color) {
       element.style.color = storedStyles.color;
     }
-    
+
     // Handle SVG elements
     if (element.tagName === 'path' || element.tagName === 'circle') {
       if (storedStyles.stroke) {
@@ -4537,7 +4537,7 @@ class Isometric3D {
         element.setAttribute('fill', storedStyles.fill);
       }
     }
-    
+
     // Remove dimmed state
     element.removeAttribute('data-dimmed');
   }
@@ -4556,7 +4556,7 @@ class Isometric3D {
       const [, r, g, b] = rgbaMatch;
       return `rgba(${r}, ${g}, ${b}, ${newAlpha})`;
     }
-    
+
     // Parse hex format (#RRGGBB or #RGB)
     const hexMatch = colorString.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
     if (hexMatch) {
@@ -4570,7 +4570,7 @@ class Isometric3D {
       const b = parseInt(hex.substr(4, 2), 16);
       return `rgba(${r}, ${g}, ${b}, ${newAlpha})`;
     }
-    
+
     // Fallback: return original color with reduced opacity via rgba
     // This handles named colors like 'red', 'blue', etc.
     return colorString;
@@ -4591,7 +4591,7 @@ class Isometric3D {
   clearHighlights() {
     // Clear the stored highlight keys
     this.currentHighlightKeys = null;
-    
+
     // Remove .highlighted class from all elements
     const allHighlighted = this.container.querySelectorAll('.highlighted');
     allHighlighted.forEach(el => el.classList.remove('highlighted'));
@@ -4602,7 +4602,7 @@ class Isometric3D {
       this.restoreElementColors(el);
       el.removeAttribute('data-original-styles');
     });
-    
+
     // Redraw SVG to restore all animations
     this.captureCoordinatesAndDrawSvg();
   }
