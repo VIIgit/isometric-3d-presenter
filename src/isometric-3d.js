@@ -855,7 +855,6 @@ class Isometric3D {
     const defaultPoint = document.createElement('div');
     defaultPoint.className = 'nav-point active';
     defaultPoint.setAttribute('data-nav-index', -1);
-    defaultPoint.setAttribute('tabindex', '0');
 
     defaultPoint.addEventListener('click', (e) => {
       e.preventDefault();
@@ -948,11 +947,13 @@ class Isometric3D {
       const navPoint = document.createElement('div');
       navPoint.className = 'nav-point';
       navPoint.setAttribute('data-nav-index', item.index);
-      navPoint.setAttribute('tabindex', '0');
-
+      // Add data-activate to nav-points-container for validation
+      if (item.element.hasAttribute('data-activate')) {
+        navPoint.setAttribute('activate', item.element.getAttribute('data-activate'));
+      }
       // Store section for reference
-      if (item.section) {
-        navPoint.setAttribute('data-section', item.section);
+      if (item.element.hasAttribute('data-section')) {
+        navPoint.setAttribute('section', item.element.getAttribute('data-section'));
       }
 
       // Add click handler
@@ -1201,34 +1202,26 @@ class Isometric3D {
   /**
    * Toggle autoplay mode - cycles through navigation points automatically
    */
-  toggleAutoPlay() {
+  toggleAutoPlay(highlightOnly) {
     if (this.isAutoPlaying) {
       this.stopAutoPlay();
     } else {
-      this.startAutoPlay();
+      this.startAutoPlay(highlightOnly);
     }
   }
 
   /**
    * Start autoplay - cycles through navigation points
    */
-  startAutoPlay() {
+  startAutoPlay(highlightOnly) {
     if (!this.navElements || this.navElements.length === 0) {
       return; // No navigation points to autoplay
     }
 
     this.isAutoPlaying = true;
 
-    // Find current active navigation point
-    const activePoint = this.container.querySelector('.nav-point.active');
-    if (activePoint) {
-      this.currentNavIndex = parseInt(activePoint.getAttribute('data-nav-index'));
-    } else {
-      this.currentNavIndex = -1;
-    }
-
     // Start the autoplay cycle
-    this.advanceToNextNavPoint();
+    this.advanceToNextNavPoint(highlightOnly);
   }
 
   /**
@@ -1245,8 +1238,8 @@ class Isometric3D {
   /**
    * Advance to the next navigation point in autoplay mode
    */
-  advanceToNextNavPoint() {
-    if (!this.isAutoPlaying || !this.navElements || this.navElements.length === 0) {
+  advanceToNextNavPoint(highlightOnly) {
+    if (!this.navElements || this.navElements.length === 0) {
       return;
     }
 
@@ -1264,30 +1257,42 @@ class Isometric3D {
     }
 
     if (this.currentNavIndex === -1) {
-      // Navigate to overview (reset view)
-      this.setActiveNavPoint(-1);
-      this.resetView();
+      // Navigate to overview (reset view or just clear highlights)
+      if (highlightOnly) {
+        // Highlight-only mode: just clear highlights, don't change view
+        this.navigateHighlightOnly(-1);
+      } else {
+        // Full mode: reset view
+        this.setActiveNavPoint(-1);
+        this.resetView();
+      }
     } else {
       // Get the navigation element and trigger navigation
       const navElement = this.navElements[this.currentNavIndex];
       if (navElement) {
-        const xyz = navElement.getAttribute('data-nav-xyz');
-        const zoom = navElement.getAttribute('data-nav-zoom');
-        const pan = navElement.getAttribute('data-nav-pan');
+        if (highlightOnly) {
+          // Highlight-only mode: update highlights without changing view
+          this.navigateHighlightOnly(this.currentNavIndex);
+        } else {
+          // Full mode: navigate to position with view change
+          const xyz = navElement.getAttribute('data-nav-xyz');
+          const zoom = navElement.getAttribute('data-nav-zoom');
+          const pan = navElement.getAttribute('data-nav-pan');
 
-        if (xyz || zoom || pan) {
-          // Update navigation bar active state
-          this.setActiveNavPoint(this.currentNavIndex);
+          if (xyz || zoom || pan) {
+            // Update navigation bar active state
+            this.setActiveNavPoint(this.currentNavIndex);
 
-          // Navigate to position
-          this.navigateToPosition(xyz, zoom, navElement, pan);
+            // Navigate to position
+            this.navigateToPosition(xyz, zoom, navElement, pan);
+          }
         }
       }
     }
 
     // Schedule next advancement
     this.autoPlayTimer = setTimeout(() => {
-      this.advanceToNextNavPoint();
+      this.advanceToNextNavPoint(highlightOnly);
     }, this.autoPlayInterval);
   }
 
@@ -1477,8 +1482,16 @@ class Isometric3D {
           <span>Zoom in/out</span>
         </div>
         <div class="key-mapping">
+          <span>🖱️ <strong>Shift+drag</strong></span>
+          <span>Y-Axis rotation<br>+ zoom</span>
+        </div>
+        <div class="key-mapping">
           <span>🖱️ <strong>Alt+Wheel</strong></span>
           <span>Pan up/down</span>
+        </div>
+        <div class="key-mapping">
+          <span>🖱️ <strong>Alt+drag</strong></span>
+          <span>Pan view</span>
         </div>
         <div class="key-mapping">
           <span><span class="key">←</span> <span class="key">→</span></span>
@@ -1506,7 +1519,19 @@ class Isometric3D {
         </div>
         <div class="key-mapping">
           <span><span class="key">Tab</span></span>
-          <span>Cycle through navigation points</span>
+          <span>Navigate to next point</span>
+        </div>
+        <div class="key-mapping">
+          <span><span class="key">Shift</span>+<span class="key">Tab</span></span>
+          <span>Navigate to previous point</span>
+        </div>
+        <div class="key-mapping">
+          <span><span class="key">Alt</span>+<span class="key">Tab</span></span>
+          <span>Cycle highlights only<br>(keep view position)</span>
+        </div>
+        <div class="key-mapping">
+          <span><span class="key">Alt</span>+<span class="key">Shift</span>+<span class="key">Tab</span></span>
+          <span>Cycle highlights backwards<br>(keep view position)</span>
         </div>
         <div class="key-mapping">
           <span><span class="key">P</span></span>
@@ -1945,6 +1970,69 @@ class Isometric3D {
       this.navigateToPosition(navData.xyz, navData.zoom, navData.element, navData.pan);
     }
     // Removed default reset behavior - only navigate if navigation data is found
+  }
+
+  /**
+   * Navigate to a navigation point's highlights without changing the view position
+   * This updates the active nav point and applies highlights but keeps xyz, zoom, and pan unchanged
+   * @param {number} navIndex - The index of the navigation point to highlight (-1 for default/overview)
+   */
+  navigateHighlightOnly(navIndex) {
+    // Update the current navigation index
+    this.currentNavIndex = navIndex;
+
+    // Update active nav point in the UI
+    this.setActiveNavPoint(navIndex);
+
+    // Handle default position (index -1) - clear all highlights
+    if (navIndex === -1) {
+      const allHighlighted = this.container.querySelectorAll('.highlighted');
+      allHighlighted.forEach(el => el.classList.remove('highlighted'));
+
+      // Redraw debug rectangles to show no selection
+      if (this.showDebug) {
+        this.drawDebugActivateRects();
+      }
+      return;
+    }
+
+    // Get the navigation element
+    const navElement = this.navElements[navIndex];
+    if (!navElement) {
+      console.warn(`Navigation element not found for index: ${navIndex}`);
+      return;
+    }
+
+    // Handle auto-highlight if the element has data-activate
+    let autoHighlightKeys = navElement.getAttribute('data-activate');
+    let sourceScene = navElement.closest('.scene');
+
+    // If not found on the element itself, check parent scene
+    if (!autoHighlightKeys && sourceScene) {
+      autoHighlightKeys = sourceScene.getAttribute('data-activate');
+    }
+
+    if (autoHighlightKeys) {
+      const keys = autoHighlightKeys.split(',').map(k => k.trim());
+      this.highlightByKey(keys);
+
+      // Also ensure the source scene/cuboid itself is highlighted, but only if it has no highlighted faces
+      if (sourceScene) {
+        const hasHighlightedFaces = sourceScene.querySelectorAll('.front.highlighted, .back.highlighted, .left.highlighted, .right.highlighted, .top.highlighted, .bottom.highlighted').length > 0;
+        if (!hasHighlightedFaces) {
+          sourceScene.classList.add('highlighted');
+        }
+      }
+    } else {
+      // If no data-activate, clear all highlights
+      const allHighlighted = this.container.querySelectorAll('.highlighted');
+      allHighlighted.forEach(el => el.classList.remove('highlighted'));
+    }
+
+    // Redraw debug rectangles to show the selection
+    if (this.showDebug) {
+      this.drawDebugActivateRects();
+    }
   }
 
   navigateToPosition(xyzString, zoomString, sourceElement = null, panString = null, onComplete = null, skipUrlUpdate = false) {
@@ -2730,12 +2818,29 @@ class Isometric3D {
     // Use requestAnimationFrame for smooth updates and prevent flicker
     if (!this.animationFrameId) {
       this.animationFrameId = requestAnimationFrame(() => {
-        if (this.dragButton === 0) { // Left mouse button - X and Z rotation
-          this.rotateScene(
-            -deltaY * this.mouseSensitivity.x,  // Vertical mouse = X rotation
-            0,
-            -deltaX * this.mouseSensitivity.z   // Horizontal mouse = Z rotation (reversed for intuitive direction)
-          );
+        // Check for keyboard modifiers (Shift/Alt) to change behavior
+        const hasShiftKey = e.shiftKey;
+        const hasAltKey = e.altKey;
+
+        if (this.dragButton === 0) { // Left mouse button
+          if (hasAltKey) {
+            // Alt + Mouse: Pan (like Alt + Arrow keys)
+            this.panScene(deltaX, deltaY);
+          } else if (hasShiftKey) {
+            // Shift + Mouse: Y rotation (horizontal) and Zoom (vertical)
+            this.rotateScene(0, deltaX * this.mouseSensitivity.y, 0);
+
+            // Zoom with vertical mouse movement INVERTED (up = zoom out, down = zoom in)
+            const zoomFactor = 1 + (-deltaY * 0.01);
+            this.zoomScene(zoomFactor);
+          } else {
+            // No modifier: Default X and Z rotation
+            this.rotateScene(
+              -deltaY * this.mouseSensitivity.x,  // Vertical mouse = X rotation
+              0,
+              -deltaX * this.mouseSensitivity.z   // Horizontal mouse = Z rotation (reversed for intuitive direction)
+            );
+          }
         } else if (this.dragButton === 1) { // Middle mouse button - Panning
           this.panScene(deltaX, deltaY);
         } else if (this.dragButton === 2) { // Right mouse button - Y rotation and zoom
@@ -2859,13 +2964,25 @@ class Isometric3D {
   }
 
   onKeyDown(e) {
+    console.log(e.key + ' ' + e.altKey + ' ' + e.shiftKey);
     // Only respond if this container has focus
     if (document.activeElement !== this.container) return;
+
+    // Handle 'p' key for autoplay toggle
+    // P = regular autoplay, Shift+P = highlight-only autoplay
+    if (e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      e.stopPropagation();
+      this.toggleAutoPlay(e.shiftKey);
+      return;
+    }
 
     // Handle Tab navigation through navigation points
     if (e.key === 'Tab') {
       e.preventDefault();
       e.stopPropagation();
+
+      this.stopAutoPlay();
 
       const navPoints = this.container.querySelectorAll('.nav-point');
       if (navPoints.length > 0) {
@@ -2876,27 +2993,31 @@ class Isometric3D {
           activeIndex = Array.from(navPoints).indexOf(activePoint);
         }
 
-        // Calculate next index based on Tab direction
-        let nextIndex;
-        if (e.shiftKey) {
-          // Shift+Tab: go backwards
-          nextIndex = activeIndex > 0 ? activeIndex - 1 : navPoints.length - 1;
+        // Calculate next index in the nav points array
+        let nextArrayIndex;
+
+        if (e.altKey && e.shiftKey) {
+          // Alt+Shift+Tab: go backwards (highlight-only mode - don't change view)
+          nextArrayIndex = activeIndex > 0 ? activeIndex - 1 : navPoints.length - 1;
+          // Get the actual navigation index from data-nav-index attribute
+          const nextNavIndex = parseInt(navPoints[nextArrayIndex].getAttribute('data-nav-index'));
+          this.navigateHighlightOnly(nextNavIndex);
+        } else if (e.altKey) {
+          // Alt+Tab: go forwards (highlight-only mode - don't change view)
+          nextArrayIndex = activeIndex < navPoints.length - 1 ? activeIndex + 1 : 0;
+          // Get the actual navigation index from data-nav-index attribute
+          const nextNavIndex = parseInt(navPoints[nextArrayIndex].getAttribute('data-nav-index'));
+          this.navigateHighlightOnly(nextNavIndex);
+        } else if (e.shiftKey) {
+          // Shift+Tab: go backwards (full navigation with view change)
+          nextArrayIndex = activeIndex > 0 ? activeIndex - 1 : navPoints.length - 1;
+          navPoints[nextArrayIndex].click();
         } else {
-          // Tab: go forwards
-          nextIndex = activeIndex < navPoints.length - 1 ? activeIndex + 1 : 0;
+          // Tab: go forwards (full navigation with view change)
+          nextArrayIndex = activeIndex < navPoints.length - 1 ? activeIndex + 1 : 0;
+          navPoints[nextArrayIndex].click();
         }
-
-        // Click the navigation point to activate it
-        navPoints[nextIndex].click();
       }
-      return;
-    }
-
-    // Handle 'p' key for autoplay toggle
-    if (e.key === 'p' || e.key === 'P') {
-      e.preventDefault();
-      e.stopPropagation();
-      this.toggleAutoPlay();
       return;
     }
 
@@ -3257,7 +3378,7 @@ class Isometric3D {
       svg.style.width = '100%';
       svg.style.height = '100%';
       svg.style.pointerEvents = 'none';
-      svg.style.zIndex = '1000';
+      svg.style.zIndex = '2';
       svg.style.transform = 'translateZ(0.5px)'; // Bring SVG slightly forward to ensure visibility
       perspective.insertBefore(svg, perspective.firstChild);
     }
@@ -3364,12 +3485,6 @@ class Isometric3D {
 
     // Phase 2: Capture coordinates and draw SVG, then restore scene data (z-axis only, after DOM updates)
     setTimeout(() => {
-
-      // Scene data already restored above before first configureCuboids call
-      // No need to restore again here
-
-      // Rotation, zoom, and pan already applied before first configureCuboids call
-      // No need to apply again here
 
       // Just update the scene to apply the transforms
       this.updateScene();
@@ -3833,9 +3948,10 @@ class Isometric3D {
         const dir4Y = segmentLength4 > 0 ? (endPoint.y - corner3Y) / segmentLength4 : 0;
 
         // Build Z-shaped path with accurate corner positions
+        const toCornerDir = Math.sign(corner1X - startPoint.x) || 1;
         pathData = `
           M ${startPoint.x},${startPoint.y}
-          L ${corner1X - dir1X * radius1},${corner1Y - dir1Y * radius1}
+          L ${corner1X - toCornerDir * radius1},${corner1Y - dir1Y * radius1}
           Q ${corner1X},${corner1Y} ${corner1X + dir2X * radius1},${corner1Y + dir2Y * radius1}
           L ${corner2X - dir2X * radius2},${corner2Y - dir2Y * radius2}
           Q ${corner2X},${corner2Y} ${corner2X + dir3X * radius2},${corner2Y + dir3Y * radius2}
@@ -3868,17 +3984,10 @@ class Isometric3D {
         );
         const radius = getSafeRadius(segmentLength1, segmentLength2);
 
-        // Calculate unit directions
-        const dirToCornerX = segmentLength1 > 0 ? (cornerX - startPoint.x) / segmentLength1 : 0;
-        const dirToCornerY = segmentLength1 > 0 ? (cornerY - startPoint.y) / segmentLength1 : 0;
-        const dirToEndX = segmentLength2 > 0 ? (endPoint.x - cornerX) / segmentLength2 : 0;
-        const dirToEndY = segmentLength2 > 0 ? (endPoint.y - cornerY) / segmentLength2 : 0;
-
-        // Build L-shaped path
         pathData = `
           M ${startPoint.x},${startPoint.y}
-          L ${cornerX - dirToCornerX * radius},${cornerY - dirToCornerY * radius}
-          Q ${cornerX},${cornerY} ${cornerX + dirToEndX * radius},${cornerY + dirToEndY * radius}
+          L ${cornerX - xDir * radius},${cornerY - yDir * radius}
+          Q ${cornerX},${cornerY} ${cornerX + xDir * radius},${cornerY + yDir * radius}
           L ${endPoint.x},${endPoint.y}
         `.trim();
       } else if (edgeEnd !== null && edgeStart === null) {

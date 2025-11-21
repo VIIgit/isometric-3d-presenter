@@ -1112,22 +1112,41 @@ const scrollSync = new ScrollSync(viewer, {
 | `Alt` + `←` `→` `↑` `↓` | Pan view (translate) |
 | `+` `-` | Zoom controls |
 | `Space` | Reset to default view |
-| `Tab` | Navigate through navigation points |
+| `Tab` | Navigate to next navigation point |
+| `Shift` + `Tab` | Navigate to previous navigation point |
+| `Alt` + `Tab` | Cycle highlights only (keep view position) |
+| `Alt` + `Shift` + `Tab` | Cycle highlights backwards (keep view position) |
 | `P` | Toggle auto-play (cycles through navigation points) |
+| `Shift` + `P` | Toggle highlight-only auto-play (cycles highlights without moving view) |
 
-### Auto-Play Mode
+### Auto-Play Modes
 
-Press `P` to automatically cycle through navigation points every 5 seconds:
+**Full Navigation Auto-Play (`P`):**
+
+Press `P` to automatically cycle through navigation points every 5 seconds with full camera movements:
 
 - Starts from the current navigation position
-- Advances to the next point automatically
+- Advances to the next point with complete view changes (rotation, zoom, pan)
+- Applies highlights via `data-activate` if present
 - Loops back to the beginning after reaching the end
 - Press `P` again to pause
 
+**Highlight-Only Auto-Play (`Shift` + `P`):**
+
+Press `Shift` + `P` to cycle through navigation highlights without moving the camera:
+
+- Updates highlights and active states for each navigation point
+- Camera position (rotation, zoom, pan) remains unchanged
+- Perfect for keeping a fixed overview while cycling through different highlighted elements
+- Applies all `data-activate` groups at each navigation point
+- Loops continuously through all navigation points
+- Press `Shift` + `P` again to pause
+
 **Perfect for:**
 
-- ✅ Automated presentations and demos
-- ✅ Trade show displays and kiosks
+- ✅ Automated presentations and demos (`P`)
+- ✅ Trade show displays and kiosks (`P`)
+- ✅ Architecture overviews with component focus cycling (`Shift` + `P`)
 - ✅ Continuous looping through features
 - ✅ Hands-free walkthroughs
 
@@ -1139,15 +1158,27 @@ const presenter = createIsometric3D('demo', {
 });
 
 // Auto-play will cycle through all elements with data-nav-xyz attributes
+// Use P for full navigation or Shift+P for highlight-only cycling
 ```
 
-**Behavior:**
+**Common Behaviors:**
 
 - Only works when navigation points exist (`data-nav-xyz`, `data-nav-zoom`, or `data-nav-pan`)
 - Timing: 5 seconds per navigation point
 - Automatically applies highlights if `data-activate` is present
-- Stops when manually interacting (clicking, dragging)
-- Resume by pressing `P` again
+- Stops when manually interacting (clicking, dragging, keyboard controls)
+- Resume by pressing `P` or `Shift` + `P` again
+
+**Use Case Comparison:**
+
+| Scenario | Use `P` | Use `Shift` + `P` |
+|----------|---------|-------------------|
+| Product demo with different viewing angles | ✅ | ❌ |
+| Architecture diagram with fixed camera, cycling component focus | ❌ | ✅ |
+| Step-by-step tutorial with camera movements | ✅ | ❌ |
+| System overview maintaining bird's-eye view | ❌ | ✅ |
+| Workflow visualization with zoom-ins | ✅ | ❌ |
+| Network topology with component highlighting | ❌ | ✅ |
 
 ## Mouse Controls
 
