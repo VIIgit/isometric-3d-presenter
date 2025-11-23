@@ -441,15 +441,77 @@ Organize child elements in horizontal or vertical layouts with automatic spacing
 
 #### For Cuboids (`.cuboid`)
 
-- `data-width` - Width of the cuboid
-- `data-height` - Height of the cuboid (numeric value in pixels). If omitted, height is automatically calculated from content
-- `data-depth` - Depth of the cuboid
+- `data-width` - Width of the cuboid. Supports:
+  - **Pixel values**: `"100"` → 100px width
+  - **Percentage values**: `"100%"` → 100% of parent's width, `"80%"` → 80% of parent's width
+  - **Auto value**: `"auto"` → Automatically measured from content
+  - **Omitted**: Same as `"auto"`
+  
+- `data-height` - Height of the cuboid (vertical dimension). Supports:
+  - **Pixel values**: `"60"` → 60px height
+  - **Percentage values**: `"50%"` → 50% of parent's height
+  - **Auto value**: `"auto"` → Automatically calculated from content (recommended)
+  - **Omitted**: Same as `"auto"`
+  
+- `data-depth` - Depth of the cuboid (front-to-back dimension). Supports:
+  - **Pixel values**: `"100"` → 100px depth
+  - **Percentage values**: `"100%"` → 100% of parent's height (depth maps to parent's CSS height)
+  - **Auto value**: `"auto"` → Automatically measured from content
+  - **Omitted**: Same as `"auto"`
 
 #### For Scenes (`.scene`)
 
 - `data-z-axis` - Z-axis offset for elevation and shadow effects (only for `.scene` elements)
 
 **Important:** The `data-z-axis` attribute is specifically for scene elements to control shadows and elevation.
+
+#### Percentage-Based Sizing
+
+Percentage values allow cuboids to automatically fill a portion of their parent container's available space. This is perfect for responsive designs where you want cuboids to adapt to their container's size.
+
+**Example: Cuboid filling 100% of parent space**
+
+```html
+<div class="scene" style="width: 300px; height: 300px;">
+  <div class="cuboid" data-width="100%" data-height="60" data-depth="100%">
+    <!-- Cuboid will be 300×60×300 (fills parent's 300×300 space) -->
+    <div class="front">Front</div>
+    <div class="back">Back</div>
+    <div class="left">Left</div>
+    <div class="right">Right</div>
+    <div class="top">Top</div>
+    <div class="bottom">Bottom</div>
+  </div>
+</div>
+```
+
+**Example: Cuboid using 80% of parent space (automatically centered)**
+
+```html
+<div class="scene" style="min-width: 400px; min-height: 400px;">
+  <div class="cuboid" data-width="80%" data-height="60" data-depth="80%">
+    <!-- Cuboid will be 320×60×320 (80% of 400×400, centered with 10% margin on all sides) -->
+    <div class="front">Centered Cuboid</div>
+    <!-- ...other faces... -->
+  </div>
+</div>
+```
+
+**Key behaviors:**
+
+- **`data-width` percentage** → Calculated from parent's CSS `width` (including `min-width`, `max-width`)
+- **`data-depth` percentage** → Calculated from parent's CSS `height` (including `min-height`, `max-height`)
+- **`data-height` percentage** → Calculated from parent's CSS `height`
+- **Automatic centering** → Cuboids are automatically centered within their parent via CSS transforms
+- **Responsive** → Updates when parent container is resized
+
+**Use cases:**
+
+- ✅ Responsive designs where container size varies
+- ✅ Filling available space without hardcoding pixel values
+- ✅ Maintaining aspect ratios relative to parent
+- ✅ Creating padding/margins via percentages (e.g., `"90%"` creates 5% margin on each side)
+- ✅ Avoiding manual synchronization between CSS and HTML attributes
 
 #### Automatic Height Calculation
 

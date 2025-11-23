@@ -140,6 +140,44 @@ class Isometric3D {
     this.init();
   }
 
+  /**
+   * Parse dimension value (supports auto, percentage, or pixel values)
+   * @param {string} value - The dimension value to parse (e.g., "100%", "auto", "200")
+   * @param {HTMLElement} parent - The parent element for percentage calculations
+   * @param {string} axis - The axis for percentage calculation ('width' or 'height')
+   * @param {number|null} fallbackValue - Fallback value if parsing fails (default: null for auto, 100 for percentages)
+   * @returns {number|null} - Parsed dimension in pixels, or null if should be measured from content
+   */
+  parseDimension(value, parent, axis, fallbackValue = null) {
+    if (!value || value === 'auto') {
+      return fallbackValue;
+    }
+    if (typeof value === 'string' && value.includes('%')) {
+      // Percentage: calculate based on parent's computed size
+      const percentage = parseFloat(value) / 100;
+      const computedStyle = window.getComputedStyle(parent);
+      const parentSize = parseFloat(axis === 'width' ? computedStyle.width : computedStyle.height);
+      if (parentSize > 0) {
+        return Math.floor(parentSize * percentage);
+      }
+      return fallbackValue !== null ? fallbackValue : 100; // Fallback if parent has no size
+    }
+    return parseInt(value);
+  }
+
+  /**
+   * Sanitize translation object to ensure all values are valid numbers
+   * @param {Object} translation - Translation object with x, y, z properties
+   * @returns {Object} - Sanitized translation with guaranteed valid numbers
+   */
+  sanitizeTranslation(translation) {
+    return {
+      x: (typeof translation.x === 'number' && !isNaN(translation.x)) ? translation.x : 0,
+      y: (typeof translation.y === 'number' && !isNaN(translation.y)) ? translation.y : 0,
+      z: (typeof translation.z === 'number' && !isNaN(translation.z)) ? translation.z : 0
+    };
+  }
+
   init() {
     // Make container focusable
     if (!this.container.hasAttribute('tabindex')) {
@@ -179,12 +217,14 @@ class Isometric3D {
     // Temporarily hide all 3D faces so they don't affect layout measurements
     cuboids.forEach(cuboid => {
       const widthAttr = cuboid.getAttribute('data-width');
-      const heightAttr = cuboid.getAttribute('data-height');
       const depthAttr = cuboid.getAttribute('data-depth');
-      // Treat missing data-width/data-height/data-depth and 'auto' equally - both will be measured
-      const width = (!widthAttr || widthAttr === 'auto') ? 20 : parseInt(widthAttr);
-      const height = (!heightAttr || heightAttr === 'auto') ? 20 : parseInt(heightAttr);
-      const depth = (!depthAttr || depthAttr === 'auto') ? 20 : parseInt(depthAttr);
+      
+      const parent = cuboid.parentElement;
+      // Treat missing data-width/data-depth and 'auto' equally - both will be measured
+      // Use 20px as temporary value for measurement phase
+      // Note: height is not needed in this first pass - it's only used later in the 3D transform phase
+      const width = this.parseDimension(widthAttr, parent, 'width', 20);
+      const depth = this.parseDimension(depthAttr, parent, 'height', 20);
 
       cuboid.style.width = `${width}px`;
       cuboid.style.height = `${depth}px`;
@@ -280,13 +320,14 @@ class Isometric3D {
   }
 
   measureAutoHeightCuboidsIn2D() {
-    // Find all cuboids with missing data-width/data-height/data-depth or "auto" values
+    // Find all cuboids with missing data-width/data-height/data-depth, "auto" values, or percentage values
     const allCuboids = this.container.querySelectorAll('.cuboid');
     const cuboidsToMeasure = Array.from(allCuboids).filter(cuboid => {
       const widthAttr = cuboid.getAttribute('data-width');
       const heightAttr = cuboid.getAttribute('data-height');
       const depthAttr = cuboid.getAttribute('data-depth');
-      return !widthAttr || widthAttr === 'auto' || !heightAttr || heightAttr === 'auto' || !depthAttr || depthAttr === 'auto';
+      const needsProcessing = (attr) => !attr || attr === 'auto' || (typeof attr === 'string' && attr.includes('%'));
+      return needsProcessing(widthAttr) || needsProcessing(heightAttr) || needsProcessing(depthAttr);
     });
 
     // Ensure perspective is flat (no 3D transforms yet)
@@ -301,14 +342,17 @@ class Isometric3D {
       const depthAttr = cuboid.getAttribute('data-depth');
       const heightAttr = cuboid.getAttribute('data-height');
 
+      const parent = cuboid.parentElement;
+
       // Determine if we need to measure each dimension
       const needsWidthMeasurement = !widthAttr || widthAttr === 'auto';
       const needsDepthMeasurement = !depthAttr || depthAttr === 'auto';
       const needsHeightMeasurement = !heightAttr || heightAttr === 'auto';
 
       // Use temporary values for measurement (will be updated with actual measurements)
-      let width = needsWidthMeasurement ? 100 : parseInt(widthAttr);
-      let depth = needsDepthMeasurement ? 100 : parseInt(depthAttr);
+      // For auto values, parseDimension returns null; for percentages, it calculates the size
+      let width = this.parseDimension(widthAttr, parent, 'width', null) || 100;
+      let depth = this.parseDimension(depthAttr, parent, 'height', null) || 100;
 
       // Get face elements
       const frontFace = cuboid.querySelector(':scope > .front');
@@ -317,6 +361,14 @@ class Isometric3D {
       const rightFace = cuboid.querySelector(':scope > .right');
       const topFace = cuboid.querySelector(':scope > .top');
       const bottomFace = cuboid.querySelector(':scope > .bottom');
+
+      // Store calculated percentage values as numeric attributes
+      if (widthAttr && widthAttr.includes('%')) {
+        cuboid.setAttribute('data-width', width.toString());
+      }
+      if (depthAttr && depthAttr.includes('%')) {
+        cuboid.setAttribute('data-depth', depth.toString());
+      }
 
       // Measure width if needed
       // Width comes from: front/back width OR top/bottom width
@@ -354,63 +406,70 @@ class Isometric3D {
         cuboid.setAttribute('data-width', width.toString());
       }
 
-      // Measure height
+      // Measure height (or use percentage if specified)
       // Height comes from: front/back/left/right height
-      let maxHeight = 0;
+      if (heightAttr && heightAttr.includes('%')) {
+        // Height percentage: use parent's height
+        const evaluatedHeight = parseDimension(heightAttr, parent, 'height') || 100;
+        cuboid.setAttribute('data-height', evaluatedHeight.toString());
+      } else if (needsHeightMeasurement) {
+        // Measure height from content
+        let maxHeight = 0;
 
-      // Measure front and back faces height
-      [frontFace, backFace].forEach(face => {
-        if (face) {
-          face.style.width = `${width}px`;
-          face.style.height = 'auto';
-          face.style.opacity = '1';
-          face.style.position = 'absolute';
-          face.style.transform = 'none';
-          face.style.display = 'flex';
-          face.style.visibility = 'hidden';
-          face.style.boxSizing = 'border-box';
+        // Measure front and back faces height
+        [frontFace, backFace].forEach(face => {
+          if (face) {
+            face.style.width = `${width}px`;
+            face.style.height = 'auto';
+            face.style.opacity = '1';
+            face.style.position = 'absolute';
+            face.style.transform = 'none';
+            face.style.display = 'flex';
+            face.style.visibility = 'hidden';
+            face.style.boxSizing = 'border-box';
 
-          void face.offsetHeight;
-          const measuredHeight = face.offsetHeight;
-          maxHeight = Math.max(maxHeight, measuredHeight);
+            void face.offsetHeight;
+            const measuredHeight = face.offsetHeight;
+            maxHeight = Math.max(maxHeight, measuredHeight);
 
-          face.style.width = '';
-          face.style.height = '';
-          face.style.opacity = '';
-          face.style.display = '';
-          face.style.visibility = '';
-          face.style.boxSizing = '';
-        }
-      });
+            face.style.width = '';
+            face.style.height = '';
+            face.style.opacity = '';
+            face.style.display = '';
+            face.style.visibility = '';
+            face.style.boxSizing = '';
+          }
+        });
 
-      // Measure left and right faces height
-      [leftFace, rightFace].forEach(face => {
-        if (face) {
-          face.style.width = `${depth}px`;
-          face.style.height = 'auto';
-          face.style.opacity = '1';
-          face.style.position = 'absolute';
-          face.style.transform = 'none';
-          face.style.display = 'flex';
-          face.style.visibility = 'hidden';
-          face.style.boxSizing = 'border-box';
+        // Measure left and right faces height
+        [leftFace, rightFace].forEach(face => {
+          if (face) {
+            face.style.width = `${depth}px`;
+            face.style.height = 'auto';
+            face.style.opacity = '1';
+            face.style.position = 'absolute';
+            face.style.transform = 'none';
+            face.style.display = 'flex';
+            face.style.visibility = 'hidden';
+            face.style.boxSizing = 'border-box';
 
-          void face.offsetHeight;
-          const measuredHeight = face.offsetHeight;
-          maxHeight = Math.max(maxHeight, measuredHeight);
+            void face.offsetHeight;
+            const measuredHeight = face.offsetHeight;
+            maxHeight = Math.max(maxHeight, measuredHeight);
 
-          face.style.width = '';
-          face.style.height = '';
-          face.style.opacity = '';
-          face.style.display = '';
-          face.style.visibility = '';
-          face.style.boxSizing = '';
-        }
-      });
+            face.style.width = '';
+            face.style.height = '';
+            face.style.opacity = '';
+            face.style.display = '';
+            face.style.visibility = '';
+            face.style.boxSizing = '';
+          }
+        });
 
-      // Add buffer to prevent overlap
-      const evaluatedHeight = maxHeight > 0 ? Math.ceil(maxHeight * 1.05) + 4 : 100;
-      cuboid.setAttribute('data-height', evaluatedHeight.toString());
+        // Add buffer to prevent overlap
+        const evaluatedHeight = maxHeight > 0 ? Math.ceil(maxHeight * 1.05) + 4 : 100;
+        cuboid.setAttribute('data-height', evaluatedHeight.toString());
+      }
 
       // Measure depth if needed
       // Depth comes from: left/right width OR top/bottom height
@@ -1015,11 +1074,14 @@ class Isometric3D {
   }
 
   resetToDefault() {
+    // Sanitize translation before animating
+    const sanitizedTranslation = this.sanitizeTranslation(this.defaultTranslation);
+    
     // Animate smoothly to default position
     this.smoothAnimateToWithPan(
       this.defaultRotation,
       this.defaultZoom,
-      this.defaultTranslation
+      sanitizedTranslation
     );
 
     // Clear URL completely (remove both query params and hash)
@@ -2043,13 +2105,19 @@ class Isometric3D {
     // If no sourceElement (manual navigation), maintain current position
     let targetTranslation = sourceElement ? { x: 0, y: 0, z: 0 } : { ...this.currentTranslation };
 
-    // Parse xyz string (e.g., "35.00.15" or "current" to keep current rotation)
-    if (xyzString && xyzString !== 'current') {
-      const [x, y, z] = xyzString.split('.').map(v => parseFloat(v) || 0);
+    // Parse xyz string (e.g., "35.0.15" or "current" to keep current rotation, or "center" for auto-calculated centering)
+    if (xyzString && xyzString !== 'current' && xyzString !== 'center') {
+      const parts = xyzString.split('.');
+      // Map each part, ensuring we always have 3 values (fill missing with 0)
+      const [x = 0, y = 0, z = 0] = parts.map(v => {
+        const parsed = parseFloat(v);
+        return isNaN(parsed) ? 0 : parsed;
+      });
       targetRotation.x = x;
       targetRotation.y = y;
       targetRotation.z = z;
     }
+    // If xyzString is "current", "center", or not provided, targetRotation already has current values
     // If xyzString is "current" or not provided, targetRotation already has current values
 
     // Parse zoom string (e.g., "2.3" or "current" to keep current zoom)
@@ -2067,9 +2135,15 @@ class Isometric3D {
       targetTranslation = { ...this.defaultTranslation };
     } else if (panString && panString !== 'current' && panString !== 'default') {
       // Explicit numeric pan values (dot-separated: x.y)
-      const [x, y] = panString.split('.').map(v => parseFloat(v) || 0);
+      const parts = panString.split('.');
+      const [x = 0, y = 0] = parts.map(v => {
+        const parsed = parseFloat(v);
+        return isNaN(parsed) ? 0 : parsed;
+      });
       targetTranslation.x = x;
       targetTranslation.y = y;
+      // Keep z from existing translation
+      targetTranslation.z = targetTranslation.z || 0;
     } else if (sourceElement) {
       // Auto-calculate pan to center the parent scene when pan is not explicitly defined
       // If the clicked element is a face, find its parent scene and center that
@@ -2204,6 +2278,9 @@ class Isometric3D {
       });
     }
 
+    // Sanitize translation before animating
+    targetTranslation = this.sanitizeTranslation(targetTranslation);
+
     // Perform smooth animation with pan/translation
     this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, 1200, onComplete);
   }
@@ -2336,7 +2413,7 @@ class Isometric3D {
       // Interpolate zoom
       this.currentZoom = startZoom + (clampedZoom - startZoom) * eased;
 
-      // Interpolate translation/pan
+      // Interpolate translation/pan (values guaranteed valid by caller)
       this.currentTranslation.x = startTranslation.x + (targetTranslation.x - startTranslation.x) * eased;
       this.currentTranslation.y = startTranslation.y + (targetTranslation.y - startTranslation.y) * eased;
       this.currentTranslation.z = startTranslation.z + (targetTranslation.z - startTranslation.z) * eased;
@@ -2548,10 +2625,11 @@ class Isometric3D {
 
   resetView() {
     // Animate smoothly to default rotation, zoom, and pan
+    const sanitizedTranslation = this.sanitizeTranslation(this.defaultTranslation);
     this.smoothAnimateToWithPan(
       this.defaultRotation,
       this.defaultZoom,
-      this.defaultTranslation
+      sanitizedTranslation
     );
 
     // Update navigation bar to show default position as active
@@ -2713,6 +2791,12 @@ class Isometric3D {
   }
 
   animateTranslation(targetX, targetY, targetZ) {
+    // Sanitize input translation values
+    const sanitizedTarget = this.sanitizeTranslation({ x: targetX, y: targetY, z: targetZ });
+    targetX = sanitizedTarget.x;
+    targetY = sanitizedTarget.y;
+    targetZ = sanitizedTarget.z;
+
     // Cancel any existing translation animation
     if (this.translationAnimationId) {
       cancelAnimationFrame(this.translationAnimationId);
@@ -2803,7 +2887,9 @@ class Isometric3D {
   }
 
   onMouseMove(e) {
-    if (!this.isDragging) return;
+    if (!this.isDragging) {
+      return;
+    }
 
     // Throttle mouse move events to reduce excessive updates
     const now = performance.now();
@@ -2964,9 +3050,10 @@ class Isometric3D {
   }
 
   onKeyDown(e) {
-    console.log(e.key + ' ' + e.altKey + ' ' + e.shiftKey);
     // Only respond if this container has focus
-    if (document.activeElement !== this.container) return;
+    if (document.activeElement !== this.container) {
+      return;
+    }
 
     // Handle 'p' key for autoplay toggle
     // P = regular autoplay, Shift+P = highlight-only autoplay
@@ -3326,8 +3413,9 @@ class Isometric3D {
     if (panParam) {
       const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
       if (!isNaN(x) && !isNaN(y)) {
-        this.currentTranslation.x = x;
-        this.currentTranslation.y = y;
+        const sanitized = this.sanitizeTranslation({ x, y, z: this.currentTranslation.z });
+        this.currentTranslation.x = sanitized.x;
+        this.currentTranslation.y = sanitized.y;
         hasAdjustments = true;
       }
     }
@@ -3442,9 +3530,9 @@ class Isometric3D {
 
     if (panParam) {
       const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
-      finalTranslation = { x, y, z: 0 };
+      finalTranslation = this.sanitizeTranslation({ x, y, z: 0 });
     } else {
-      finalTranslation = { ...this.defaultTranslation };
+      finalTranslation = this.sanitizeTranslation({ ...this.defaultTranslation });
     }
 
     // Apply completely flat state - ignore all stored values
@@ -3948,10 +4036,9 @@ class Isometric3D {
         const dir4Y = segmentLength4 > 0 ? (endPoint.y - corner3Y) / segmentLength4 : 0;
 
         // Build Z-shaped path with accurate corner positions
-        const toCornerDir = Math.sign(corner1X - startPoint.x) || 1;
         pathData = `
           M ${startPoint.x},${startPoint.y}
-          L ${corner1X - toCornerDir * radius1},${corner1Y - dir1Y * radius1}
+          L ${corner1X - dir1X * radius1},${corner1Y - dir1Y * radius1}
           Q ${corner1X},${corner1Y} ${corner1X + dir2X * radius1},${corner1Y + dir2Y * radius1}
           L ${corner2X - dir2X * radius2},${corner2Y - dir2Y * radius2}
           Q ${corner2X},${corner2Y} ${corner2X + dir3X * radius2},${corner2Y + dir3Y * radius2}
