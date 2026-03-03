@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isometric Page</title>
+    <link rel="stylesheet" href="../src/isometric-3d.css">
+    <style>
+        /* ===== Structural CSS ===== */
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .sticky-section-wrapper { position: relative; }
+        .isometric-wrapper {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .isometric-container {
+            height: 300px;
+            width: 100%;
+            background-color: #ffffffe1;
+            /* NEVER add border-radius here — it flattens 3D perspective
+               (overflow:hidden + border-radius forces browser to rasterize before clipping).
+               Use the .isometric-wrapper div above for rounded corners instead. */
+        }
+        .content-sections { margin: 0 20px 40px 20px; }
+        .description-section {
+            /* scroll-margin-top is injected by ScrollSync (auto-computed from wrapper height) */
+            position: relative;
+            min-height: 600px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .description-section h2 {
+            position: sticky;
+            /* top is injected by ScrollSync (auto-computed from wrapper height) */
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            z-index: 50;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin: 0;
+        }
+
+        /* ===== Grid Layout ===== */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 25px;
+            grid-template-areas:
+                "api  .    db"
+                ".    svc  ."
+                "ui   ui   .";
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+        .topic-api { grid-area: api; }
+        .topic-db  { grid-area: db; }
+        .topic-svc { grid-area: svc; }
+        .topic-ui  { grid-area: ui; }
+
+        /* ===== Face Colors ===== */
+        .cuboid > .face {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 5px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .cuboid > .front  { background: rgba(52, 152, 219, 0.7); }
+        .cuboid > .back   { background: rgba(46, 204, 113, 0.7); }
+        .cuboid > .left   { background: rgba(155, 89, 182, 0.7); }
+        .cuboid > .right  { background: rgba(241, 196, 15, 0.7); }
+        .cuboid > .top    { background: rgba(76, 175, 80, 0.7); }
+        .cuboid > .bottom { background: rgba(52, 73, 94, 0.7); }
+
+        /* ===== Navigation & Highlight Styles ===== */
+        .face.nav-selected, .scene.nav-selected {
+            outline: 3px solid rgb(255, 0, 225);
+            outline-offset: 4px;
+            border-radius: 4px;
+        }
+        .face.nav-selected[data-activate],
+        .scene.nav-selected[data-activate],
+        .scene[data-activate] > .cuboid > .face.nav-selected {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { outline-color: rgba(255, 0, 225, 0.8); }
+            50%      { outline-color: rgba(255, 0, 255, 0.3); }
+        }
+        .face.highlight { border-bottom: 3px solid rgba(255, 0, 0, 0.8); }
+        .scene.highlight:not(:has(> .cuboid)) { border-bottom: 3px solid rgba(255, 0, 0, 0.8); }
+
+        /* ===== Connector Styles ===== */
+        .connector-path {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            transition: opacity 0.3s ease;
+        }
+        .connector-path.highlight {
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+            opacity: 1 !important;
+        }
+        .connector-animated-marker {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+    </style>
+</head>
+<body>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+Isometric Page<br>
+    <!-- PART 2 + PART 3: Sticky wrapper -->
+    <div class="sticky-section-wrapper">
+
+        <!-- Sticky block: header + 3D diagram stick together -->
+        <div class="isometric-wrapper">
+
+        <!-- PART 2a: Diagram title & description (sticky with diagram) -->
+        <div class="isometric-header">
+            <h1>Isometric Page</h1>
+            <p>Explore the pattern — a high-level view of the system architecture showing
+               how the API Gateway, Core Service, Database, and Frontend UI interact.</p>
+        </div>
+
+        <!-- PART 2b: 3D diagram (viewport provides rounded corners without breaking 3D) -->
+        <div class="isometric-viewport">
+        <div id="presenter" class="isometric-container">
+            <div class="isometric-perspective grid-layout">
+
+                <!-- API Gateway -->
+                <div class="scene topic-api" data-z-axis="0" data-groups="api">
+                    <div id="api" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                        <div class="front">API Gateway</div>
+                        <div class="back">back</div>
+                        <div class="left">API</div>
+                        <div class="right">right</div>
+                        <div class="top"
+                             data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
+                             data-section="api-description"
+                             data-activate="api" data-focus="center">API Gateway</div>
+                        <div class="bottom">bottom</div>
+                    </div>
+                </div>
+
+                <!-- Database -->
+                <div class="scene topic-db" data-z-axis="0" data-groups="db">
+                    <div id="db" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                        <div class="front">Database</div>
+                        <div class="back">back</div>
+                        <div class="left">DB</div>
+                        <div class="right">right</div>
+                        <div class="top"
+                             data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
+                             data-section="db-description"
+                             data-activate="db" data-focus="center">Database</div>
+                        <div class="bottom">bottom</div>
+                    </div>
+                </div>
+
+                <!-- Core Service -->
+                <div class="scene topic-svc" data-z-axis="0" data-groups="svc">
+                    <div id="svc" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                        <div class="front">Core Service</div>
+                        <div class="back">back</div>
+                        <div class="left">Service</div>
+                        <div class="right">right</div>
+                        <div class="top"
+                             data-nav-xyz="45.00.-35" data-nav-zoom="1.0"
+                             data-section="svc-description"
+                             data-activate="svc" data-focus="center">Core Service</div>
+                        <div class="bottom">bottom</div>
+                    </div>
+                </div>
+
+                <!-- Frontend UI (spans 2 columns) -->
+                <div class="scene topic-ui" data-z-axis="0" data-groups="ui">
+                    <div id="ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
+                        <div class="front">Frontend</div>
+                        <div class="back">back</div>
+                        <div class="left">UI</div>
+                        <div class="right">right</div>
+                        <div class="top"
+                             data-nav-xyz="45.00.-35" data-nav-zoom="0.9"
+                             data-section="ui-description"
+                             data-activate="ui" data-focus="center">Frontend</div>
+                        <div class="bottom">bottom</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        </div> <!-- /.isometric-viewport -->
+        </div> <!-- /.isometric-wrapper -->
+
+        <!-- Scrollable content sections -->
+        <div class="content-sections">
+
+            <div id="api-description" class="description-section">
+                <h2>API Gateway</h2>
+                <div style="padding: 20px;">
+                    <p>Handles incoming HTTP requests and routing. The API Gateway serves as the
+                       single entry point for all client requests, performing authentication,
+                       rate limiting, and request validation before forwarding to the Core Service.</p>
+                    <p>Key responsibilities include TLS termination, load balancing across service
+                       instances, and request/response transformation.</p>
+                </div>
+            </div>
+
+            <div id="db-description" class="description-section">
+                <h2>Database</h2>
+                <div style="padding: 20px;">
+                    <p>PostgreSQL for persistent storage. The database layer manages all application
+                       data including user records, transaction history, and configuration state.</p>
+                    <p>Features include connection pooling, read replicas for query scaling,
+                       automated backups, and point-in-time recovery capabilities.</p>
+                </div>
+            </div>
+
+            <div id="svc-description" class="description-section">
+                <h2>Core Service</h2>
+                <div style="padding: 20px;">
+                    <p>Business logic and orchestration layer. The Core Service processes all
+                       requests from the API Gateway, applies business rules, and coordinates
+                       reads and writes to the Database.</p>
+                    <p>Implements domain-driven design patterns with clear bounded contexts,
+                       event sourcing for audit trails, and saga patterns for distributed transactions.</p>
+                </div>
+            </div>
+
+            <div id="ui-description" class="description-section">
+                <h2>Frontend</h2>
+                <div style="padding: 20px;">
+                    <p>React SPA for user interaction. The Frontend provides a responsive,
+                       single-page application that communicates with the API Gateway via
+                       REST endpoints and WebSocket connections for real-time updates.</p>
+                    <p>Built with component-driven architecture, state management via Redux,
+                       and optimistic UI updates for a smooth user experience.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="../src/isometric-3d.js"></script>
+    <script src="../src/scroll-sync.js"></script>
+    <script>
+        const controller = createIsometric3D('presenter', {
+            initialRotation: { x: 0, y: 0, z: 0 },
+            initialZoom: 0.8,
+            defaultRotation: { x: 45, y: 0, z: -35 },
+            defaultZoom: 1.0,
+            showCompactControls: true,
+            connectors: [
+                {ids: 'ui,api', positions: 'top,bottom', vertices: '20,20', color: '#4CAF50', endStyles: ',arrowSmall', groups: 'ui,api'},
+                {ids: 'api,svc', positions: 'right,top', vertices: '20,30', color: '#FF9800', endStyles: ',arrowSmall', groups: 'api,svc', animationStyle: 'circle'},
+                {ids: 'svc,db', positions: 'right,bottom', vertices: '20,30', color: '#2196F3', endStyles: ',arrowSmall', groups: 'svc,db'}
+            ],
+            connectorDefaults: {
+                endLine: 'arrow',
+                lineStyle: 'solid'
+            },
+            rotationLimits: {
+                x: { min: 0, max: 45 },
+                y: { min: -180, max: 180 },
+                z: { min: -180, max: 180 }
+            }
+        });
+
+        const scrollSync = new ScrollSync(controller, {
+            // stickyThreshold: 'auto' (default) — auto-computed from .isometric-wrapper height
+            scrollDuration: 1800,
+            debounceDelay: 100
+        });
+    </script>
+</body>
+</html>

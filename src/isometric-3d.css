@@ -11,6 +11,36 @@
   align-items: center;
 }
 
+/* Optional header/title div inside .isometric-wrapper — sticks together with the 3D diagram.
+   Place inside .isometric-wrapper, before .isometric-viewport:
+     .isometric-wrapper
+       .isometric-header   ← title + description (optional)
+       .isometric-viewport ← border-radius + overflow:hidden (clips 3D output)
+         .isometric-container
+*/
+.isometric-header {
+  background: var(--color-bg-primary, #ffffff);
+  padding: 15px 20px;
+  z-index: 101;
+}
+.isometric-header h1,
+.isometric-header h2,
+.isometric-header h3 {
+  margin: 0 0 5px 0;
+}
+.isometric-header p {
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Viewport provides rounded corners + clipping without breaking 3D.
+   border-radius must NEVER be on .isometric-container itself. */
+.isometric-viewport {
+  border-radius: 12px;
+  overflow: hidden; /* clips the already-composited 3D output */
+  border: black 2px solid;
+}
+
 /* Visual feedback when container has focus for keyboard navigation */
 .isometric-container:focus {
   outline: 2px solid rgba(74, 158, 255, 0.5);
@@ -76,6 +106,7 @@
 /* Scene - container only, can hold cuboids and other scenes */
 .scene {
   position: relative;
+  transform-style: preserve-3d;
 }
 
 /* Cuboid - 3D box with up to 6 faces */

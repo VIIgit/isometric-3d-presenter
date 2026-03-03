@@ -252,11 +252,14 @@ Customize the appearance of your 3D scenes with different colors for each face a
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `defaultRotation` | Object | `{x: 45, y: 0, z: -35}` | Initial rotation angles |
-| `defaultZoom` | Number | `1.0` | Initial zoom level |
+| `defaultRotation` | Object | `{x: 45, y: 0, z: -35}` | Fallback rotation angles when nav-points don't specify |
+| `defaultZoom` | Number | `1.0` | Fallback zoom level when nav-points don't specify |
+| `initialRotation` | Object | Same as `defaultRotation` | "Home" rotation — used on startup and spacebar reset |
+| `initialZoom` | Number | Same as `defaultZoom` | "Home" zoom — used on startup and spacebar reset |
 | `showCompactControls` | Boolean | `false` | Show spherical controller |
 | `bookmarkPrefix` | String | `containerId_` | URL parameter prefix |
 | `navSelectedTarget` | String | `'clicked'` | Which face gets `.nav-selected` class: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
+| `connectors` | Array | `null` | Connector definitions array (alternative to `data-connectors` HTML attribute) |
 | `dimmingAlpha` | Object | See below | Alpha values for dimming non-highlighted elements |
 
 ### Dimming Configuration
@@ -732,8 +735,14 @@ viewer.setRotation(45, 0, -35);
 // Set zoom
 viewer.setZoom(1.5);
 
-// Reset to default view
+// Reset to initial/home view (also scrolls page to the container)
 viewer.resetView();
+
+// Reset without scrolling the page
+viewer.resetView({ skipScroll: true });
+
+// Scroll page to bring the isometric container into view
+viewer.scrollToContainer();
 
 // Get current state
 const state = viewer.getState();
@@ -741,7 +750,13 @@ const state = viewer.getState();
 
 ## SVG Connectors
 
-Draw connections between elements with automatic routing and customizable line endings:
+Draw connections between elements with automatic routing and customizable line endings.
+
+### Defining Connectors
+
+Connectors can be defined in two ways:
+
+#### 1. Via HTML `data-connectors` attribute
 
 ```html
 <div class="isometric-perspective" 
@@ -759,6 +774,26 @@ Draw connections between elements with automatic routing and customizable line e
   <!-- scenes -->
 </div>
 ```
+
+#### 2. Via JavaScript constructor options
+
+```javascript
+const presenter = createIsometric3D('presentation', {
+  connectors: [
+    {
+      ids: 'cube1,cube2',
+      positions: 'top,bottom',
+      color: '#4CAF50',
+      endStyles: 'circle,arrow',
+      lineStyle: 'solid',
+      animationStyle: 'circle',
+      groups: 'workflow,integration'
+    }
+  ]
+});
+```
+
+The JavaScript approach is useful when connectors need to be computed dynamically or when you prefer to keep configuration in code. If both HTML and JS connectors are provided, the HTML `data-connectors` attribute takes precedence.
 
 ### Connector Configuration
 
@@ -1139,18 +1174,49 @@ Sync 3D navigation with page scrolling:
 
 ```javascript
 const scrollSync = new ScrollSync(viewer, {
-  stickyThreshold: 320,   // Sticky header offset
-  scrollDuration: 1800,   // Animation duration
-  debounceDelay: 100      // Debounce delay
+  stickyThreshold: 'auto', // 'auto' (default) = measured from .isometric-wrapper; or numeric px value
+  stickyGap: 10,           // Gap in px between sticky block bottom and section headings
+  scrollDuration: 1800,    // Animation duration
+  debounceDelay: 100       // Debounce delay
 });
 ```
 
+### ScrollSync Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `stickyThreshold` | Number \| String | `'auto'` | Top offset where sections become "active". `'auto'` measures from `.isometric-wrapper` (top + offsetHeight) at runtime. Override with a numeric px value if needed. |
+| `stickyGap` | Number | `10` | Gap in px between the sticky wrapper bottom and the section h2 headings |
+| `scrollDuration` | Number | `1800` | Scroll animation duration in ms |
+| `debounceDelay` | Number | `100` | Debounce delay for navigation updates in ms |
+| `sectionSelector` | String | `'.description-section'` | CSS selector for content sections |
+| `dataSectionAttribute` | String | `'data-section'` | Data attribute used for section identification |
+
+**How `stickyThreshold: 'auto'` works:**
+
+1. Finds the `.isometric-wrapper` ancestor of the container (or the container itself)
+2. Reads its computed CSS `top` value + `offsetHeight`
+3. Uses the sum as the threshold
+4. Automatically injects `scroll-margin-top` on sections and `top` on section `h2` elements so they align below the sticky block
+
+**Scroll detection:** Uses a scroll-driven `requestAnimationFrame` approach (instead of IntersectionObserver) for immediate, consistent response at any scroll speed. Determines the active section by finding the last section whose top has scrolled to or above the effective sticky boundary.
+
 ### HTML Structure
+
+The recommended layout uses the `.isometric-wrapper` → `.isometric-viewport` → `.isometric-container` hierarchy:
 
 ```html
 <div class="sticky-section-wrapper">
-  <div id="viewer" class="isometric-container">
-    <!-- 3D scenes -->
+  <div class="isometric-wrapper">
+    <div class="isometric-header">
+      <h2>My Presentation</h2>
+      <p>Optional description text</p>
+    </div>
+    <div class="isometric-viewport">
+      <div id="viewer" class="isometric-container">
+        <!-- 3D scenes -->
+      </div>
+    </div>
   </div>
   
   <div id="content-sections">
@@ -1162,6 +1228,12 @@ const scrollSync = new ScrollSync(viewer, {
   </div>
 </div>
 ```
+
+**Layout classes:**
+
+- **`.isometric-wrapper`** — Groups the header and viewport as one sticky unit
+- **`.isometric-header`** — Optional title/description above the 3D viewport (styled with padding and background)
+- **`.isometric-viewport`** — Provides `border-radius: 12px` + `overflow: hidden` to clip the 3D output without breaking 3D transforms (border-radius must never be on `.isometric-container` itself)
 
 ## Keyboard Controls
 

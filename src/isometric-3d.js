@@ -3,14 +3,17 @@ class Isometric3D {
    * Initialize a new Isometric3D instance
    * @param {string} containerId - The ID of the HTML container element
    * @param {Object} options - Configuration options
-   * @param {Object} options.defaultRotation - Default camera rotation angles
-   * @param {number} options.defaultZoom - Default zoom level
+   * @param {Object} options.defaultRotation - Default camera rotation angles (fallback when nav-points don't specify)
+   * @param {number} options.defaultZoom - Default zoom level (fallback when nav-points don't specify)
+   * @param {Object} options.initialRotation - Initial/home rotation angles (startup & spacebar reset, falls back to defaultRotation)
+   * @param {number} options.initialZoom - Initial/home zoom level (startup & spacebar reset, falls back to defaultZoom)
    * @param {Object} options.mouseSensitivity - Mouse drag sensitivity
    * @param {Object} options.rotationLimits - Min/max rotation constraints
    * @param {string} options.urlPrefix - Prefix for URL hash parameters
    * @param {boolean} options.showCompactControls - Show compact control panel
    * @param {boolean} options.debugShadows - Enable shadow debugging
    * @param {string} options.navSelectedTarget - Navigation target behavior
+   * @param {Array} options.connectors - Connector definitions array (alternative to data-connectors HTML attribute)
    * @param {Object} options.connectorDefaults - Default connector line styles
    * @param {Object} options.dimmingAlpha - Alpha values for dimming non-highlighted elements
    * @param {number} options.dimmingAlpha.backgroundColor - Alpha for background colors (default: 0.2)
@@ -32,14 +35,24 @@ class Isometric3D {
       y: options.defaultRotation?.y || 0,
       z: options.defaultRotation?.z || -35
     };
-    this.currentRotation = { ...this.defaultRotation };
+
+    // Initial rotation/zoom: the "home" point (startup & spacebar reset)
+    // Falls back to defaultRotation/defaultZoom if not explicitly set
+    this.initialRotation = {
+      x: options.initialRotation?.x ?? this.defaultRotation.x,
+      y: options.initialRotation?.y ?? this.defaultRotation.y,
+      z: options.initialRotation?.z ?? this.defaultRotation.z
+    };
+    this.currentRotation = { ...this.initialRotation };
 
     this.defaultZoom = options.defaultZoom || 1.0;
-    this.currentZoom = this.defaultZoom;
+    this.initialZoom = options.initialZoom ?? this.defaultZoom;
+    this.currentZoom = this.initialZoom;
 
     // Translation for centering on elements
     this.currentTranslation = { x: 0, y: 0, z: 0 };
     this.defaultTranslation = { x: 0, y: 0, z: 0 };
+    this.initialTranslation = { x: 0, y: 0, z: 0 };
 
     this.urlUpdateTimeout = null;
     this.labelUpdateTimeout = null; // Track label update timeout to prevent flicker
@@ -96,6 +109,9 @@ class Isometric3D {
     // When clicking a face, which face should get .nav-selected?
     // Options: 'clicked' (default), 'top', 'bottom', 'front', 'back', 'left', 'right'
     this.navSelectedTarget = options.navSelectedTarget || 'clicked';
+
+    // Connector definitions (can be provided via options instead of HTML data-connectors attribute)
+    this.connectors = options.connectors || null;
 
     // Default connector settings
     this.connectorDefaults = {
@@ -1073,16 +1089,21 @@ class Isometric3D {
     });
   }
 
-  resetToDefault() {
+  resetToDefault(options = {}) {
     // Sanitize translation before animating
-    const sanitizedTranslation = this.sanitizeTranslation(this.defaultTranslation);
+    const sanitizedTranslation = this.sanitizeTranslation(this.initialTranslation);
     
-    // Animate smoothly to default position
+    // Animate smoothly to initial/home position
     this.smoothAnimateToWithPan(
-      this.defaultRotation,
-      this.defaultZoom,
+      this.initialRotation,
+      this.initialZoom,
       sanitizedTranslation
     );
+
+    // Scroll to the container (top of the presentation) unless suppressed
+    if (!options.skipScroll) {
+      this.scrollToContainer();
+    }
 
     // Clear URL completely (remove both query params and hash)
     const baseUrl = window.location.pathname;
@@ -1577,7 +1598,7 @@ class Isometric3D {
         </div>
         <div class="key-mapping">
           <span><span class="key">Space</span></span>
-          <span>Reset to default view</span>
+          <span>Reset to initial view</span>
         </div>
         <div class="key-mapping">
           <span><span class="key">Tab</span></span>
@@ -2623,14 +2644,19 @@ class Isometric3D {
     this.updateScene();
   }
 
-  resetView() {
-    // Animate smoothly to default rotation, zoom, and pan
-    const sanitizedTranslation = this.sanitizeTranslation(this.defaultTranslation);
+  resetView(options = {}) {
+    // Animate smoothly to initial/home rotation, zoom, and pan
+    const sanitizedTranslation = this.sanitizeTranslation(this.initialTranslation);
     this.smoothAnimateToWithPan(
-      this.defaultRotation,
-      this.defaultZoom,
+      this.initialRotation,
+      this.initialZoom,
       sanitizedTranslation
     );
+
+    // Scroll to the container (top of the presentation) unless suppressed
+    if (!options.skipScroll) {
+      this.scrollToContainer();
+    }
 
     // Update navigation bar to show default position as active
     this.setActiveNavPoint(-1);
@@ -2640,6 +2666,30 @@ class Isometric3D {
 
     // Reset manual pan flag since we're going back to default
     this.hasManualPanAdjustment = false;
+  }
+
+  /**
+   * Smoothly scroll the page so that the isometric container (or its sticky wrapper/header)
+   * is visible at the top of the viewport. Used when resetting to the initial/home position.
+   */
+  scrollToContainer() {
+    // Find the most relevant scroll target:
+    // 1. A parent .sticky-section-wrapper (if using scroll-sync layout)
+    // 2. A parent .isometric-wrapper (if header + viewport are grouped)
+    // 3. An ancestor .isometric-header sibling (legacy: header as sibling of container)
+    // 4. The container itself
+    const stickyWrapper = this.container.closest('.sticky-section-wrapper');
+    const isoWrapper = this.container.closest('.isometric-wrapper');
+    const legacyHeader = this.container.previousElementSibling?.classList?.contains('isometric-header')
+      ? this.container.previousElementSibling
+      : null;
+    const scrollTarget = stickyWrapper || isoWrapper || legacyHeader || this.container;
+
+    // Only scroll if the target is not already near the top of the viewport
+    const rect = scrollTarget.getBoundingClientRect();
+    if (Math.abs(rect.top) > 50) {
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   calculateCenterPan(element, targetRotation, targetZoom) {
@@ -3456,6 +3506,11 @@ class Isometric3D {
 
     const perspective = this.container.querySelector('.isometric-perspective');
 
+    // If connectors were provided via constructor options, apply them to the perspective element
+    if (perspective && this.connectors && !perspective.hasAttribute('data-connectors')) {
+      perspective.setAttribute('data-connectors', JSON.stringify(this.connectors));
+    }
+
     // Create SVG overlay if connectors are defined
     if (perspective && perspective.hasAttribute('data-connectors')) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -3514,25 +3569,25 @@ class Isometric3D {
 
     let finalRotation, finalZoom, finalTranslation;
 
-    // Priority: URL parameters > defaults
+    // Priority: URL parameters > initial (home) values
     if (rotationParam) {
       const [x, y, z] = rotationParam.split('.').map(v => parseFloat(v) || 0);
       finalRotation = { x, y, z };
     } else {
-      finalRotation = { ...this.defaultRotation };
+      finalRotation = { ...this.initialRotation };
     }
 
     if (zoomParam) {
       finalZoom = parseFloat(zoomParam);
     } else {
-      finalZoom = this.defaultZoom;
+      finalZoom = this.initialZoom;
     }
 
     if (panParam) {
       const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
       finalTranslation = this.sanitizeTranslation({ x, y, z: 0 });
     } else {
-      finalTranslation = this.sanitizeTranslation({ ...this.defaultTranslation });
+      finalTranslation = this.sanitizeTranslation({ ...this.initialTranslation });
     }
 
     // Apply completely flat state - ignore all stored values
@@ -3716,44 +3771,65 @@ class Isometric3D {
       return;
     }
 
-    // Create defs for arrow markers (one per color, both regular and small)
+    // Scan connectors to determine which marker types are actually needed per color
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    const usedColors = new Set(connectors.map(c => c.color || '#4CAF50'));
+    const needsArrow = new Set();      // colors that need regular arrow marker
+    const needsArrowSmall = new Set(); // colors that need small arrow marker
 
-    // Add gray marker for non-highlighted connectors
-    usedColors.add('#80808000');
+    connectors.forEach(c => {
+      const color = c.color || '#4CAF50';
+      let startLine, endLine;
+      if (c.endStyles) {
+        const [s, e] = c.endStyles.split(',').map(v => v.trim());
+        startLine = s || undefined;
+        endLine = e || undefined;
+      } else {
+        startLine = c.startLine || this.connectorDefaults.startLine;
+        endLine = c.endLine || this.connectorDefaults.endLine;
+      }
+      [startLine, endLine].forEach(style => {
+        if (style === 'arrow' || style === 'arrow-circle') needsArrow.add(color);
+        if (style === 'arrowSmall') needsArrowSmall.add(color);
+      });
+    });
 
-    usedColors.forEach(color => {
-      // Regular arrow marker
+    // Add gray marker for non-highlighted connectors (dimming) — only for types actually used
+    if (needsArrow.size > 0) needsArrow.add('#80808000');
+    if (needsArrowSmall.size > 0) needsArrowSmall.add('#80808000');
+
+    // Create regular arrow markers only for colors that need them
+    needsArrow.forEach(color => {
       const markerId = `arrowhead-${color.replace('#', '')}`;
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
       marker.setAttribute('id', markerId);
-      marker.setAttribute('markerWidth', '10');
+      marker.setAttribute('markerWidth', '13');
       marker.setAttribute('markerHeight', '10');
-      marker.setAttribute('refX', '9');
-      marker.setAttribute('refY', '3');
+      marker.setAttribute('refX', '13');
+      marker.setAttribute('refY', '5');
       marker.setAttribute('orient', 'auto');
       marker.setAttribute('markerUnits', 'strokeWidth');
 
       const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      arrowPath.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+      arrowPath.setAttribute('d', 'M0,0 L0,10 L13,5 z');
       arrowPath.setAttribute('fill', color);
       marker.appendChild(arrowPath);
       defs.appendChild(marker);
+    });
 
-      // Small arrow marker (30% smaller)
+    // Create small arrow markers only for colors that need them
+    needsArrowSmall.forEach(color => {
       const markerIdSmall = `arrowhead-small-${color.replace('#', '')}`;
       const markerSmall = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
       markerSmall.setAttribute('id', markerIdSmall);
-      markerSmall.setAttribute('markerWidth', '7');
-      markerSmall.setAttribute('markerHeight', '7');
-      markerSmall.setAttribute('refX', '6.3');
-      markerSmall.setAttribute('refY', '2.1');
+      markerSmall.setAttribute('markerWidth', '3');
+      markerSmall.setAttribute('markerHeight', '5');
+      markerSmall.setAttribute('refX', '3');
+      markerSmall.setAttribute('refY', '2.5');
       markerSmall.setAttribute('orient', 'auto');
       markerSmall.setAttribute('markerUnits', 'strokeWidth');
 
       const arrowPathSmall = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      arrowPathSmall.setAttribute('d', 'M0,0 L0,4.2 L6.3,2.1 z');
+      arrowPathSmall.setAttribute('d', 'M0,0 L0,5 L3,2.5 z');
       arrowPathSmall.setAttribute('fill', color);
       markerSmall.appendChild(arrowPathSmall);
       defs.appendChild(markerSmall);

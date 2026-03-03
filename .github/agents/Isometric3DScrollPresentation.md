@@ -16,8 +16,8 @@ Collect the following from the user before generating:
 
 | Input | Required | Type | Description |
 |-------|----------|------|-------------|
-| `title` | Yes | string | Page heading (`<h1>`) |
-| `teaser` | Yes | string | Introductory paragraph(s) above the diagram |
+| `title` | Yes | string | Page heading (`<h1>`) — displayed in the sticky diagram header |
+| `teaser` | Yes | string | Introductory paragraph(s) in the sticky diagram header, below the title |
 | `topics` | Yes | list | Each topic has: `id` (short slug), `label` (display name), `description` (markdown/HTML content for the section) |
 | `grid` | Yes | multi-line text | Layout grid using topic IDs and `.` for empty cells (see Grid Notation below) |
 | `connectors` | No | list | Connections between topics: `{from, to, color, style}` |
@@ -77,17 +77,21 @@ Every generated page follows this three-part layout:
 
 ```
 ┌─────────────────────────────────┐
-│  PART 1: Header + Teaser        │  ← Normal flow, scrolls away
-├─────────────────────────────────┤
-│  PART 2: Sticky 3D Diagram      │  ← position: sticky; stays visible
+│  PART 2: Sticky Block            │  ← position: sticky; stays visible
 │  ┌─────────────────────────────┐│
-│  │  .isometric-perspective     ││  ← CSS Grid with topics as scenes/cuboids
-│  │  (grid layout with topics)  ││
+│  │  .isometric-header          ││  ← Title + description (optional)
+│  ├─────────────────────────────┤│
+│  │  .isometric-viewport        ││  ← border-radius + overflow:hidden
+│  │  ┌─────────────────────────┐││
+│  │  │  .isometric-perspective │││  ← CSS Grid with topics as scenes/cuboids
+│  │  │  (grid layout w/ topics)│││
+│  │  └─────────────────────────┘││
 │  └─────────────────────────────┘│
 ├─────────────────────────────────┤
 │  PART 3: Content Sections        │  ← Scrollable; synced with 3D navigation
 │  ┌─────────────────────────────┐│
 │  │  Section: Topic 1           ││  ← id matches data-section on 3D element
+│  │  (sticky h2 + scroll body) ││
 │  ├─────────────────────────────┤│
 │  │  Section: Topic 2           ││
 │  ├─────────────────────────────┤│
@@ -114,21 +118,27 @@ Every generated page follows this three-part layout:
 </head>
 <body>
 
-    <!-- PART 1: Header -->
-    <h1>{{title}}</h1>
-    <div style="padding: 20px;">
-        <p>{{teaser}}</p>
-    </div>
-
     <!-- PART 2 + PART 3: Sticky wrapper -->
     <div class="sticky-section-wrapper">
 
-        <!-- Sticky 3D diagram -->
+        <!-- Sticky block: header + 3D diagram stick together -->
+        <div class="isometric-wrapper">
+
+        <!-- PART 2a: Diagram title & description (sticky with diagram) -->
+        <div class="isometric-header">
+            <h1>{{title}}</h1>
+            <p>{{teaser}}</p>
+        </div>
+
+        <!-- PART 2b: 3D diagram (viewport provides rounded corners without breaking 3D) -->
+        <div class="isometric-viewport">
         <div id="presenter" class="isometric-container">
-            <div class="isometric-perspective grid-layout" data-connectors='{{connectors_json}}'>
+            <div class="isometric-perspective grid-layout">
                 <!-- Generated scenes/cuboids for each topic -->
             </div>
         </div>
+        </div> <!-- /.isometric-viewport -->
+        </div> <!-- /.isometric-wrapper -->
 
         <!-- Scrollable content sections -->
         <div class="content-sections">
@@ -149,11 +159,9 @@ Every generated page follows this three-part layout:
 
 ## 4. Structural CSS (Required Boilerplate)
 
-This CSS is **identical for every scroll-synced presentation**. The agent must include it. The only variables are `containerHeight` and `stickyTop` — all other values derive from them.
+This CSS is **identical for every scroll-synced presentation**. The agent must include it. The only variables are `containerHeight` and `stickyTop` — `.isometric-header` height is content-dependent.
 
-```
-stickyThreshold = stickyTop + containerHeight
-```
+`ScrollSync` **auto-computes** `stickyThreshold` at runtime by measuring the `.isometric-wrapper` element's CSS `top` + `offsetHeight`. It then injects `scroll-margin-top` on `.description-section` and `top` on `.description-section h2` automatically. This means you do **not** need to hardcode `stickyThreshold` in CSS or JS — just set `position: sticky` and `top` on `.isometric-wrapper`, and let `ScrollSync` handle the rest.
 
 ```css
 body {
@@ -168,13 +176,25 @@ body {
     position: relative;
 }
 
-/* Sticky 3D container */
-.isometric-container {
+/* Wrapper groups header + 3D diagram as a single sticky unit.
+   Do NOT put border-radius or overflow here — that's .isometric-viewport's job. */
+.isometric-wrapper {
     position: sticky;
     top: {{stickyTop}}px;              /* default: 20 */
+    z-index: 100;
+}
+
+/* Viewport provides rounded corners without breaking 3D.
+   border-radius must NEVER be on .isometric-container itself. */
+.isometric-viewport {
+    border-radius: 12px;
+    overflow: hidden;                  /* clips the already-composited 3D output */
+}
+
+/* Sticky 3D container — NO border-radius allowed */
+.isometric-container {
     height: {{containerHeight}}px;      /* default: 300 */
     width: 100%;
-    z-index: 100;
 }
 
 /* Content sections wrapper */
@@ -182,18 +202,18 @@ body {
     margin: 0 20px 40px 20px;
 }
 
-/* Individual content section */
+/* Individual content section.
+   scroll-margin-top is injected by ScrollSync (auto-computed from wrapper height). */
 .description-section {
-    scroll-margin-top: {{stickyThreshold}}px;   /* = stickyTop + containerHeight */
     position: relative;
     min-height: 600px;
     margin-bottom: 20px;
 }
 
-/* Sticky section header */
+/* Sticky section header — sticks right below the sticky 3D block.
+   top is injected by ScrollSync (auto-computed from wrapper height). */
 .description-section h2 {
     position: sticky;
-    top: {{stickyThreshold}}px;                 /* = stickyTop + containerHeight */
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     margin: 0;
@@ -203,13 +223,7 @@ body {
 }
 ```
 
-> **CRITICAL: The magic number chain.** The value `stickyThreshold` (= `stickyTop + containerHeight`) must appear in exactly 4 places:
-> 1. CSS `.description-section { scroll-margin-top }` 
-> 2. CSS `.description-section h2 { top }`
-> 3. JS `ScrollSync` option `stickyThreshold`
-> 4. CSS `.isometric-container { top }` + `.isometric-container { height }` (the two source values)
->
-> If any of these are mismatched, scroll synchronization breaks silently.
+> **Note:** `ScrollSync` auto-computes `stickyThreshold` by default (`'auto'`). It measures `.isometric-wrapper`'s CSS `top` + `offsetHeight` at runtime and injects the derived `scroll-margin-top` and `top` values into description sections. You can still pass an explicit numeric value to override: `new ScrollSync(controller, { stickyThreshold: 380 })`.
 
 ---
 
@@ -221,7 +235,7 @@ For each topic in the user's list, generate a scene with a cuboid inside:
 
 ```html
 <!-- Topic: {{topic.id}} -->
-<div class="scene topic-{{topic.id}}" data-z-axis="60" data-groups="{{topic.id}}">
+<div class="scene topic-{{topic.id}}" data-z-axis="0" data-groups="{{topic.id}}">
     <div id="{{topic.id}}" class="cuboid" data-width="100" data-height="auto" data-depth="100">
         <div class="front">{{topic.label}}</div>
         <div class="back">back</div>
@@ -265,16 +279,16 @@ For each topic, generate a matching content section:
 
 ### Step 3: Generate Connectors
 
-If the user provides connectors, build the JSON array for `data-connectors` on `.isometric-perspective`:
+If the user provides connectors, build the array for the `connectors` option in the JS constructor:
 
-```json
-[
+```javascript
+connectors: [
     {
-        "ids": "{{from}},{{to}}",
-        "positions": "right,left",
-        "color": "{{color}}",
-        "endStyles": ",arrow",
-        "groups": "{{from}},{{to}}"
+        ids: '{{from}},{{to}}',
+        positions: 'right,left',
+        color: '{{color}}',
+        endStyles: ',arrowSmall',
+        groups: '{{from}},{{to}}'
     }
 ]
 ```
@@ -288,6 +302,9 @@ const controller = createIsometric3D('presenter', {
     defaultRotation: { x: 45, y: 0, z: -35 },
     defaultZoom: 1.0,
     showCompactControls: true,
+    connectors: [
+        // Generated connector definitions (see Step 3)
+    ],
     connectorDefaults: {
         endLine: 'arrow',
         lineStyle: 'solid'
@@ -295,7 +312,7 @@ const controller = createIsometric3D('presenter', {
 });
 
 const scrollSync = new ScrollSync(controller, {
-    stickyThreshold: {{stickyThreshold}},
+    // stickyThreshold: 'auto' (default) — auto-computed from .isometric-wrapper height
     scrollDuration: 1800,
     debounceDelay: 100
 });
@@ -395,7 +412,7 @@ The library provides **only structural CSS** (perspective, transforms, controls)
 
 | Attribute | Values | Description |
 |-----------|--------|-------------|
-| `data-z-axis` | `"50"` | Z-axis elevation offset in px. Creates automatic shadow when > 0 |
+| `data-z-axis` | `"0"` | Z-axis elevation offset in px. Creates automatic shadow when > 0 |
 
 ### On Any Clickable Element (Navigation)
 
@@ -447,7 +464,7 @@ The library temporarily renders the cuboid flat (no 3D transforms), measures con
 
 ## 9. Connector Reference
 
-Connectors are defined as a JSON array on the `data-connectors` attribute of `.isometric-perspective`.
+Connectors are defined as an array in the `connectors` option of `createIsometric3D()`. (Legacy: also supported as a JSON string in the `data-connectors` HTML attribute on `.isometric-perspective`.)
 
 ### Connector Properties
 
@@ -517,6 +534,7 @@ Connectors are defined as a JSON array on the `data-connectors` attribute of `.i
 | `debugShadows` | `boolean` | `false` | Visualize shadow divs |
 | `navSelectedTarget` | `string` | `'clicked'` | Which face gets `.nav-selected`: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
 | `connectorDefaults` | `object` | see below | Default connector line styles |
+| `connectors` | `array` | `null` | Connector definitions (see [Connector Reference](#9-connector-reference)). Alternative to `data-connectors` HTML attribute |
 | `dimmingAlpha` | `object` | see below | Alpha values for dimming |
 
 #### `connectorDefaults`
@@ -572,14 +590,15 @@ controller.on('navigationChange', (data) => {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `stickyThreshold` | `number` | `320` | Top offset where sections become "active" (MUST = `stickyTop + containerHeight`) |
+| `stickyThreshold` | `number\|'auto'` | `'auto'` | Top offset where sections become "active". `'auto'` = measured from `.isometric-wrapper` (`top` + `offsetHeight`) at runtime. Override with a numeric px value if needed. |
+| `stickyGap` | `number` | `10` | Gap in px between the sticky wrapper bottom and the section h2. Added to threshold for `scroll-margin-top` and h2 `top`. |
 | `scrollDuration` | `number` | `1800` | Scroll animation duration (ms) |
 | `debounceDelay` | `number` | `100` | Debounce delay for navigation updates (ms) |
 | `sectionSelector` | `string` | `'.description-section'` | CSS selector for content sections |
 
 ### Behavior
 
-- **3D → Scroll:** Clicking a navigable 3D element with `data-section` scrolls the page to the matching content section.
+- **3D → Scroll:** Clicking a navigable 3D element with `data-section` scrolls the page so the matching content section’s top aligns just below the sticky diagram block.
 - **Scroll → 3D:** Scrolling through content sections triggers `.click()` on the first matching 3D element, updating the 3D view.
 - **Reset:** When no section is visible (scrolled past all), resets to default 3D view and clears URL hash.
 
@@ -590,18 +609,22 @@ controller.on('navigationChange', (data) => {
 ### Container Hierarchy
 
 ```
-.isometric-container (id required)
-  └── .isometric-perspective (exactly one)
-      ├── .scene (optional wrapper, needed for data-z-axis shadow)
-      │   └── .cuboid (data-width, data-height, data-depth)
-      │       ├── .front
-      │       ├── .back
-      │       ├── .left
-      │       ├── .right
-      │       ├── .top
-      │       └── .bottom
-      ├── .cuboid (can be direct child without scene wrapper)
-      └── .scene (flat 2D content — no cuboid needed)
+.sticky-section-wrapper                   (position: relative)
+  └── .isometric-wrapper                    (position: sticky; groups header + diagram)
+      ├── .isometric-header (optional)       (title + description, sticks with diagram)
+      └── .isometric-viewport                (border-radius + overflow:hidden)
+          └── .isometric-container (id required)
+              └── .isometric-perspective (exactly one)
+                  ├── .scene (optional wrapper, needed for data-z-axis shadow)
+                  │   └── .cuboid (data-width, data-height, data-depth)
+                  │       ├── .front
+                  │       ├── .back
+                  │       ├── .left
+                  │       ├── .right
+                  │       ├── .top
+                  │       └── .bottom
+                  ├── .cuboid (can be direct child without scene wrapper)
+                  └── .scene (flat 2D content — no cuboid needed)
 ```
 
 ### Key Rules
@@ -612,6 +635,35 @@ controller.on('navigationChange', (data) => {
 - Face divs (`.front`, `.back`, `.left`, `.right`, `.top`, `.bottom`) must be **direct children** of `.cuboid`.
 - Every ancestor between a 3D-positioned element and `.isometric-perspective` needs `transform-style: preserve-3d`. The library auto-fixes broken chains (with console warning).
 - `.scene` elements can nest inside other `.scene` elements for complex hierarchies.
+- **NEVER apply `border-radius` to `.isometric-container`.** The library sets `overflow: hidden` on the container. Per the CSS Transforms spec, `overflow` values other than `visible` cause `transform-style` to be treated as `flat`. Browsers have relaxed this for simple `overflow: hidden`, so `perspective` still works — but adding `border-radius` forces the browser to composite/rasterize content into a separate layer for rounded clipping, which **flattens 3D perspective rendering**. For rounded corners, **always** use an `.isometric-viewport` div around `.isometric-container`:
+  ```html
+  <div class="isometric-wrapper">      <!-- position: sticky -->
+    <div class="isometric-header">     <!-- optional title + description -->
+      <h2>My Diagram</h2>
+      <p>Description text</p>
+    </div>
+    <div class="isometric-viewport">   <!-- border-radius + overflow:hidden here -->
+      <div id="presenter" class="isometric-container">
+        <div class="isometric-perspective grid-layout">...</div>
+      </div>
+    </div>
+  </div>
+  ```
+  ```css
+  .isometric-wrapper {
+      position: sticky;
+      top: 20px;
+      z-index: 100;
+      /* NO border-radius or overflow here */
+  }
+  .isometric-viewport {
+      border-radius: 12px;
+      overflow: hidden;  /* clips the already-composited 3D output */
+  }
+  .isometric-container {
+      /* NO border-radius here — ever */
+  }
+  ```
 
 ### Layout Classes
 
@@ -733,16 +785,24 @@ connectors:
             min-height: 100vh;
         }
         .sticky-section-wrapper { position: relative; }
-        .isometric-container {
+        .isometric-wrapper {
             position: sticky;
             top: 20px;
+            z-index: 100;
+        }
+        .isometric-viewport {
+            border-radius: 12px;
+            overflow: hidden;  /* clips the already-composited 3D output */
+        }
+        .isometric-container {
             height: 300px;
             width: 100%;
-            z-index: 100;
+            /* NEVER add border-radius here — it flattens 3D perspective (see Key Rules).
+               Use .isometric-viewport above for rounded corners instead. */
         }
         .content-sections { margin: 0 20px 40px 20px; }
         .description-section {
-            scroll-margin-top: 320px;
+            /* scroll-margin-top is injected by ScrollSync (auto-computed from wrapper height) */
             position: relative;
             min-height: 600px;
             margin-bottom: 20px;
@@ -751,7 +811,7 @@ connectors:
         }
         .description-section h2 {
             position: sticky;
-            top: 320px;
+            /* top is injected by ScrollSync (auto-computed from wrapper height) */
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             margin: 0;
@@ -819,26 +879,25 @@ connectors:
 </head>
 <body>
 
-    <!-- PART 1: Header -->
-    <h1>Architecture Overview</h1>
-    <div style="padding: 20px;">
-        <p>A high-level view of the system architecture showing the key components and their interactions.</p>
-    </div>
-
     <!-- PART 2 + PART 3: Sticky wrapper -->
     <div class="sticky-section-wrapper">
 
-        <!-- Sticky 3D diagram -->
+        <!-- Sticky block: header + 3D diagram stick together -->
+        <div class="isometric-wrapper">
+
+        <!-- PART 2a: Diagram title & description (sticky with diagram) -->
+        <div class="isometric-header">
+            <h1>Architecture Overview</h1>
+            <p>A high-level view of the system architecture showing the key components and their interactions.</p>
+        </div>
+
+        <!-- PART 2b: 3D diagram (viewport provides rounded corners without breaking 3D) -->
+        <div class="isometric-viewport">
         <div id="presenter" class="isometric-container">
-            <div class="isometric-perspective grid-layout" data-connectors='[
-                {"ids": "ui,api", "positions": "top,bottom", "vertices": "30", "color": "#4CAF50", "endStyles": ",arrow", "groups": "ui,api"},
-                {"ids": "api,svc", "positions": "bottom,top", "vertices": "25", "color": "#FF9800", "endStyles": ",arrow", "groups": "api,svc", "animationStyle": "circle"},
-                {"ids": "svc,db", "positions": "right,left", "vertices": "30", "color": "#2196F3", "endStyles": ",arrow", "groups": "svc,db"},
-                {"ids": "svc,cache", "positions": "right,left", "vertices": "20", "color": "#E91E63", "endStyles": ",arrow", "lineStyle": "dashed", "groups": "svc,cache"}
-            ]'>
+            <div class="isometric-perspective grid-layout">
 
                 <!-- API Gateway -->
-                <div class="scene topic-api" data-z-axis="80" data-groups="api">
+                <div class="scene topic-api" data-z-axis="0" data-groups="api">
                     <div id="api" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">API Gateway</div>
                         <div class="back">back</div>
@@ -853,7 +912,7 @@ connectors:
                 </div>
 
                 <!-- Database -->
-                <div class="scene topic-db" data-z-axis="60" data-groups="db">
+                <div class="scene topic-db" data-z-axis="0" data-groups="db">
                     <div id="db" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Database</div>
                         <div class="back">back</div>
@@ -868,7 +927,7 @@ connectors:
                 </div>
 
                 <!-- Core Service -->
-                <div class="scene topic-svc" data-z-axis="100" data-groups="svc">
+                <div class="scene topic-svc" data-z-axis="0" data-groups="svc">
                     <div id="svc" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Core Service</div>
                         <div class="back">back</div>
@@ -883,7 +942,7 @@ connectors:
                 </div>
 
                 <!-- Cache Layer -->
-                <div class="scene topic-cache" data-z-axis="70" data-groups="cache">
+                <div class="scene topic-cache" data-z-axis="0" data-groups="cache">
                     <div id="cache" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Cache Layer</div>
                         <div class="back">back</div>
@@ -898,7 +957,7 @@ connectors:
                 </div>
 
                 <!-- Frontend UI (spans 2 columns) -->
-                <div class="scene topic-ui" data-z-axis="90" data-groups="ui">
+                <div class="scene topic-ui" data-z-axis="0" data-groups="ui">
                     <div id="ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
                         <div class="front">Frontend UI</div>
                         <div class="back">back</div>
@@ -914,6 +973,8 @@ connectors:
 
             </div>
         </div>
+        </div> <!-- /.isometric-viewport -->
+        </div> <!-- /.isometric-wrapper -->
 
         <!-- Scrollable content sections -->
         <div class="content-sections">
@@ -968,6 +1029,12 @@ connectors:
             defaultRotation: { x: 45, y: 0, z: -35 },
             defaultZoom: 1.0,
             showCompactControls: true,
+            connectors: [
+                {ids: 'ui,api', positions: 'top,bottom', vertices: '30', color: '#4CAF50', endStyles: ',arrow', groups: 'ui,api'},
+                {ids: 'api,svc', positions: 'bottom,top', vertices: '25', color: '#FF9800', endStyles: ',arrow', groups: 'api,svc', animationStyle: 'circle'},
+                {ids: 'svc,db', positions: 'right,left', vertices: '30', color: '#2196F3', endStyles: ',arrow', groups: 'svc,db'},
+                {ids: 'svc,cache', positions: 'right,left', vertices: '20', color: '#E91E63', endStyles: ',arrow', lineStyle: 'dashed', groups: 'svc,cache'}
+            ],
             connectorDefaults: {
                 endLine: 'arrow',
                 lineStyle: 'solid'
@@ -975,7 +1042,7 @@ connectors:
         });
 
         const scrollSync = new ScrollSync(controller, {
-            stickyThreshold: 320,
+            // stickyThreshold: 'auto' (default) — auto-computed from .isometric-wrapper height
             scrollDuration: 1800,
             debounceDelay: 100
         });
@@ -993,10 +1060,12 @@ Before finalizing a generated page, verify:
 - [ ] Every topic has a `.scene > .cuboid` with 6 face divs (`front`, `back`, `left`, `right`, `top`, `bottom`)
 - [ ] Every `.top` face (or chosen navigable face) has `data-nav-xyz`, `data-nav-zoom`, and `data-section`
 - [ ] Every `data-section` value has a matching content section with `id="<same-value>"`
-- [ ] The `stickyThreshold` value (CSS + JS) equals `stickyTop + containerHeight` everywhere
+- [ ] The `stickyThreshold` is either `'auto'` (default, auto-computed) or a manually set numeric value matching the sticky block height
 - [ ] Grid `grid-template-areas` matches topic IDs used in `.topic-<id>` CSS classes
 - [ ] Connector `ids` reference valid element `id` attributes
 - [ ] No `.face` class in HTML markup (library adds it automatically)
+- [ ] **No `border-radius` on `.isometric-container`** — use `.isometric-viewport` with `border-radius` + `overflow: hidden` around `.isometric-container` for rounded corners
+- [ ] `.isometric-wrapper` groups `.isometric-header` (optional) + `.isometric-viewport` as a single sticky unit — no `overflow: hidden` or `border-radius` on `.isometric-wrapper` itself
 - [ ] `<link>` to `isometric-3d.css` is in `<head>`
 - [ ] `isometric-3d.js` is loaded before `scroll-sync.js`
 - [ ] `createIsometric3D()` is called before `new ScrollSync()`
@@ -1010,22 +1079,22 @@ The current setup requires ~25 lines of identical structural CSS and careful man
 
 ### 17.1 Eliminate the Magic Number Chain
 
-**Problem:** The value `stickyThreshold` (= `stickyTop + containerHeight`) must be manually kept in sync across:
-1. CSS `.description-section { scroll-margin-top: 320px }`
-2. CSS `.description-section h2 { top: 320px }`
-3. JS `new ScrollSync(controller, { stickyThreshold: 320 })`
-4. CSS `.isometric-container { top: 20px; height: 300px }` (source values)
+**Problem:** The value `stickyThreshold` (= `stickyTop + headerHeight + containerHeight`) must be manually kept in sync across:
+1. CSS `.description-section { scroll-margin-top: 380px }`
+2. CSS `.description-section h2 { top: 380px }`
+3. JS `new ScrollSync(controller, { stickyThreshold: 380 })`
+4. CSS `.isometric-wrapper { top: 20px }` + `.isometric-header` height (60px) + `.isometric-container { height: 300px }` (source values)
 
 If any mismatch, scroll-sync breaks silently.
 
 **Solution:** `ScrollSync` should **auto-compute** `stickyThreshold` at runtime:
 ```javascript
 // In ScrollSync constructor:
-const container = this.controller.container;
-const style = getComputedStyle(container);
-const top = parseInt(style.top) || 0;
-const height = container.offsetHeight;
-this.options.stickyThreshold = top + height;
+const wrapper = this.controller.container.closest('.isometric-wrapper');
+const wrapperStyle = getComputedStyle(wrapper);
+const top = parseInt(wrapperStyle.top) || 0;
+const wrapperHeight = wrapper.offsetHeight; // includes header + container
+this.options.stickyThreshold = top + wrapperHeight;
 
 // Then inject derived values:
 document.querySelectorAll(this.options.sectionSelector).forEach(section => {
@@ -1035,29 +1104,35 @@ document.querySelectorAll(this.options.sectionSelector).forEach(section => {
 });
 ```
 
-This reduces the 4-location sync to just 2 CSS values (`top` and `height` on the container).
+This reduces the 4-location sync to just CSS values (`top` on `.isometric-wrapper` and heights of `.isometric-header` + `.isometric-container`).
 
 ### 17.2 CSS Custom Properties Approach
 
 **Alternative to 17.1:** Use CSS variables so all derived values auto-update:
 
 ```css
-.isometric-container {
+.isometric-wrapper {
     --sticky-top: 20px;
+    --header-height: 60px;
     --container-height: 300px;
     position: sticky;
     top: var(--sticky-top);
+}
+.isometric-header {
+    height: var(--header-height);
+}
+.isometric-container {
     height: var(--container-height);
 }
 .description-section {
-    scroll-margin-top: calc(var(--sticky-top) + var(--container-height));
+    scroll-margin-top: calc(var(--sticky-top) + var(--header-height) + var(--container-height));
 }
 .description-section h2 {
-    top: calc(var(--sticky-top) + var(--container-height));
+    top: calc(var(--sticky-top) + var(--header-height) + var(--container-height));
 }
 ```
 
-Change two variables, everything updates. `ScrollSync` reads them via `getComputedStyle()`.
+Change three variables, everything updates. `ScrollSync` reads them via `getComputedStyle()`.
 
 ### 17.3 Ship Scroll-Sync Structural CSS
 
@@ -1067,7 +1142,9 @@ Change two variables, everything updates. `ScrollSync` reads them via `getComput
 ```css
 /* Scroll-sync layout (opt-in via .sticky-section-wrapper) */
 .sticky-section-wrapper { position: relative; }
-.sticky-section-wrapper > .isometric-container { position: sticky; z-index: 100; }
+.sticky-section-wrapper > .isometric-wrapper { position: sticky; z-index: 100; }
+.sticky-section-wrapper > .isometric-wrapper > .isometric-viewport { border-radius: 12px; overflow: hidden; }
+.sticky-section-wrapper > .isometric-wrapper > .isometric-viewport > .isometric-container { /* NO border-radius — ever */ }
 .sticky-section-wrapper > .content-sections { margin: 0 20px 40px 20px; }
 .description-section { position: relative; min-height: 600px; margin-bottom: 20px; }
 .description-section > h2 {

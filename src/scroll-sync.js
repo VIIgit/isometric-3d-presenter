@@ -8,7 +8,8 @@
  * @class ScrollSync
  * @param {Object} controller - The isometric 3D controller instance
  * @param {Object} options - Configuration options
- * @param {number} options.stickyThreshold - Top offset where sections become "active" (default: 320)
+ * @param {number|string} options.stickyThreshold - Top offset where sections become "active". 'auto' (default) = measured from .isometric-wrapper (top + offsetHeight) at runtime. Override with a numeric px value if needed.
+ * @param {number} options.stickyGap - Gap in px between the sticky wrapper bottom and the section h2 (default: 10)
  * @param {number} options.scrollDuration - Scroll animation duration in ms (default: 1800)
  * @param {number} options.debounceDelay - Debounce delay for navigation updates in ms (default: 100)
  * @param {string} options.sectionSelector - CSS selector for content sections (default: '.description-section')
@@ -18,7 +19,8 @@ class ScrollSync {
     constructor(controller, options = {}) {
         this.controller = controller;
         this.options = {
-            stickyThreshold: 320,
+            stickyThreshold: 'auto',
+            stickyGap: 10,
             scrollDuration: 1800,
             debounceDelay: 100,
             sectionSelector: '.description-section',
@@ -27,12 +29,61 @@ class ScrollSync {
         };
         
         this.programmaticScroll = false;
+        this.scrollTriggeredNavigation = false; // Prevents scroll→nav→scroll feedback loop
         this.lastScrollY = window.scrollY;
         this.scrollAnimationFrame = null;
         this.navigationDebounceTimer = null;
         this.currentNavigationTarget = null;
+
+        // Auto-compute stickyThreshold from the rendered sticky block
+        if (this.options.stickyThreshold === 'auto') {
+            this.computeStickyThreshold();
+        }
+        // Inject derived CSS values into description sections
+        this.applyStickyThresholdCSS();
         
         this.setupBidirectionalSync();
+    }
+
+    /**
+     * Auto-computes stickyThreshold from the rendered .isometric-wrapper.
+     * Measures: wrapper's CSS `top` + wrapper's offsetHeight.
+     * Falls back to 320 if no wrapper is found.
+     * @private
+     */
+    computeStickyThreshold() {
+        const container = this.controller.container;
+        // Look for .isometric-wrapper ancestor (holds header + viewport as one sticky unit)
+        const wrapper = container.closest('.isometric-wrapper');
+        if (wrapper) {
+            const style = getComputedStyle(wrapper);
+            const top = parseInt(style.top) || 0;
+            const height = wrapper.offsetHeight;
+            this.options.stickyThreshold = top + height;
+        } else {
+            // Legacy layout: container is directly sticky
+            const style = getComputedStyle(container);
+            const top = parseInt(style.top) || 0;
+            const height = container.offsetHeight;
+            this.options.stickyThreshold = top + height;
+        }
+    }
+
+    /**
+     * Injects scroll-margin-top on sections and top on section h2 elements
+     * so they align right below the sticky block. This eliminates the need
+     * to manually keep CSS magic numbers in sync with stickyThreshold.
+     * @private
+     */
+    applyStickyThresholdCSS() {
+        const threshold = this.options.stickyThreshold;
+        const gap = this.options.stickyGap || 0;
+        const effectiveTop = threshold + gap;
+        document.querySelectorAll(this.options.sectionSelector).forEach(section => {
+            section.style.scrollMarginTop = effectiveTop + 'px';
+            const h2 = section.querySelector('h2');
+            if (h2) h2.style.top = effectiveTop + 'px';
+        });
     }
 
     /**
@@ -43,7 +94,8 @@ class ScrollSync {
         // 1. Navigation → Scroll: When 3D navigation changes, scroll to description
         this.controller.on('navigationChange', (data) => {
             const sectionId = data.element.getAttribute(this.options.dataSectionAttribute);
-            if (sectionId && !this.programmaticScroll) {
+            // Don't scroll if this navigation was triggered by user scrolling (prevents feedback loop)
+            if (sectionId && !this.programmaticScroll && !this.scrollTriggeredNavigation) {
                 this.scrollToSection(sectionId);
             }
         });
@@ -91,69 +143,58 @@ class ScrollSync {
         // Store intersection state for debounced processing
         const intersectionState = new Map();
 
-        // Use IntersectionObserver with the sticky threshold as the trigger point
-        const observer = new IntersectionObserver((entries) => {
-            if (this.programmaticScroll) return;
-
-            const currentScrollY = window.scrollY;
-            this.lastScrollY = currentScrollY;
-
-            // Update intersection state for all entries
-            entries.forEach(entry => {
-                intersectionState.set(entry.target.id, {
-                    isIntersecting: entry.isIntersecting,
-                    intersectionRatio: entry.intersectionRatio
-                });
-            });
-
-            // Debounce navigation to prevent flickering during fast scrolling
-            if (this.navigationDebounceTimer) {
-                clearTimeout(this.navigationDebounceTimer);
+        // Helper: reset to initial state (index -1)
+        const resetToInitial = () => {
+            if (this.currentNavigationTarget !== null) {
+                this.currentNavigationTarget = null;
+                const baseUrl = window.location.pathname;
+                window.history.replaceState({}, '', baseUrl);
+                this.controller.resetToDefault({ skipScroll: true });
+                this.controller.clearHighlights();
             }
+        };
 
-            this.navigationDebounceTimer = setTimeout(() => {
-                // Process current intersection state
-                const sortedEntries = Array.from(intersectionState.entries())
-                    .filter(([id, state]) => state.isIntersecting)
-                    .sort((a, b) => b[1].intersectionRatio - a[1].intersectionRatio);
+        // Helper: select a section by id (triggers nav click)
+        const selectSection = (sectionId) => {
+            if (this.currentNavigationTarget === sectionId) return;
+            const navElements = sectionToNavElements[sectionId];
+            if (!navElements || navElements.length === 0) return;
+            this.currentNavigationTarget = sectionId;
+            this.scrollTriggeredNavigation = true;
+            navElements[0].click();
+            setTimeout(() => { this.scrollTriggeredNavigation = false; }, 50);
+        };
 
-                // Use the most visible section
-                if (sortedEntries.length > 0) {
-                    const [sectionId, state] = sortedEntries[0];
-                    const navElements = sectionToNavElements[sectionId];
-                    
-                    if (navElements && navElements.length > 0 && sectionId) {
-                        // Only update if the target section has changed
-                        if (this.currentNavigationTarget !== sectionId) {
-                            this.currentNavigationTarget = sectionId;
-                            
-                            // Trigger click on the first navigation element to handle everything consistently
-                            // (navigation, highlighting, URL update with hash)
-                            // All elements with the same data-section will be highlighted together
-                            navElements[0].click();
-                        }
-                    }
-                } else {
-                    // No sections are intersecting - reset to default view
-                    if (this.currentNavigationTarget !== null) {
-                        this.currentNavigationTarget = null;
-                        
-                        // Clear URL (remove hash)
-                        const baseUrl = window.location.pathname;
-                        window.history.replaceState({}, '', baseUrl);
-                        
-                        this.controller.resetToDefault();
-                        this.controller.clearHighlights();
+        // Scroll-driven section detection (replaces IntersectionObserver).
+        // Runs every frame via rAF for immediate, consistent response at any scroll speed.
+        // Determines the active section by finding the last section whose top has scrolled
+        // to or above the effective sticky boundary (stickyThreshold + stickyGap).
+        const effectiveTop = this.options.stickyThreshold + (this.options.stickyGap || 0);
+        let scrollTicking = false;
+        window.addEventListener('scroll', () => {
+            if (this.programmaticScroll || scrollTicking) return;
+            scrollTicking = true;
+            requestAnimationFrame(() => {
+                scrollTicking = false;
+                // Find the last section whose top has scrolled to or above the sticky boundary.
+                // "Last" because sections are in DOM order — if multiple have crossed,
+                // the bottom-most one is the one currently under the sticky block.
+                let activeSection = null;
+                for (let i = 0; i < sections.length; i++) {
+                    if (sections[i].getBoundingClientRect().top <= effectiveTop) {
+                        activeSection = sections[i];
+                    } else {
+                        break; // sections are in order, no need to check further
                     }
                 }
-            }, this.options.debounceDelay);
-        }, {
-            // Trigger when section crosses the sticky threshold
-            rootMargin: `-${this.options.stickyThreshold}px 0px -50% 0px`,
-            threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        });
-
-        sections.forEach(section => observer.observe(section));
+                if (activeSection) {
+                    selectSection(activeSection.id);
+                } else {
+                    // No section has reached the sticky boundary → reset to index -1
+                    resetToInitial();
+                }
+            });
+        }, { passive: true });
     }
 
     /**
@@ -184,10 +225,13 @@ class ScrollSync {
         const section = document.getElementById(sectionId);
         if (!section) return;
 
-        // Check if both the isometric container and the section are already visible
+        // Compute effective top offset (sticky block + gap)
+        const effectiveTop = this.options.stickyThreshold + (this.options.stickyGap || 0);
+
+        // Check if both the isometric container and the section content are already visible
         const isometricContainer = this.controller.container;
         const isContainerVisible = this.isElementVisible(isometricContainer, 0);
-        const isSectionVisible = this.isElementVisible(section, this.options.stickyThreshold);
+        const isSectionVisible = this.isElementVisible(section, effectiveTop);
         
         // If both are visible, no need to scroll
         if (isContainerVisible && isSectionVisible) {
@@ -206,8 +250,12 @@ class ScrollSync {
 
         this.programmaticScroll = true;
 
-        // Custom smooth scroll with configurable duration
-        const targetPosition = section.offsetTop;
+        // Scroll so the section's top aligns just below the sticky block + gap.
+        // Use getBoundingClientRect for true viewport-relative position (offsetTop is
+        // relative to the positioned parent, not the document).
+        const rect = section.getBoundingClientRect();
+        const absoluteTop = window.scrollY + rect.top;
+        const targetPosition = absoluteTop - effectiveTop;
         const startPosition = window.scrollY;
         const distance = targetPosition - startPosition;
         const duration = this.options.scrollDuration;
