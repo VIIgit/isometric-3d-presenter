@@ -327,6 +327,11 @@
       color: white;
       font-family: 'Courier New', monospace;
     }
+
+
+    .connector-path.dimmed {
+      stroke: rgba(34, 31, 25, 0.3);
+    }
   </style>
 </head>
 
@@ -924,7 +929,7 @@ const svg = document
                      {
                          "ids": "conn-cube2,conn-cube3",
                          "positions": "bottom,top",
-                         "vertices": "30",
+                         "vertices": "40,60",
                          "color": "#4A4640",
                          "endStyles": ",arrowSmall",
                          "lineStyle": "dashed"
@@ -1546,7 +1551,7 @@ createIsometric3D('demo10', {
             <div class="back">PostgreSQL</div>
             <div class="left">DB</div>
             <div class="right">DB</div>
-            <div class="top">⬆️</div>
+            <div class="top">⬆️ (z:-100px)</div>
             <div class="bottom" data-nav-xyz="60.0.-35" data-nav-zoom="1.5" data-activate="backend"
               data-section="database">
               🗄️ Database

@@ -81,7 +81,8 @@ Every generated page follows this three-part layout:
 │  ┌─────────────────────────────┐│
 │  │  .isometric-header          ││  ← Title + description (optional)
 │  ├─────────────────────────────┤│
-│  │  .isometric-viewport        ││  ← border-radius + overflow:hidden
+│  │  .isometric-viewport        ││  ← safe styling layer (border-radius,
+│  │                              ││    borders, focus outline, box-shadow …)
 │  │  ┌─────────────────────────┐││
 │  │  │  .isometric-perspective │││  ← CSS Grid with topics as scenes/cuboids
 │  │  │  (grid layout w/ topics)│││
@@ -130,7 +131,9 @@ Every generated page follows this three-part layout:
             <p>{{teaser}}</p>
         </div>
 
-        <!-- PART 2b: 3D diagram (viewport provides rounded corners without breaking 3D) -->
+        <!-- PART 2b: 3D diagram (viewport is the safe styling layer — border-radius,
+             borders, box-shadow, focus outline, and any other visual CSS that must
+             not interfere with the 3D context go here) -->
         <div class="isometric-viewport">
         <div id="presenter" class="isometric-container">
             <div class="isometric-perspective grid-layout">
@@ -184,8 +187,9 @@ body {
     z-index: 100;
 }
 
-/* Viewport provides rounded corners without breaking 3D.
-   border-radius must NEVER be on .isometric-container itself. */
+/* Viewport — safe styling layer for any visual CSS that must not
+   interfere with the 3D context: border-radius, border, box-shadow,
+   focus outline, etc.  NEVER put these on .isometric-container. */
 .isometric-viewport {
     border-radius: 12px;
     overflow: hidden;                  /* clips the already-composited 3D output */
@@ -636,6 +640,7 @@ controller.on('navigationChange', (data) => {
 - Every ancestor between a 3D-positioned element and `.isometric-perspective` needs `transform-style: preserve-3d`. The library auto-fixes broken chains (with console warning).
 - `.scene` elements can nest inside other `.scene` elements for complex hierarchies.
 - **NEVER apply `border-radius` to `.isometric-container`.** The library sets `overflow: hidden` on the container. Per the CSS Transforms spec, `overflow` values other than `visible` cause `transform-style` to be treated as `flat`. Browsers have relaxed this for simple `overflow: hidden`, so `perspective` still works — but adding `border-radius` forces the browser to composite/rasterize content into a separate layer for rounded clipping, which **flattens 3D perspective rendering**. For rounded corners, **always** use an `.isometric-viewport` div around `.isometric-container`:
+- **`.isometric-viewport` is the safe styling layer.** Any purely visual CSS — `border-radius`, `border`, `box-shadow`, focus `outline`, custom background — belongs on `.isometric-viewport`. The container and perspective layers must stay free of side-effects that could break the 3D rendering pipeline. The library's own focus-outline styles already target `.isometric-viewport:has(.isometric-container:focus)`.
   ```html
   <div class="isometric-wrapper">      <!-- position: sticky -->
     <div class="isometric-header">     <!-- optional title + description -->
@@ -891,7 +896,7 @@ connectors:
             <p>A high-level view of the system architecture showing the key components and their interactions.</p>
         </div>
 
-        <!-- PART 2b: 3D diagram (viewport provides rounded corners without breaking 3D) -->
+        <!-- PART 2b: 3D diagram (viewport is the safe styling layer — see Section 12) -->
         <div class="isometric-viewport">
         <div id="presenter" class="isometric-container">
             <div class="isometric-perspective grid-layout">

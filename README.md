@@ -31,15 +31,20 @@ npm install isometric-3d-presenter
   <link rel="stylesheet" href="node_modules/isometric-3d-presenter/src/isometric-3d.css">
 </head>
 <body>
-  <div id="presentation" class="isometric-container">
-    <div class="isometric-perspective">
-      <div id="scene1" class="scene" data-width="100" data-height="100" data-depth="100">
-        <div class="face front">Scene 1</div>
-        <div class="face back">Back</div>
-        <div class="face left">Left</div>
-        <div class="face right">Right</div>
-        <div class="face top" data-nav-xyz="45.0.-35" data-nav-zoom="1.2">Main Content</div>
-        <div class="face bottom">Bottom</div>
+  <!-- Viewport: safe place for border-radius, borders, focus outline -->
+  <div class="isometric-viewport">
+    <!-- Container: the 3D engine (pass this id to createIsometric3D) -->
+    <div id="presentation" class="isometric-container">
+      <!-- Perspective: 3D transform surface -->
+      <div class="isometric-perspective">
+        <div id="scene1" class="scene" data-width="100" data-height="100" data-depth="100">
+          <div class="face front">Scene 1</div>
+          <div class="face back">Back</div>
+          <div class="face left">Left</div>
+          <div class="face right">Right</div>
+          <div class="face top" data-nav-xyz="45.0.-35" data-nav-zoom="1.2">Main Content</div>
+          <div class="face bottom">Bottom</div>
+        </div>
       </div>
     </div>
   </div>
@@ -55,6 +60,30 @@ npm install isometric-3d-presenter
 </body>
 </html>
 ```
+
+### HTML Structure — The Three Nested Divs
+
+The presenter uses three nested `<div>` elements. Each layer has one job — this keeps visual styling (rounded corners, borders, focus ring) separated from the 3D engine so they never interfere with each other.
+
+```html
+<div class="isometric-viewport">          <!-- 1. Viewport  – visual frame    -->
+  <div id="myPresenter" class="isometric-container">  <!-- 2. Container – interaction hub   -->
+    <div class="isometric-perspective">   <!-- 3. Perspective – 3D transform   -->
+      <!-- scenes go here -->
+    </div>
+  </div>
+</div>
+```
+
+| Layer | CSS Class | Responsibility |
+|-------|-----------|---------------|
+| **Viewport** | `.isometric-viewport` | Visual frame: `border-radius`, `overflow: hidden`, border, and focus outline. Clips the rendered 3D output so rounded corners work without breaking `preserve-3d`. |
+| **Container** | `.isometric-container` | Interaction hub: receives focus (`tabindex`), captures mouse/touch/keyboard events, holds `perspective` and `perspective-origin` for the 3D projection. Sized by the user (`width`/`height`/`background`). |
+| **Perspective** | `.isometric-perspective` | 3D transform surface: has `transform-style: preserve-3d` and carries the combined `rotateX/Y/Z`, `scale`, and `translate3d` transform. All 3D scenes live inside this element. |
+
+> **Why not combine them?** Setting `border-radius` + `overflow: hidden` on the same element that has `perspective` or `preserve-3d` forces the browser to flatten the 3D context. By isolating clipping in the viewport and 3D in the inner layers, both features work correctly.
+>
+> **Rule of thumb:** any CSS that is purely visual — `border-radius`, `border`, `box-shadow`, focus `outline`, custom backgrounds — belongs on `.isometric-viewport`. The container and perspective layers must stay free of side-effects that could break the 3D rendering pipeline.
 
 ### Basic CSS Setup
 
@@ -218,20 +247,22 @@ Customize the appearance of your 3D scenes with different colors for each face a
   </style>
 </head>
 <body>
-  <div id="demo" class="isometric-container">
-    <div class="isometric-perspective">
-      <div class="scene" data-width="100" data-height="100" data-depth="100" data-groups="cube1">
-        <div class="face front">Front</div>
-        <div class="face back">Back</div>
-        <div class="face left">Left</div>
-        <div class="face right">Right</div>
-        <div class="face top" 
-             data-nav-xyz="45.0.-35" 
-             data-nav-zoom="1.2"
-             data-activate="cube1">
-          Click Me
+  <div class="isometric-viewport">
+    <div id="demo" class="isometric-container">
+      <div class="isometric-perspective">
+        <div class="scene" data-width="100" data-height="100" data-depth="100" data-groups="cube1">
+          <div class="face front">Front</div>
+          <div class="face back">Back</div>
+          <div class="face left">Left</div>
+          <div class="face right">Right</div>
+          <div class="face top" 
+               data-nav-xyz="45.0.-35" 
+               data-nav-zoom="1.2"
+               data-activate="cube1">
+            Click Me
+          </div>
+          <div class="face bottom">Bottom</div>
         </div>
-        <div class="face bottom">Bottom</div>
       </div>
     </div>
   </div>

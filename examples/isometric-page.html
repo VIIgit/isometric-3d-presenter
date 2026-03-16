@@ -192,7 +192,11 @@ Isometric Page<br>
                 <!-- Frontend UI (spans 2 columns) -->
                 <div class="scene topic-ui" data-z-axis="0" data-groups="ui">
                     <div id="ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
-                        <div class="front">Frontend</div>
+                        <div class="front"
+                             data-nav-xyz="45.00.-35" data-nav-zoom="0.9"
+                             data-nav-pan="default"
+                             data-section="description-section-group"
+                             data-activate="ui,api">Frontend → API</div>
                         <div class="back">back</div>
                         <div class="left">UI</div>
                         <div class="right">right</div>
@@ -211,6 +215,18 @@ Isometric Page<br>
 
         <!-- Scrollable content sections -->
         <div class="content-sections">
+
+            <div id="description-section-group" class="description-section">
+                <h2>Frontend → API Gateway</h2>
+                <div style="padding: 20px;">
+                    <p>The Frontend communicates with the API Gateway over HTTPS. All user-initiated
+                       actions — page loads, form submissions, real-time subscriptions — flow through
+                       this connection.</p>
+                    <p>The API Gateway authenticates each request, applies rate limits, and forwards
+                       validated payloads to the appropriate backend service. WebSocket connections
+                       are also terminated here for real-time push updates back to the Frontend.</p>
+                </div>
+            </div>
 
             <div id="api-description" class="description-section">
                 <h2>API Gateway</h2>

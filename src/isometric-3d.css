@@ -41,15 +41,22 @@
   border: black 2px solid;
 }
 
-/* Visual feedback when container has focus for keyboard navigation */
-.isometric-container:focus {
+/* Visual feedback when container has focus for keyboard navigation.
+   The outline is applied to .isometric-viewport (the clipping wrapper)
+   so it frames the visible rounded-corner area instead of the inner container. */
+.isometric-viewport:has(.isometric-container:focus) {
   outline: 2px solid rgba(74, 158, 255, 0.5);
   outline-offset: -2px;
 }
 
-.isometric-container:focus-visible {
+.isometric-viewport:has(.isometric-container:focus-visible) {
   outline: 2px solid rgba(74, 158, 255, 0.8);
   outline-offset: -2px;
+}
+
+/* Remove default outline from the container itself */
+.isometric-container:focus {
+  outline: none;
 }
 
 

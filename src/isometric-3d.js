@@ -1866,11 +1866,17 @@ class Isometric3D {
   }
 
   onFocus() {
-    this.container.style.borderColor = '#0078d4';
+    const viewport = this.container.closest('.isometric-viewport');
+    if (viewport) {
+      viewport.style.borderColor = '#0078d4';
+    }
   }
 
   onBlur() {
-    this.container.style.borderColor = '';
+    const viewport = this.container.closest('.isometric-viewport');
+    if (viewport) {
+      viewport.style.borderColor = '';
+    }
 
     // Cancel any pending keyboard animation frames when focus is lost
     if (this.keyboardAnimationFrameId) {
