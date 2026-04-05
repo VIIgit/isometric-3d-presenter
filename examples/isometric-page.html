@@ -88,9 +88,9 @@
             outline-offset: 4px;
             border-radius: 4px;
         }
-        .face.nav-selected[data-activate],
-        .scene.nav-selected[data-activate],
-        .scene[data-activate] > .cuboid > .face.nav-selected {
+        .face.nav-selected[data-key],
+        .scene.nav-selected[data-key],
+        .scene[data-key] > .cuboid > .face.nav-selected {
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
@@ -145,65 +145,56 @@ Isometric Page<br>
             <div class="isometric-perspective grid-layout">
 
                 <!-- API Gateway -->
-                <div class="scene topic-api" data-z-axis="0" data-groups="api">
-                    <div id="api" class="cuboid" data-width="100" data-height="auto" data-depth="100">
-                        <div class="front">API Gateway</div>
+                <div class="scene topic-api" data-related-keys="api">
+                    <div id="cuboid-api" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                        <div class="front">API Gateway <div>45.00.-35 1.2z</div></div>
                         <div class="back">back</div>
                         <div class="left">API</div>
                         <div class="right">right</div>
                         <div class="top"
-                             data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
-                             data-section="api-description"
-                             data-activate="api" data-focus="center">API Gateway</div>
+                             data-key="api" data-related-keys="ui-api" data-focus="center">API Gateway</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Database -->
-                <div class="scene topic-db" data-z-axis="0" data-groups="db">
-                    <div id="db" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                <div class="scene topic-db" data-related-keys="db">
+                    <div id="cuboid-db" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Database</div>
                         <div class="back">back</div>
                         <div class="left">DB</div>
                         <div class="right">right</div>
                         <div class="top"
-                             data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
-                             data-section="db-description"
-                             data-activate="db" data-focus="center">Database</div>
+                             data-key="db" data-focus="center">Database</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Core Service -->
-                <div class="scene topic-svc" data-z-axis="0" data-groups="svc">
-                    <div id="svc" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                <div class="scene topic-svc" data-related-keys="svc">
+                    <div id="cuboid-svc" class="cuboid" data-width="200" data-height="100" data-depth="300">
                         <div class="front">Core Service</div>
                         <div class="back">back</div>
                         <div class="left">Service</div>
                         <div class="right">right</div>
                         <div class="top"
-                             data-nav-xyz="45.00.-35" data-nav-zoom="1.0"
-                             data-section="svc-description"
-                             data-activate="svc" data-focus="center">Core Service</div>
+                             data-key="svc" data-focus="center">Core Service</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Frontend UI (spans 2 columns) -->
-                <div class="scene topic-ui" data-z-axis="0" data-groups="ui">
-                    <div id="ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
+                <div class="scene topic-ui" data-related-keys="ui">
+                    <div id="cuboid-ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
                         <div class="front"
                              data-nav-xyz="45.00.-35" data-nav-zoom="0.9"
                              data-nav-pan="default"
-                             data-section="description-section-group"
-                             data-activate="ui,api">Frontend → API</div>
+                             data-key="ui-api">Frontend → API</div>
                         <div class="back">back</div>
                         <div class="left">UI</div>
                         <div class="right">right</div>
                         <div class="top"
-                             data-nav-xyz="45.00.-35" data-nav-zoom="0.9"
-                             data-section="ui-description"
-                             data-activate="ui" data-focus="center">Frontend</div>
+                             data-key="ui" data-focus="center">Frontend</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
@@ -216,7 +207,7 @@ Isometric Page<br>
         <!-- Scrollable content sections -->
         <div class="content-sections">
 
-            <div id="description-section-group" class="description-section">
+            <div id="ui-api" class="description-section">
                 <h2>Frontend → API Gateway</h2>
                 <div style="padding: 20px;">
                     <p>The Frontend communicates with the API Gateway over HTTPS. All user-initiated
@@ -228,7 +219,7 @@ Isometric Page<br>
                 </div>
             </div>
 
-            <div id="api-description" class="description-section">
+            <div id="api" class="description-section">
                 <h2>API Gateway</h2>
                 <div style="padding: 20px;">
                     <p>Handles incoming HTTP requests and routing. The API Gateway serves as the
@@ -239,7 +230,7 @@ Isometric Page<br>
                 </div>
             </div>
 
-            <div id="db-description" class="description-section">
+            <div id="db" class="description-section">
                 <h2>Database</h2>
                 <div style="padding: 20px;">
                     <p>PostgreSQL for persistent storage. The database layer manages all application
@@ -249,7 +240,7 @@ Isometric Page<br>
                 </div>
             </div>
 
-            <div id="svc-description" class="description-section">
+            <div id="svc" class="description-section">
                 <h2>Core Service</h2>
                 <div style="padding: 20px;">
                     <p>Business logic and orchestration layer. The Core Service processes all
@@ -260,7 +251,7 @@ Isometric Page<br>
                 </div>
             </div>
 
-            <div id="ui-description" class="description-section">
+            <div id="ui" class="description-section">
                 <h2>Frontend</h2>
                 <div style="padding: 20px;">
                     <p>React SPA for user interaction. The Frontend provides a responsive,
@@ -284,9 +275,9 @@ Isometric Page<br>
             defaultZoom: 1.0,
             showCompactControls: true,
             connectors: [
-                {ids: 'ui,api', positions: 'top,bottom', vertices: '20,20', color: '#4CAF50', endStyles: ',arrowSmall', groups: 'ui,api'},
-                {ids: 'api,svc', positions: 'right,top', vertices: '20,30', color: '#FF9800', endStyles: ',arrowSmall', groups: 'api,svc', animationStyle: 'circle'},
-                {ids: 'svc,db', positions: 'right,bottom', vertices: '20,30', color: '#2196F3', endStyles: ',arrowSmall', groups: 'svc,db'}
+                {ids: 'cuboid-ui,cuboid-api', positions: 'top,bottom', vertices: '20,20', color: '#4CAF50', endStyles: ',arrowSmall', groups: 'ui,api'},
+                {ids: 'cuboid-api,cuboid-svc', positions: 'right,top', vertices: '20,30', color: '#FF9800', endStyles: ',arrowSmall', groups: 'api,svc', animationStyle: 'circle'},
+                {ids: 'cuboid-svc,cuboid-db', positions: 'right,bottom', vertices: '20,30', color: '#2196F3', endStyles: ',arrowSmall', groups: 'svc,db'}
             ],
             connectorDefaults: {
                 endLine: 'arrow',
@@ -294,8 +285,8 @@ Isometric Page<br>
             },
             rotationLimits: {
                 x: { min: 0, max: 45 },
-                y: { min: -180, max: 180 },
-                z: { min: -180, max: 180 }
+                y: { min: -0, max: 0 },
+                z: { min: -45, max: 45 }
             }
         });
 
@@ -304,6 +295,367 @@ Isometric Page<br>
             scrollDuration: 1800,
             debounceDelay: 100
         });
+
+        // ─── Debug HUD (real-time view state + selection info) ──
+        (function initDebugHUD() {
+            const hud = document.createElement('div');
+            hud.id = 'debug-hud';
+            Object.assign(hud.style, {
+                position: 'fixed',
+                top: '10px',
+                right: '10px',
+                width: '320px',
+                background: 'rgba(30,30,30,0.92)',
+                color: '#d4d4d4',
+                fontFamily: 'Menlo, Monaco, Consolas, monospace',
+                fontSize: '11px',
+                zIndex: '10001',
+                borderRadius: '6px',
+                border: '1px solid #007acc',
+                overflow: 'hidden',
+                backdropFilter: 'blur(6px)'
+            });
+
+            // Header
+            const hdr = document.createElement('div');
+            Object.assign(hdr.style, { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 10px', background:'#252526', borderBottom:'1px solid #333' });
+            hdr.innerHTML = '<span style="color:#007acc;font-weight:bold">Debug HUD</span>';
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            Object.assign(closeBtn.style, { background:'#333', color:'#ccc', border:'1px solid #555', borderRadius:'3px', cursor:'pointer', fontSize:'10px', padding:'2px 6px' });
+            closeBtn.onclick = () => { hud.style.display = 'none'; };
+            hdr.append(closeBtn);
+
+            // Body
+            const body = document.createElement('div');
+            Object.assign(body.style, { padding: '8px 10px' });
+            body.innerHTML = `
+                <div style="margin-bottom:6px;color:#569cd6;font-weight:bold;border-bottom:1px solid #333;padding-bottom:3px">View State</div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px">
+                    <tr><td style="color:#9cdcfe;width:80px">Rotation X</td><td id="hud-rx">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Rotation Y</td><td id="hud-ry">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Rotation Z</td><td id="hud-rz">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Zoom</td><td id="hud-zoom">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Pan X</td><td id="hud-px">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Pan Y</td><td id="hud-py">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Animating</td><td id="hud-anim">—</td></tr>
+                </table>
+
+                <div style="margin:8px 0 6px;color:#dcdcaa;font-weight:bold;border-bottom:1px solid #333;padding-bottom:3px">Selected Object</div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px">
+                    <tr><td style="color:#9cdcfe;width:80px">Nav Index</td><td id="hud-nav">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Key(s)</td><td id="hud-key">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Element</td><td id="hud-el">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Source</td><td id="hud-src">—</td></tr>
+                    <tr><td style="color:#9cdcfe">nav-xyz</td><td id="hud-nav-xyz">—</td></tr>
+                    <tr><td style="color:#9cdcfe">nav-zoom</td><td id="hud-nav-zoom">—</td></tr>
+                    <tr><td style="color:#9cdcfe">nav-pan</td><td id="hud-nav-pan">—</td></tr>
+                    <tr><td style="color:#9cdcfe">highlight</td><td id="hud-nav-hl">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Rect</td><td id="hud-nav-rect">—</td></tr>
+                </table>
+
+                <div style="margin:8px 0 6px;color:#c586c0;font-weight:bold;border-bottom:1px solid #333;padding-bottom:3px">Object Group BBox</div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px">
+                    <tr><td style="color:#9cdcfe;width:80px">Highlight</td><td id="hud-hl">—</td></tr>
+                    <tr><td style="color:#9cdcfe">BBox Size</td><td id="hud-bbox-size">—</td></tr>
+                    <tr><td style="color:#9cdcfe">BBox Center</td><td id="hud-bbox-center">—</td></tr>
+                    <tr><td style="color:#9cdcfe"># Elements</td><td id="hud-bbox-count">—</td></tr>
+                </table>
+
+                <div style="margin:8px 0 6px;color:#4ec9b0;font-weight:bold;border-bottom:1px solid #333;padding-bottom:3px">Transition</div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px">
+                    <tr><td style="color:#9cdcfe;width:80px">Type</td><td id="hud-trans-type">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Zoom Ratio</td><td id="hud-trans-zr">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Rot Delta</td><td id="hud-trans-rd">—</td></tr>
+                    <tr><td style="color:#9cdcfe">Pan Delta</td><td id="hud-trans-pd">—</td></tr>
+                </table>
+            `;
+
+            hud.append(hdr, body);
+            document.body.append(hud);
+
+            // Element references
+            const $ = id => document.getElementById(id);
+
+            // Track current highlight keys for bbox measurement
+            let currentHighlightKeys = null;
+
+            // Update view state from sceneUpdate events (throttled)
+            let lastHudUpdate = 0;
+            controller.on('sceneUpdate', data => {
+                const now = Date.now();
+                if (now - lastHudUpdate < 50) return; // 20fps for HUD
+                lastHudUpdate = now;
+
+                $('hud-rx').textContent = data.rotation.x.toFixed(1) + '°';
+                $('hud-ry').textContent = data.rotation.y.toFixed(1) + '°';
+                $('hud-rz').textContent = data.rotation.z.toFixed(1) + '°';
+                $('hud-zoom').textContent = data.zoom.toFixed(3);
+                $('hud-px').textContent = data.translation.x.toFixed(1) + 'px';
+                $('hud-py').textContent = data.translation.y.toFixed(1) + 'px';
+                $('hud-anim').textContent = controller.isAnimating ? '● yes' : 'no';
+                $('hud-anim').style.color = controller.isAnimating ? '#e0c040' : '#6a9955';
+
+                // Update bbox if we have highlighted keys
+                if (currentHighlightKeys) {
+                    updateBBox(currentHighlightKeys);
+                }
+            });
+
+            // Update selection from navigationChange events
+            controller.on('navigationChange', data => {
+                $('hud-nav').textContent = data.index >= 0 ? data.index : '(none)';
+                $('hud-key').textContent = data.key || '—';
+                $('hud-src').textContent = data.source || '—';
+
+                if (data.element) {
+                    const el = data.element;
+                    let desc = el.tagName.toLowerCase();
+                    if (el.id) desc += '#' + el.id;
+                    const face = el.classList.contains('face') ? el.className.split(' ').find(c => ['front','back','left','right','top','bottom'].includes(c)) : null;
+                    if (face) desc += ' .' + face;
+                    $('hud-el').textContent = desc;
+
+                    // Show navigation data attributes
+                    $('hud-nav-xyz').textContent = el.getAttribute('data-nav-xyz') || el.getAttribute('data-nav-rotation') || '—';
+                    $('hud-nav-zoom').textContent = el.getAttribute('data-nav-zoom') || '—';
+                    $('hud-nav-pan').textContent = el.getAttribute('data-nav-pan') || '—';
+                    $('hud-nav-hl').textContent = el.getAttribute('data-highlight') || '—';
+
+                    // Show bounding rect
+                    const r = el.getBoundingClientRect();
+                    $('hud-nav-rect').textContent = Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + '×' + Math.round(r.height);
+                } else {
+                    $('hud-el').textContent = '—';
+                    $('hud-nav-xyz').textContent = '—';
+                    $('hud-nav-zoom').textContent = '—';
+                    $('hud-nav-pan').textContent = '—';
+                    $('hud-nav-hl').textContent = '—';
+                    $('hud-nav-rect').textContent = '—';
+                }
+            });
+
+            // Update highlight/bbox info
+            controller.on('highlightChange', data => {
+                if (data.action === 'highlight' && data.keys) {
+                    currentHighlightKeys = data.keys;
+                    $('hud-hl').textContent = data.keys.join(', ');
+                    updateBBox(data.keys);
+                } else {
+                    currentHighlightKeys = null;
+                    $('hud-hl').textContent = '(none)';
+                    $('hud-bbox-size').textContent = '—';
+                    $('hud-bbox-center').textContent = '—';
+                    $('hud-bbox-count').textContent = '—';
+                }
+            });
+
+            function updateBBox(keys) {
+                // Find all highlighted elements matching keys in the live scene
+                const container = document.getElementById('presenter');
+                const perspective = container.querySelector('.isometric-perspective');
+                if (!perspective) return;
+
+                let matchCount = 0;
+                let minL = Infinity, minT = Infinity, maxR = -Infinity, maxB = -Infinity;
+
+                keys.forEach(key => {
+                    const selector = `[data-key="${key}"], [data-key^="${key},"], [data-related-keys*="${key}"]`;
+                    perspective.querySelectorAll(selector).forEach(el => {
+                        const r = el.getBoundingClientRect();
+                        if (r.width > 0 || r.height > 0) {
+                            matchCount++;
+                            minL = Math.min(minL, r.left);
+                            minT = Math.min(minT, r.top);
+                            maxR = Math.max(maxR, r.right);
+                            maxB = Math.max(maxB, r.bottom);
+                        }
+                    });
+                });
+
+                if (matchCount > 0 && minL !== Infinity) {
+                    const w = maxR - minL;
+                    const h = maxB - minT;
+                    const cx = (minL + maxR) / 2;
+                    const cy = (minT + maxB) / 2;
+                    $('hud-bbox-size').textContent = w.toFixed(0) + ' × ' + h.toFixed(0) + 'px';
+                    $('hud-bbox-center').textContent = '(' + cx.toFixed(0) + ', ' + cy.toFixed(0) + ')';
+                    $('hud-bbox-count').textContent = matchCount;
+                } else {
+                    $('hud-bbox-size').textContent = '—';
+                    $('hud-bbox-center').textContent = '—';
+                    $('hud-bbox-count').textContent = '0';
+                }
+            }
+
+            // Intercept console.log to capture transition type info
+            const origLog = console.log;
+            console.log = function() {
+                origLog.apply(console, arguments);
+                const msg = arguments[0];
+                if (typeof msg === 'string' && msg.includes('[navigateToPosition]')) {
+                    if (msg.includes('TWO-PHASE')) {
+                        $('hud-trans-type').textContent = 'TWO-PHASE';
+                        $('hud-trans-type').style.color = '#e0c040';
+                    } else if (msg.includes('DIRECT')) {
+                        $('hud-trans-type').textContent = 'DIRECT';
+                        $('hud-trans-type').style.color = '#6a9955';
+                    }
+                    // Parse metrics from log: zoomRatio=X.XX rotDelta=X.X° panDelta=Xpx
+                    const zrMatch = msg.match(/zoomRatio=(\d+\.\d+)/);
+                    const rdMatch = msg.match(/rotDelta=(\d+\.\d+)/);
+                    const pdMatch = msg.match(/panDelta=(\d+)/);
+                    if (zrMatch) $('hud-trans-zr').textContent = zrMatch[1] + '×';
+                    if (rdMatch) $('hud-trans-rd').textContent = rdMatch[1] + '°';
+                    if (pdMatch) $('hud-trans-pd').textContent = pdMatch[1] + 'px';
+                }
+            };
+        })();
+
+        // ─── Debug Event Footer ────────────────────────────────
+        (function initDebugFooter() {
+            const MAX_LINES = 200;
+            const footer = document.createElement('div');
+            footer.id = 'debug-footer';
+            Object.assign(footer.style, {
+                position: 'fixed',
+                bottom: '0',
+                left: '0',
+                right: '0',
+                height: '160px',
+                background: '#1e1e1e',
+                color: '#d4d4d4',
+                fontFamily: 'Menlo, Monaco, Consolas, monospace',
+                fontSize: '11px',
+                zIndex: '10000',
+                display: 'flex',
+                flexDirection: 'column',
+                borderTop: '2px solid #007acc'
+            });
+
+            // Header bar
+            const header = document.createElement('div');
+            Object.assign(header.style, {
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '4px 10px',
+                background: '#252526',
+                borderBottom: '1px solid #333',
+                flexShrink: '0'
+            });
+            header.innerHTML = '<span style="color:#007acc;font-weight:bold">Event Log</span>';
+
+            const btnGroup = document.createElement('span');
+
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = 'Clear';
+            Object.assign(clearBtn.style, { background:'#333', color:'#ccc', border:'1px solid #555', borderRadius:'3px', cursor:'pointer', marginRight:'6px', fontSize:'10px', padding:'2px 8px' });
+            clearBtn.onclick = () => { log.innerHTML = ''; logNavKeys(); };
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            Object.assign(closeBtn.style, { background:'#333', color:'#ccc', border:'1px solid #555', borderRadius:'3px', cursor:'pointer', fontSize:'10px', padding:'2px 6px' });
+            closeBtn.onclick = () => { footer.style.display = 'none'; };
+
+            btnGroup.append(clearBtn, closeBtn);
+            header.append(btnGroup);
+
+            // Log area
+            const log = document.createElement('div');
+            Object.assign(log.style, {
+                flex: '1',
+                overflowY: 'auto',
+                padding: '4px 10px',
+                whiteSpace: 'pre'
+            });
+
+            footer.append(header, log);
+            document.body.append(footer);
+
+            const COLORS = {
+                navigationChange: '#4ec9b0',
+                navKeys:          '#b5cea8',
+                highlightChange:  '#dcdcaa',
+                connectorClick:   '#c586c0',
+                viewReset:        '#569cd6',
+                autoPlayChange:   '#ce9178',
+                centerOnElement:  '#9cdcfe',
+                sceneUpdate:      '#6a9955'
+            };
+
+            let sceneUpdateThrottle = 0;
+
+            function appendLine(name, data) {
+                const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+                const line = document.createElement('div');
+                const color = COLORS[name] || '#d4d4d4';
+
+                // Format data compactly
+                let detail = '';
+                if (data) {
+                    const clone = { ...data };
+                    // Replace DOM elements with a short description
+                    for (const k of Object.keys(clone)) {
+                        if (clone[k] instanceof Element) {
+                            const el = clone[k];
+                            clone[k] = el.tagName.toLowerCase()
+                                + (el.id ? '#' + el.id : '')
+                                + (el.className ? '.' + String(el.className).split(' ').join('.') : '');
+                        }
+                    }
+                    detail = JSON.stringify(clone);
+                }
+
+                line.innerHTML = `<span style="color:#666">${time}</span>  <span style="color:${color};font-weight:bold">${name}</span>  ${detail}`;
+
+                log.append(line);
+
+                // Trim old lines
+                while (log.childElementCount > MAX_LINES) {
+                    log.removeChild(log.firstChild);
+                }
+                log.scrollTop = log.scrollHeight;
+            }
+
+            // Subscribe to ALL events
+            const events = [
+                'navigationChange',
+                'navKeys',
+                'highlightChange',
+                'connectorClick',
+                'viewReset',
+                'autoPlayChange',
+                'centerOnElement'
+            ];
+
+            events.forEach(evt => {
+                controller.on(evt, data => appendLine(evt, data));
+            });
+
+            // sceneUpdate fires very often — throttle to 1 per 500ms
+            controller.on('sceneUpdate', data => {
+                const now = Date.now();
+                if (now - sceneUpdateThrottle > 500) {
+                    sceneUpdateThrottle = now;
+                    const compact = {
+                        rx: data.rotation.x.toFixed(1),
+                        ry: data.rotation.y.toFixed(1),
+                        rz: data.rotation.z.toFixed(1),
+                        zoom: data.zoom.toFixed(2)
+                    };
+                    appendLine('sceneUpdate', compact);
+                }
+            });
+
+            function logNavKeys() {
+                const keys = controller.getNavKeys();
+                appendLine('navKeys', { count: keys.length, keys });
+            }
+
+            appendLine('init', { message: 'Debug footer listening for events', events: events.concat('sceneUpdate') });
+            logNavKeys();
+        })();
     </script>
 </body>
 </html>

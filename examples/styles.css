@@ -130,10 +130,10 @@
   border-radius: 4px;
 }
 
-/* Only apply pulse animation if element or parent has data-activate - Using .face class */
-.face.nav-selected[data-activate],
-.scene.nav-selected[data-activate],
-.scene[data-activate] > .cuboid > .face.nav-selected {
+/* Only apply pulse animation if element or parent has data-key - Using .face class */
+.face.nav-selected[data-key],
+.scene.nav-selected[data-key],
+.scene[data-key] > .cuboid > .face.nav-selected {
   animation: pulse 2s infinite;
 }
 

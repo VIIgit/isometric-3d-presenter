@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Column Layout</title>
+    <link rel="stylesheet" href="../src/isometric-3d.css">
+    <style>
+        /* ===== Structural CSS ===== */
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ===== Two-Column Layout ===== */
+        .sticky-section-wrapper {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .isometric-wrapper {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .isometric-container {
+            height: 400px;
+            width: 100%;
+            background-color: #ffffffe1;
+        }
+
+        .content-sections {
+            margin: 0;
+            padding-top: 0;
+        }
+
+        .description-section {
+            position: relative;
+            min-height: 60vh;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .description-section h2 {
+            position: sticky;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            z-index: 50;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin: 0;
+        }
+
+        /* ===== Responsive: Stack on narrow screens ===== */
+        @media (max-width: 900px) {
+            .sticky-section-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .description-section {
+                min-height: 400px;
+            }
+        }
+
+        /* ===== Grid Layout ===== */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 25px;
+            grid-template-areas:
+                "api  .    db"
+                ".    svc  ."
+                "ui   ui   .";
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+        .topic-api { grid-area: api; }
+        .topic-db  { grid-area: db; }
+        .topic-svc { grid-area: svc; }
+        .topic-ui  { grid-area: ui; }
+
+        /* ===== Face Colors ===== */
+        .cuboid > .face {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 5px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .cuboid > .front  { background: rgba(52, 152, 219, 0.7); }
+        .cuboid > .back   { background: rgba(46, 204, 113, 0.7); }
+        .cuboid > .left   { background: rgba(155, 89, 182, 0.7); }
+        .cuboid > .right  { background: rgba(241, 196, 15, 0.7); }
+        .cuboid > .top    { background: rgba(76, 175, 80, 0.7); }
+        .cuboid > .bottom { background: rgba(52, 73, 94, 0.7); }
+
+        /* ===== Navigation & Highlight Styles ===== */
+        .face.nav-selected, .scene.nav-selected {
+            outline: 3px solid rgb(255, 0, 225);
+            outline-offset: 4px;
+            border-radius: 4px;
+        }
+        .face.nav-selected[data-key],
+        .scene.nav-selected[data-key],
+        .scene[data-key] > .cuboid > .face.nav-selected {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { outline-color: rgba(255, 0, 225, 0.8); }
+            50%      { outline-color: rgba(255, 0, 255, 0.3); }
+        }
+        .face.highlight { border-bottom: 3px solid rgba(255, 0, 0, 0.8); }
+        .scene.highlight:not(:has(> .cuboid)) { border-bottom: 3px solid rgba(255, 0, 0, 0.8); }
+
+        /* ===== Connector Styles ===== */
+        .connector-path {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            transition: opacity 0.3s ease;
+        }
+        .connector-path.highlight {
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+            opacity: 1 !important;
+        }
+        .connector-animated-marker {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+    </style>
+</head>
+<body>
+
+    <h1 style="margin-bottom: 20px;">Two-Column Layout</h1>
+    <p style="margin-bottom: 30px; max-width: 700px; color: #555;">
+        The isometric 3D diagram stays fixed on the left while the description
+        sections scroll on the right. Scroll-sync keeps both sides in lockstep.
+        On narrow screens the layout collapses to a single column.
+    </p>
+
+    <!-- Two-column wrapper -->
+    <div class="sticky-section-wrapper">
+
+        <!-- LEFT COLUMN: Sticky isometric diagram -->
+        <div class="isometric-wrapper">
+
+            <div class="isometric-header">
+                <h2>System Architecture</h2>
+                <p>Explore how the API Gateway, Core Service, Database, and Frontend UI interact.</p>
+            </div>
+
+            <div class="isometric-viewport">
+            <div id="presenter" class="isometric-container">
+                <div class="isometric-perspective grid-layout">
+
+                    <!-- API Gateway -->
+                    <div class="scene topic-api" data-related-keys="api">
+                        <div id="cuboid-api" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                            <div class="front">API Gateway</div>
+                            <div class="back">back</div>
+                            <div class="left">API</div>
+                            <div class="right">right</div>
+                            <div class="top"
+                                 data-key="api" data-related-keys="ui-api" data-focus="center">API Gateway</div>
+                            <div class="bottom">bottom</div>
+                        </div>
+                    </div>
+
+                    <!-- Database -->
+                    <div class="scene topic-db" data-related-keys="db">
+                        <div id="cuboid-db" class="cuboid" data-width="100" data-height="auto" data-depth="100">
+                            <div class="front">Database</div>
+                            <div class="back">back</div>
+                            <div class="left">DB</div>
+                            <div class="right">right</div>
+                            <div class="top"
+                                 data-key="db" data-focus="center">Database</div>
+                            <div class="bottom">bottom</div>
+                        </div>
+                    </div>
+
+                    <!-- Core Service -->
+                    <div class="scene topic-svc" data-related-keys="svc">
+                        <div id="cuboid-svc" class="cuboid" data-width="200" data-height="100" data-depth="300">
+                            <div class="front">Core Service</div>
+                            <div class="back">back</div>
+                            <div class="left">Service</div>
+                            <div class="right">right</div>
+                            <div class="top"
+                                 data-key="svc" data-focus="center">Core Service</div>
+                            <div class="bottom">bottom</div>
+                        </div>
+                    </div>
+
+                    <!-- Frontend UI (spans 2 columns) -->
+                    <div class="scene topic-ui" data-related-keys="ui">
+                        <div id="cuboid-ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
+                            <div class="front"
+                                 data-nav-xyz="45.00.-35" data-nav-zoom="0.9"
+                                 data-nav-pan="default"
+                                 data-key="ui-api">Frontend → API</div>
+                            <div class="back">back</div>
+                            <div class="left">UI</div>
+                            <div class="right">right</div>
+                            <div class="top"
+                                 data-key="ui" data-focus="center">Frontend</div>
+                            <div class="bottom">bottom</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            </div> <!-- /.isometric-viewport -->
+        </div> <!-- /.isometric-wrapper -->
+
+        <!-- RIGHT COLUMN: Scrollable content sections -->
+        <div class="content-sections">
+
+            <div id="ui-api" class="description-section">
+                <h2>Frontend → API Gateway</h2>
+                <div style="padding: 20px;">
+                    <p>The Frontend communicates with the API Gateway over HTTPS. All user-initiated
+                       actions — page loads, form submissions, real-time subscriptions — flow through
+                       this connection.</p>
+                    <p>The API Gateway authenticates each request, applies rate limits, and forwards
+                       validated payloads to the appropriate backend service. WebSocket connections
+                       are also terminated here for real-time push updates back to the Frontend.</p>
+                    <p>Key protocols include REST for CRUD operations, GraphQL for flexible queries,
+                       and WebSocket for bidirectional real-time communication.</p>
+                </div>
+            </div>
+
+            <div id="api" class="description-section">
+                <h2>API Gateway</h2>
+                <div style="padding: 20px;">
+                    <p>Handles incoming HTTP requests and routing. The API Gateway serves as the
+                       single entry point for all client requests, performing authentication,
+                       rate limiting, and request validation before forwarding to the Core Service.</p>
+                    <p>Key responsibilities include TLS termination, load balancing across service
+                       instances, and request/response transformation.</p>
+                    <p>The gateway also provides API versioning, circuit breaking for downstream
+                       service failures, and comprehensive request logging for observability.</p>
+                </div>
+            </div>
+
+            <div id="db" class="description-section">
+                <h2>Database</h2>
+                <div style="padding: 20px;">
+                    <p>PostgreSQL for persistent storage. The database layer manages all application
+                       data including user records, transaction history, and configuration state.</p>
+                    <p>Features include connection pooling, read replicas for query scaling,
+                       automated backups, and point-in-time recovery capabilities.</p>
+                    <p>Schema migrations are managed through versioned migration scripts,
+                       ensuring reproducible deployments across environments.</p>
+                </div>
+            </div>
+
+            <div id="svc" class="description-section">
+                <h2>Core Service</h2>
+                <div style="padding: 20px;">
+                    <p>Business logic and orchestration layer. The Core Service processes all
+                       requests from the API Gateway, applies business rules, and coordinates
+                       reads and writes to the Database.</p>
+                    <p>Implements domain-driven design patterns with clear bounded contexts,
+                       event sourcing for audit trails, and saga patterns for distributed transactions.</p>
+                    <p>The service layer also handles caching strategies, background job processing,
+                       and integration with external third-party APIs.</p>
+                </div>
+            </div>
+
+            <div id="ui" class="description-section">
+                <h2>Frontend</h2>
+                <div style="padding: 20px;">
+                    <p>React SPA for user interaction. The Frontend provides a responsive,
+                       single-page application that communicates with the API Gateway via
+                       REST endpoints and WebSocket connections for real-time updates.</p>
+                    <p>Built with component-driven architecture, state management via Redux,
+                       and optimistic UI updates for a smooth user experience.</p>
+                    <p>The frontend includes a design system with reusable components,
+                       accessibility compliance (WCAG 2.1 AA), and progressive web app capabilities
+                       for offline support.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="../src/isometric-3d.js"></script>
+    <script src="../src/scroll-sync.js"></script>
+    <script>
+        const controller = createIsometric3D('presenter', {
+            initialRotation: { x: 0, y: 0, z: 0 },
+            initialZoom: 0.8,
+            defaultRotation: { x: 45, y: 0, z: -35 },
+            defaultZoom: 1.0,
+            showCompactControls: true,
+            connectors: [
+                {ids: 'cuboid-ui,cuboid-api', positions: 'top,bottom', vertices: '20,20', color: '#4CAF50', endStyles: ',arrowSmall', groups: 'ui,api'},
+                {ids: 'cuboid-api,cuboid-svc', positions: 'right,top', vertices: '20,30', color: '#FF9800', endStyles: ',arrowSmall', groups: 'api,svc', animationStyle: 'circle'},
+                {ids: 'cuboid-svc,cuboid-db', positions: 'right,bottom', vertices: '20,30', color: '#2196F3', endStyles: ',arrowSmall', groups: 'svc,db'}
+            ],
+            connectorDefaults: {
+                endLine: 'arrow',
+                lineStyle: 'solid'
+            },
+            rotationLimits: {
+                x: { min: 0, max: 45 },
+                y: { min: -0, max: 0 },
+                z: { min: -45, max: 45 }
+            }
+        });
+
+        const scrollSync = new ScrollSync(controller, {
+            // Start with two-column threshold; matchMedia below handles responsive switch.
+            stickyThreshold: 20,
+            stickyGap: 10,
+            scrollDuration: 1800,
+            debounceDelay: 100
+        });
+
+        // Responsive layout switch: update stickyThreshold when crossing the breakpoint.
+        // Two-column → small fixed threshold (sections are beside the diagram)
+        // Stacked    → 'auto' (re-measured from .isometric-wrapper height)
+        const mql = window.matchMedia('(max-width: 900px)');
+        function onLayoutChange(e) {
+            scrollSync.updateStickyThreshold(e.matches ? 'auto' : 20);
+        }
+        mql.addEventListener('change', onLayoutChange);
+        // Also run once at load in case the page starts in stacked mode
+        if (mql.matches) onLayoutChange(mql);
+    </script>
+</body>
+</html>

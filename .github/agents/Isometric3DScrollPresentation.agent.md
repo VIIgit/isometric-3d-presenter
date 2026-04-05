@@ -5,7 +5,7 @@ Generate a complete, interactive isometric 3D presentation page from a topic lis
 **Library:** `isometric-3d-presenter` (zero runtime dependencies — pure CSS3 + vanilla JS)  
 **Source files needed:**
 - `src/isometric-3d.css` — structural CSS for 3D rendering
-- `src/isometric-3d.js` — core `Isometric3D` class (~4850 lines)
+- `src/isometric-3d.js` — core `Isometric3D` class (~5400 lines)
 - `src/scroll-sync.js` — `ScrollSync` class for bidirectional scroll sync (~250 lines)
 
 ---
@@ -20,6 +20,7 @@ Collect the following from the user before generating:
 | `teaser` | Yes | string | Introductory paragraph(s) in the sticky diagram header, below the title |
 | `topics` | Yes | list | Each topic has: `id` (short slug), `label` (display name), `description` (markdown/HTML content for the section) |
 | `grid` | Yes | multi-line text | Layout grid using topic IDs and `.` for empty cells (see Grid Notation below) |
+| `layout` | No | enum | Page layout variant: `"stacked"` (default) or `"two-column"`. See [Layout Variants](#3a-layout-variants) |
 | `connectors` | No | list | Connections between topics: `{from, to, color, style}` |
 | `theme` | No | object | Colors for faces, background, perspective gradient |
 | `containerHeight` | No | number | Height of sticky 3D container in px (default: `300`) |
@@ -73,33 +74,60 @@ ui   | ui   |  .
 
 ## 3. Page Structure Template
 
-Every generated page follows this three-part layout:
+**Before generating, ask the user which layout variant they want:**
+
+> Which page layout would you like?
+> 1. **Stacked** (default) — 3D diagram on top, scroll sections below
+> 2. **Two-column** — 3D diagram sticky on the left, scroll sections on the right (responsive: collapses to stacked on narrow screens)
+
+Every generated page follows one of two layout variants:
+
+### 3a. Layout Variants
+
+#### Stacked Layout (default: `layout: "stacked"`)
 
 ```
 ┌─────────────────────────────────┐
-│  PART 2: Sticky Block            │  ← position: sticky; stays visible
+│  Sticky Block                    │  ← position: sticky
 │  ┌─────────────────────────────┐│
-│  │  .isometric-header          ││  ← Title + description (optional)
+│  │  .isometric-header          ││
 │  ├─────────────────────────────┤│
-│  │  .isometric-viewport        ││  ← safe styling layer (border-radius,
-│  │                              ││    borders, focus outline, box-shadow …)
+│  │  .isometric-viewport        ││
 │  │  ┌─────────────────────────┐││
-│  │  │  .isometric-perspective │││  ← CSS Grid with topics as scenes/cuboids
-│  │  │  (grid layout w/ topics)│││
+│  │  │  .isometric-perspective │││
 │  │  └─────────────────────────┘││
 │  └─────────────────────────────┘│
 ├─────────────────────────────────┤
-│  PART 3: Content Sections        │  ← Scrollable; synced with 3D navigation
+│  Content Sections (below)        │  ← scrollable, synced with 3D
 │  ┌─────────────────────────────┐│
-│  │  Section: Topic 1           ││  ← id matches data-section on 3D element
-│  │  (sticky h2 + scroll body) ││
-│  ├─────────────────────────────┤│
-│  │  Section: Topic 2           ││
+│  │  Section: Topic 1           ││
 │  ├─────────────────────────────┤│
 │  │  Section: Topic N           ││
 │  └─────────────────────────────┘│
 └─────────────────────────────────┘
 ```
+
+#### Two-Column Layout (`layout: "two-column"`)
+
+```
+┌──────────────────┬──────────────────┐
+│  Sticky Block     │  Content Sections │
+│  (left column)    │  (right column)   │
+│  ┌──────────────┐│  ┌──────────────┐│
+│  │ .isometric-  ││  │ Section 1    ││
+│  │  header      ││  │ (top-aligned ││
+│  ├──────────────┤│  │  with sticky ││
+│  │ .isometric-  ││  │  block)      ││
+│  │  viewport    ││  ├──────────────┤│
+│  │              ││  │ Section 2    ││
+│  └──────────────┘│  ├──────────────┤│
+│                   │  │ Section N    ││
+│                   │  └──────────────┘│
+└──────────────────┴──────────────────┘
+         ↕ responsive: collapses to stacked on ≤ 900px
+```
+
+The HTML skeleton is **identical** for both layouts — only the CSS on `.sticky-section-wrapper` and `.content-sections` changes, plus `ScrollSync` needs `stickyThreshold` overridden to a small value.
 
 ### Required HTML Skeleton
 
@@ -162,9 +190,11 @@ Every generated page follows this three-part layout:
 
 ## 4. Structural CSS (Required Boilerplate)
 
-This CSS is **identical for every scroll-synced presentation**. The agent must include it. The only variables are `containerHeight` and `stickyTop` — `.isometric-header` height is content-dependent.
+This CSS is **identical for every scroll-synced presentation**. The agent must include it. The only variables are `containerHeight`, `stickyTop`, and `layout` — `.isometric-header` height is content-dependent.
 
 `ScrollSync` **auto-computes** `stickyThreshold` at runtime by measuring the `.isometric-wrapper` element's CSS `top` + `offsetHeight`. It then injects `scroll-margin-top` on `.description-section` and `top` on `.description-section h2` automatically. This means you do **not** need to hardcode `stickyThreshold` in CSS or JS — just set `position: sticky` and `top` on `.isometric-wrapper`, and let `ScrollSync` handle the rest.
+
+### 4a. Shared CSS (Both Layouts)
 
 ```css
 body {
@@ -174,48 +204,22 @@ body {
     min-height: 100vh;
 }
 
-/* Wrapper for sticky positioning context */
-.sticky-section-wrapper {
-    position: relative;
-}
-
-/* Wrapper groups header + 3D diagram as a single sticky unit.
-   Do NOT put border-radius or overflow here — that's .isometric-viewport's job. */
 .isometric-wrapper {
     position: sticky;
     top: {{stickyTop}}px;              /* default: 20 */
     z-index: 100;
 }
 
-/* Viewport — safe styling layer for any visual CSS that must not
-   interfere with the 3D context: border-radius, border, box-shadow,
-   focus outline, etc.  NEVER put these on .isometric-container. */
-.isometric-viewport {
-    border-radius: 12px;
-    overflow: hidden;                  /* clips the already-composited 3D output */
-}
-
-/* Sticky 3D container — NO border-radius allowed */
 .isometric-container {
     height: {{containerHeight}}px;      /* default: 300 */
     width: 100%;
 }
 
-/* Content sections wrapper */
-.content-sections {
-    margin: 0 20px 40px 20px;
-}
-
-/* Individual content section.
-   scroll-margin-top is injected by ScrollSync (auto-computed from wrapper height). */
 .description-section {
     position: relative;
-    min-height: 600px;
     margin-bottom: 20px;
 }
 
-/* Sticky section header — sticks right below the sticky 3D block.
-   top is injected by ScrollSync (auto-computed from wrapper height). */
 .description-section h2 {
     position: sticky;
     background: rgba(255, 255, 255, 0.95);
@@ -227,7 +231,75 @@ body {
 }
 ```
 
-> **Note:** `ScrollSync` auto-computes `stickyThreshold` by default (`'auto'`). It measures `.isometric-wrapper`'s CSS `top` + `offsetHeight` at runtime and injects the derived `scroll-margin-top` and `top` values into description sections. You can still pass an explicit numeric value to override: `new ScrollSync(controller, { stickyThreshold: 380 })`.
+### 4b. Stacked Layout CSS (default)
+
+```css
+/* Wrapper for sticky positioning context */
+.sticky-section-wrapper {
+    position: relative;
+}
+
+/* Content sections wrapper */
+.content-sections {
+    margin: 0 20px 40px 20px;
+}
+
+.description-section {
+    min-height: 600px;
+}
+```
+
+### 4c. Two-Column Layout CSS
+
+```css
+/* Two-column grid: sticky diagram left, scrollable sections right */
+.sticky-section-wrapper {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+/* Content sections — no extra margins in two-column mode */
+.content-sections {
+    margin: 0;
+    padding-top: 0;
+}
+
+.description-section {
+    min-height: 60vh;
+}
+
+/* Responsive: collapse to stacked on narrow screens */
+@media (max-width: 900px) {
+    .sticky-section-wrapper {
+        grid-template-columns: 1fr;
+    }
+    .description-section {
+        min-height: 400px;
+    }
+}
+```
+
+> **Two-column responsive ScrollSync note:** In two-column layout the content sections are *beside* the diagram, not below it. The auto-computed `stickyThreshold` would be too large. Override it with a small value — **but** because the `@media (max-width: 900px)` breakpoint collapses to stacked layout, you must use a `matchMedia` listener to switch the threshold at runtime via `scrollSync.updateStickyThreshold()`:
+> ```javascript
+> const scrollSync = new ScrollSync(controller, {
+>     stickyThreshold: 20,   // start with two-column threshold
+>     stickyGap: 10,
+>     scrollDuration: 1800,
+>     debounceDelay: 100
+> });
+>
+> // Switch threshold when responsive breakpoint changes
+> const mql = window.matchMedia('(max-width: 900px)');
+> function onLayoutChange(e) {
+>     // stacked → auto (measure from .isometric-wrapper), two-column → 20
+>     scrollSync.updateStickyThreshold(e.matches ? 'auto' : 20);
+> }
+> mql.addEventListener('change', onLayoutChange);
+> if (mql.matches) onLayoutChange(mql);  // run once at load
+> ```
 
 ---
 
@@ -239,7 +311,7 @@ For each topic in the user's list, generate a scene with a cuboid inside:
 
 ```html
 <!-- Topic: {{topic.id}} -->
-<div class="scene topic-{{topic.id}}" data-z-axis="0" data-groups="{{topic.id}}">
+<div class="scene topic-{{topic.id}}" data-related-keys="{{topic.id}}">
     <div id="{{topic.id}}" class="cuboid" data-width="100" data-height="auto" data-depth="100">
         <div class="front">{{topic.label}}</div>
         <div class="back">back</div>
@@ -248,8 +320,7 @@ For each topic in the user's list, generate a scene with a cuboid inside:
         <div class="top"
              data-nav-xyz="45.00.-35"
              data-nav-zoom="1.0"
-             data-section="{{topic.id}}-description"
-             data-activate="{{topic.id}}"
+             data-key="{{topic.id}}"
              data-focus="center">{{topic.label}}</div>
         <div class="bottom">bottom</div>
     </div>
@@ -259,9 +330,8 @@ For each topic in the user's list, generate a scene with a cuboid inside:
 **Key decisions per topic:**
 - `data-z-axis`: Elevation in px. Use `60`–`120` for visual depth; vary between topics for interest.
 - `data-width` / `data-height` / `data-depth`: Use `"auto"` for content-driven sizing or fixed px values. See [Cuboid Dimensions](#8-cuboid-dimensions).
-- `data-section`: Link to the content section ID. Convention: `"{{topic.id}}-description"`.
-- `data-activate`: Comma-separated group names to highlight when clicked.
-- `data-groups`: Group membership for this element (used by highlighting).
+- `data-key`: Section identifier for navigation, highlighting trigger, and URL hash. Convention: `"{{topic.id}}"`.
+- `data-related-keys`: Group membership for this element (used by highlighting).
 - `data-nav-xyz`: Camera rotation target as `"x.y.z"` (dot-separated degrees). Default isometric: `"45.00.-35"`.
 - `data-nav-zoom`: Zoom level target. Range `0.2`–`3.0`, default `1.0`.
 - `data-focus="center"`: Auto-pan to center this element when clicked.
@@ -271,7 +341,7 @@ For each topic in the user's list, generate a scene with a cuboid inside:
 For each topic, generate a matching content section:
 
 ```html
-<div id="{{topic.id}}-description" class="description-section">
+<div id="{{topic.id}}" class="description-section">
     <h2>{{topic.label}}</h2>
     <div style="padding: 20px;">
         {{topic.description}}
@@ -279,7 +349,7 @@ For each topic, generate a matching content section:
 </div>
 ```
 
-**The section `id` must match the `data-section` value** on the corresponding 3D element.
+**The section `id` must match the `data-key` value** on the corresponding 3D element (e.g., `data-key="api"` → `id="api"`).
 
 ### Step 3: Generate Connectors
 
@@ -315,11 +385,27 @@ const controller = createIsometric3D('presenter', {
     }
 });
 
+// For stacked layout (default):
 const scrollSync = new ScrollSync(controller, {
     // stickyThreshold: 'auto' (default) — auto-computed from .isometric-wrapper height
     scrollDuration: 1800,
     debounceDelay: 100
 });
+
+// For two-column layout — override stickyThreshold + responsive switch:
+const scrollSync = new ScrollSync(controller, {
+    stickyThreshold: 20,
+    stickyGap: 10,
+    scrollDuration: 1800,
+    debounceDelay: 100
+});
+// Switch threshold when the responsive breakpoint collapses to stacked
+const mql = window.matchMedia('(max-width: 900px)');
+function onLayoutChange(e) {
+    scrollSync.updateStickyThreshold(e.matches ? 'auto' : 20);
+}
+mql.addEventListener('change', onLayoutChange);
+if (mql.matches) onLayoutChange(mql);
 ```
 
 ---
@@ -362,9 +448,9 @@ The library provides **only structural CSS** (perspective, transforms, controls)
     outline-offset: 4px;
     border-radius: 4px;
 }
-.face.nav-selected[data-activate],
-.scene.nav-selected[data-activate],
-.scene[data-activate] > .cuboid > .face.nav-selected {
+.face.nav-selected[data-key],
+.scene.nav-selected[data-key],
+.scene[data-key] > .cuboid > .face.nav-selected {
     animation: pulse 2s infinite;
 }
 @keyframes pulse {
@@ -425,9 +511,8 @@ The library provides **only structural CSS** (perspective, transforms, controls)
 | `data-nav-xyz` | `"45.00.-35"`, `"current"` | Target camera rotation as `x.y.z` (degrees, dot-separated). `"current"` = keep current rotation |
 | `data-nav-zoom` | `"1.2"`, `"current"` | Target zoom level (`0.2`–`3.0`). `"current"` = keep current zoom |
 | `data-nav-pan` | `"100.-50"`, `"current"`, `"default"` | Target pan as `x.y` (px). `"current"` / `"default"` = keep / reset. If omitted, auto-centers parent scene |
-| `data-section` | `"intro"` | Section identifier. Links to content section `id`. Used for URL hash and ScrollSync |
-| `data-activate` | `"workflow,database"` | Comma-separated group names to highlight when this element is clicked |
-| `data-groups` | `"api,frontend"` | Comma-separated group membership for highlighting (this element belongs to these groups) |
+| `data-key` | `"intro"` | Section identifier for navigation, highlighting trigger, and URL hash. **Must be unique across elements.** Also defines group membership for highlighting when used as a comma-separated list (e.g., `"workflow,database"`). An element with only `data-key` (no `data-nav-*`) is still navigable — auto-fits zoom and auto-centers pan. |
+| `data-related-keys` | `"api,frontend"` | Comma-separated group membership for highlighting (this element belongs to these groups) |
 | `data-focus` | `"center"` | Auto-pan to center this element when clicked |
 
 ### On `.label` Elements
@@ -468,7 +553,7 @@ The library temporarily renders the cuboid flat (no 3D transforms), measures con
 
 ## 9. Connector Reference
 
-Connectors are defined as an array in the `connectors` option of `createIsometric3D()`. (Legacy: also supported as a JSON string in the `data-connectors` HTML attribute on `.isometric-perspective`.)
+Connectors are defined as an array in the `connectors` option of `createIsometric3D()`.
 
 ### Connector Properties
 
@@ -538,7 +623,7 @@ Connectors are defined as an array in the `connectors` option of `createIsometri
 | `debugShadows` | `boolean` | `false` | Visualize shadow divs |
 | `navSelectedTarget` | `string` | `'clicked'` | Which face gets `.nav-selected`: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
 | `connectorDefaults` | `object` | see below | Default connector line styles |
-| `connectors` | `array` | `null` | Connector definitions (see [Connector Reference](#9-connector-reference)). Alternative to `data-connectors` HTML attribute |
+| `connectors` | `array` | `null` | Connector definitions (see [Connector Reference](#9-connector-reference)) |
 | `dimmingAlpha` | `object` | see below | Alpha values for dimming |
 
 #### `connectorDefaults`
@@ -567,7 +652,8 @@ Connectors are defined as an array in the `connectors` option of `createIsometri
 | `setZoom(zoom)` | Set zoom level (clamped `0.2`–`3.0`) |
 | `getState()` | Returns `{rotation, zoom}` |
 | `navigateToPosition(xyz, zoom, el?, pan?, cb?)` | Animate to a camera position |
-| `navigateByKey(key)` | Navigate by element ID or `data-section` value |
+| `navigateByKey(key)` | Navigate by element ID or `data-key` value |
+| `getNavKeys()` | Returns deduplicated `string[]` of all keys from `data-key` attributes and connector groups |
 | `centerOnElement(element)` | Pan to center an element |
 | `highlightByKey(keys[])` | Highlight elements matching groups |
 | `clearHighlights()` | Remove all highlighting |
@@ -580,9 +666,48 @@ Connectors are defined as an array in the `connectors` option of `createIsometri
 
 ```javascript
 controller.on('navigationChange', (data) => {
-    // data.index      — nav point index
-    // data.element    — clicked element
-    // data.key        — data-section value or element.id
+    // data.index      — nav point index (-1 when deselected)
+    // data.element    — clicked element (null on deselect)
+    // data.key        — first data-key value or element.id
+    // data.source     — 'click' | 'nav-bar' | 'autoplay' | 'scroll' | 'unknown'
+});
+
+controller.on('navKeys', (data) => {
+    // data.keys       — string[] of deduplicated navigation keys
+});
+
+controller.on('highlightChange', (data) => {
+    // data.action     — 'highlight' | 'clear'
+    // data.keys       — string[] of active keys (null on clear)
+    // data.source     — navigation source
+});
+
+controller.on('viewReset', (data) => {
+    // data.rotation   — {x, y, z} initial rotation
+    // data.zoom       — initial zoom level
+    // data.source     — navigation source
+});
+
+controller.on('autoPlayChange', (data) => {
+    // data.playing    — boolean
+});
+
+controller.on('sceneUpdate', (data) => {
+    // data.rotation    — {x, y, z} current rotation
+    // data.zoom        — current zoom
+    // data.translation — {x, y} current pan
+    // data.container   — {width, height}
+    // data.perspective — {width, height}
+});
+
+controller.on('connectorClick', (data) => {
+    // data.keys       — string[] of connector group keys
+    // data.element    — clicked SVG element
+});
+
+controller.on('centerOnElement', (data) => {
+    // data.element    — DOM element being centered
+    // data.id         — element id or null
 });
 ```
 
@@ -602,7 +727,7 @@ controller.on('navigationChange', (data) => {
 
 ### Behavior
 
-- **3D → Scroll:** Clicking a navigable 3D element with `data-section` scrolls the page so the matching content section’s top aligns just below the sticky diagram block.
+- **3D → Scroll:** Clicking a navigable 3D element with `data-key` scrolls the page so the matching content section’s top aligns just below the sticky diagram block.
 - **Scroll → 3D:** Scrolling through content sections triggers `.click()` on the first matching 3D element, updating the 3D view.
 - **Reset:** When no section is visible (scrolled past all), resets to default 3D view and clears URL hash.
 
@@ -683,10 +808,10 @@ Faces can contain child divs with navigation attributes:
 
 ```html
 <div class="left flex-column">
-    <div data-section="featureA" data-activate="group1"
+    <div data-key="featureA"
          data-nav-xyz="current" data-nav-zoom="current">Feature A</div>
     <div data-nav-xyz="40.10.-65" data-nav-zoom="0.9"
-         data-section="featureB">Feature B</div>
+         data-key="featureB">Feature B</div>
 </div>
 ```
 
@@ -738,7 +863,7 @@ Labels are positioned **outside** `.isometric-perspective`, **inside** `.isometr
 
 ## 14. URL Bookmark System
 
-- Clicking a navigable element with `data-section="intro"` sets URL to `page.html#intro`.
+- Clicking a navigable element with `data-key="intro"` sets URL to `page.html#intro`.
 - Query parameters: `{prefix}-nav=2`, `{prefix}-xyz=45.00.-35`, `{prefix}-zoom=1.2`, `{prefix}-pan=100.-50`.
 - Supports browser back/forward via `popstate` and `hashchange` events.
 
@@ -865,9 +990,9 @@ connectors:
             outline: 3px solid rgb(255, 0, 225);
             outline-offset: 4px;
         }
-        .face.nav-selected[data-activate],
-        .scene.nav-selected[data-activate],
-        .scene[data-activate] > .cuboid > .face.nav-selected {
+        .face.nav-selected[data-key],
+        .scene.nav-selected[data-key],
+        .scene[data-key] > .cuboid > .face.nav-selected {
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
@@ -902,7 +1027,7 @@ connectors:
             <div class="isometric-perspective grid-layout">
 
                 <!-- API Gateway -->
-                <div class="scene topic-api" data-z-axis="0" data-groups="api">
+                <div class="scene topic-api" data-related-keys="api">
                     <div id="api" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">API Gateway</div>
                         <div class="back">back</div>
@@ -910,14 +1035,13 @@ connectors:
                         <div class="right">right</div>
                         <div class="top"
                              data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
-                             data-section="api-description"
-                             data-activate="api" data-focus="center">API Gateway</div>
+                             data-key="api" data-focus="center">API Gateway</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Database -->
-                <div class="scene topic-db" data-z-axis="0" data-groups="db">
+                <div class="scene topic-db" data-related-keys="db">
                     <div id="db" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Database</div>
                         <div class="back">back</div>
@@ -925,14 +1049,13 @@ connectors:
                         <div class="right">right</div>
                         <div class="top"
                              data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
-                             data-section="db-description"
-                             data-activate="db" data-focus="center">Database</div>
+                             data-key="db" data-focus="center">Database</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Core Service -->
-                <div class="scene topic-svc" data-z-axis="0" data-groups="svc">
+                <div class="scene topic-svc" data-related-keys="svc">
                     <div id="svc" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Core Service</div>
                         <div class="back">back</div>
@@ -940,14 +1063,13 @@ connectors:
                         <div class="right">right</div>
                         <div class="top"
                              data-nav-xyz="45.00.-35" data-nav-zoom="1.0"
-                             data-section="svc-description"
-                             data-activate="svc" data-focus="center">Core Service</div>
+                             data-key="svc" data-focus="center">Core Service</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Cache Layer -->
-                <div class="scene topic-cache" data-z-axis="0" data-groups="cache">
+                <div class="scene topic-cache" data-related-keys="cache">
                     <div id="cache" class="cuboid" data-width="100" data-height="auto" data-depth="100">
                         <div class="front">Cache Layer</div>
                         <div class="back">back</div>
@@ -955,14 +1077,13 @@ connectors:
                         <div class="right">right</div>
                         <div class="top"
                              data-nav-xyz="45.00.-35" data-nav-zoom="1.2"
-                             data-section="cache-description"
-                             data-activate="cache" data-focus="center">Cache Layer</div>
+                             data-key="cache" data-focus="center">Cache Layer</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
 
                 <!-- Frontend UI (spans 2 columns) -->
-                <div class="scene topic-ui" data-z-axis="0" data-groups="ui">
+                <div class="scene topic-ui" data-related-keys="ui">
                     <div id="ui" class="cuboid" data-width="auto" data-height="auto" data-depth="100">
                         <div class="front">Frontend UI</div>
                         <div class="back">back</div>
@@ -970,8 +1091,7 @@ connectors:
                         <div class="right">right</div>
                         <div class="top"
                              data-nav-xyz="45.00.-35" data-nav-zoom="0.9"
-                             data-section="ui-description"
-                             data-activate="ui" data-focus="center">Frontend UI</div>
+                             data-key="ui" data-focus="center">Frontend UI</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
@@ -1063,8 +1183,8 @@ connectors:
 Before finalizing a generated page, verify:
 
 - [ ] Every topic has a `.scene > .cuboid` with 6 face divs (`front`, `back`, `left`, `right`, `top`, `bottom`)
-- [ ] Every `.top` face (or chosen navigable face) has `data-nav-xyz`, `data-nav-zoom`, and `data-section`
-- [ ] Every `data-section` value has a matching content section with `id="<same-value>"`
+- [ ] Every `.top` face (or chosen navigable face) has `data-nav-xyz`, `data-nav-zoom`, and `data-key`
+- [ ] Every `data-key` value has a matching content section with `id="<same-value>"`
 - [ ] The `stickyThreshold` is either `'auto'` (default, auto-computed) or a manually set numeric value matching the sticky block height
 - [ ] Grid `grid-template-areas` matches topic IDs used in `.topic-<id>` CSS classes
 - [ ] Connector `ids` reference valid element `id` attributes
@@ -1181,13 +1301,13 @@ function createScrollPresentation(containerId, options = {}) {
 
 ### 17.5 Auto-Generate Content Sections
 
-**Problem:** Users must manually create a `.description-section` div for every `data-section` in the 3D markup, keeping IDs perfectly matched.
+**Problem:** Users must manually create a `.description-section` div for every `data-key` in the 3D markup, keeping IDs perfectly matched.
 
-**Solution:** New option `autoCreateSections: true` scans all `data-section` attributes and generates empty section divs:
+**Solution:** New option `autoCreateSections: true` scans all `data-key` attributes and generates empty section divs:
 ```javascript
 // In ScrollSync or a new factory:
-const sections = perspective.querySelectorAll('[data-section]');
-const uniqueSections = [...new Set([...sections].map(el => el.getAttribute('data-section')))];
+const sections = perspective.querySelectorAll('[data-key]');
+const uniqueSections = [...new Set([...sections].map(el => el.getAttribute('data-key')))];
 uniqueSections.forEach(sectionId => {
     if (!document.getElementById(sectionId)) {
         const div = document.createElement('div');

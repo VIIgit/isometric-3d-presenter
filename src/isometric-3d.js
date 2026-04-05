@@ -1,3 +1,61 @@
+// ─── ViewState: Centralized state machine for 3D view phase ───────────────────
+const Phase = Object.freeze({
+  IDLE: 'idle',
+  DRAGGING: 'dragging',
+  ANIMATING: 'animating'
+});
+
+class ViewState {
+  constructor() {
+    this._phase = Phase.IDLE;
+    this._navIndex = -1;
+    this._subscribers = [];
+  }
+
+  get phase() { return this._phase; }
+  get navIndex() { return this._navIndex; }
+
+  /** Transition to a new phase. No-op if already in that phase. */
+  transition(toPhase) {
+    const from = this._phase;
+    if (from === toPhase) return this;
+    this._phase = toPhase;
+    this._notify('phase', { from, to: toPhase });
+    return this;
+  }
+
+  /** Update the active navigation index. */
+  updateNavIndex(index) {
+    const prev = this._navIndex;
+    if (prev === index) return this;
+    this._navIndex = index;
+    this._notify('navIndex', { from: prev, to: index });
+    return this;
+  }
+
+  /** Subscribe to state changes. Returns an unsubscribe function. */
+  subscribe(callback) {
+    this._subscribers.push(callback);
+    return () => {
+      this._subscribers = this._subscribers.filter(s => s !== callback);
+    };
+  }
+
+  /** Get an immutable snapshot of current state. */
+  snapshot() {
+    return { phase: this._phase, navIndex: this._navIndex };
+  }
+
+  /** @private */
+  _notify(type, data) {
+    for (const cb of this._subscribers) {
+      try { cb(type, data, this); } catch (e) { console.error('ViewState subscriber error:', e); }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 class Isometric3D {
   /**
    * Initialize a new Isometric3D instance
@@ -13,7 +71,7 @@ class Isometric3D {
    * @param {boolean} options.showCompactControls - Show compact control panel
    * @param {boolean} options.debugShadows - Enable shadow debugging
    * @param {string} options.navSelectedTarget - Navigation target behavior
-   * @param {Array} options.connectors - Connector definitions array (alternative to data-connectors HTML attribute)
+   * @param {Array} options.connectors - Connector definitions array
    * @param {Object} options.connectorDefaults - Default connector line styles
    * @param {Object} options.dimmingAlpha - Alpha values for dimming non-highlighted elements
    * @param {number} options.dimmingAlpha.backgroundColor - Alpha for background colors (default: 0.2)
@@ -56,7 +114,9 @@ class Isometric3D {
 
     this.urlUpdateTimeout = null;
     this.labelUpdateTimeout = null; // Track label update timeout to prevent flicker
-    this.isDragging = false;
+
+    // Centralized state machine (phase + navIndex)
+    this._viewState = new ViewState();
     this.isClickNavigation = false; // Track if navigation is from a click (vs manual drag)
     this.isNavButtonClick = false; // Track if navigation is from nav button click
     this.hasManualPanAdjustment = false; // Track if pan was manually adjusted by user (drag/keyboard)
@@ -65,12 +125,12 @@ class Isometric3D {
     this.dragButton = null;
     this.lastUpdateTime = 0; // For throttling mouse events
     this.mouseMoveThrottle = 16; // ~60fps (16ms between updates)
-    this.isAnimating = false; // Track when navigation animation is running
     this.isInitialized = false; // Guard to prevent duplicate initialization
     this.shadowsCreated = false; // Guard to prevent creating shadows twice
     this.animationFrameId = null; // Track requestAnimationFrame for smooth dragging
     this.keyboardAnimationFrameId = null; // Track requestAnimationFrame for smooth keyboard navigation
     this.translationAnimationId = null; // Track requestAnimationFrame for translation animations
+    this.navigationAnimationId = null; // Track requestAnimationFrame for smooth navigation animations
     this.lastKeyTime = 0; // For throttling keyboard events
 
     // Mouse sensitivity settings
@@ -110,7 +170,7 @@ class Isometric3D {
     // Options: 'clicked' (default), 'top', 'bottom', 'front', 'back', 'left', 'right'
     this.navSelectedTarget = options.navSelectedTarget || 'clicked';
 
-    // Connector definitions (can be provided via options instead of HTML data-connectors attribute)
+    // Connector definitions
     this.connectors = options.connectors || null;
 
     // Default connector settings
@@ -131,15 +191,24 @@ class Isometric3D {
 
     // Event listeners for custom events
     this.eventListeners = {
-      navigationChange: []
+      navigationChange: [],
+      navKeys: [],
+      highlightChange: [],
+      connectorClick: [],
+      viewReset: [],
+      autoPlayChange: [],
+      centerOnElement: [],
+      sceneUpdate: []
     };
 
     // Autoplay state
     this.isAutoPlaying = false;
     this.autoPlayTimer = null;
     this.autoPlayInterval = 5000; // 5 seconds
-    this.currentNavIndex = -1;
     this.navElements = null;
+
+    // Navigation source tracking for events
+    this._navigationSource = null;
 
     // Bind methods to preserve 'this' context
     this.onMouseDown = this.onMouseDown.bind(this);
@@ -154,6 +223,64 @@ class Isometric3D {
     this.onBlur = this.onBlur.bind(this);
 
     this.init();
+  }
+
+  // ─── ViewState bridge: boolean flags → centralized phase ─────────────────────
+  // All existing code continues to read/write isDragging, isAnimating, and
+  // currentNavIndex as before.  These getters/setters delegate to the ViewState
+  // state machine so phase transitions are tracked in a single place.
+
+  get isDragging() {
+    return this._viewState.phase === Phase.DRAGGING;
+  }
+
+  set isDragging(v) {
+    if (v) {
+      this._viewState.transition(Phase.DRAGGING);
+    } else if (this._viewState.phase === Phase.DRAGGING) {
+      this._viewState.transition(Phase.IDLE);
+    }
+  }
+
+  get isAnimating() {
+    return this._viewState.phase === Phase.ANIMATING;
+  }
+
+  set isAnimating(v) {
+    if (v) {
+      this._viewState.transition(Phase.ANIMATING);
+    } else if (this._viewState.phase === Phase.ANIMATING) {
+      this._viewState.transition(Phase.IDLE);
+    }
+  }
+
+  get currentNavIndex() {
+    return this._viewState.navIndex;
+  }
+
+  set currentNavIndex(v) {
+    this._viewState.updateNavIndex(v);
+  }
+
+  /** Expose the ViewState for external subscribers / plugins. */
+  get viewState() {
+    return this._viewState;
+  }
+
+  /**
+   * Cancel any in-progress navigation / translation animations.
+   * Centralizes the cancel-rAF + null-id pattern that was duplicated in
+   * onMouseDown, onWheel, smoothAnimateTo, and smoothAnimateToWithPan.
+   */
+  cancelPendingAnimations() {
+    if (this.navigationAnimationId) {
+      cancelAnimationFrame(this.navigationAnimationId);
+      this.navigationAnimationId = null;
+    }
+    if (this.translationAnimationId) {
+      cancelAnimationFrame(this.translationAnimationId);
+      this.translationAnimationId = null;
+    }
   }
 
   /**
@@ -851,8 +978,21 @@ class Isometric3D {
   }
 
   setupNavigationEffects() {
-    // Find all elements with navigation data within this container
-    this.navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan]');
+    // Validate that data-key values are unique across elements
+    const keyElements = this.container.querySelectorAll('[data-key]');
+    const seenKeys = new Map(); // key → element
+    keyElements.forEach(el => {
+      const key = (el.getAttribute('data-key') || '').split(',')[0].trim();
+      if (key && seenKeys.has(key)) {
+        const prev = seenKeys.get(key);
+        const desc = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (e.className ? '.' + String(e.className).split(' ')[0] : '');
+        throw new Error(`Duplicate data-key="${key}" found on <${desc(prev)}> and <${desc(el)}>. Each data-key must be unique.`);
+      }
+      if (key) seenKeys.set(key, el);
+    });
+
+    // Find all navigable elements: those with explicit nav attributes OR a data-key
+    this.navElements = this.container.querySelectorAll('[data-nav-xyz], [data-nav-zoom], [data-nav-pan], [data-key]');
 
     // Only create navigation bar if there are navigation elements
     if (this.navElements.length > 0) {
@@ -866,6 +1006,11 @@ class Isometric3D {
 
       // Add click event listener for navigation
       element.addEventListener('click', (e) => {
+        // Suppress click events that immediately follow a drag
+        if (this.dragEndTime && (performance.now() - this.dragEndTime) < 200) {
+          return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -873,13 +1018,11 @@ class Isometric3D {
         const zoom = element.getAttribute('data-nav-zoom');
         const pan = element.getAttribute('data-nav-pan');
 
-        if (xyz || zoom || pan) {
-          // Update navigation bar active state
-          this.setActiveNavPoint(index);
+        if (!this._navigationSource) this._navigationSource = 'click';
 
-          // Navigate to position with the element for auto-highlight
-          this.navigateToPosition(xyz, zoom, element, pan);
-        }
+        // Navigate to position with the element for auto-highlight
+        // Elements without explicit nav attrs will keep current rotation/zoom and auto-center
+        this.navigateToPosition(xyz, zoom, element, pan);
       });
     });
 
@@ -947,7 +1090,7 @@ class Isometric3D {
       const baseUrl = window.location.pathname;
       window.history.replaceState({}, '', `${baseUrl}?${prefix}-nav=0`);
 
-      this.setActiveNavPoint(-1);
+      if (!this._navigationSource) this._navigationSource = 'nav-bar';
       this.resetToDefault();
 
       // Reset flag
@@ -956,7 +1099,8 @@ class Isometric3D {
 
     // Add keyboard handler for default point
     defaultPoint.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === ' ') { e.preventDefault(); return; }
+      if (e.key === 'Enter') {
         e.preventDefault();
         defaultPoint.click();
       }
@@ -964,8 +1108,8 @@ class Isometric3D {
 
     navPointsContainer.appendChild(defaultPoint);
 
-    // Build a map of unique navigation items by data-section (if available)
-    // This prevents duplicate navigation points for elements with the same data-section
+    // Build a map of unique navigation items by data-key (if available)
+    // This prevents duplicate navigation points for elements with the same data-key
     const uniqueNavItems = new Map();
     const navItemsArray = [];
 
@@ -974,32 +1118,30 @@ class Isometric3D {
       const zoom = element.getAttribute('data-nav-zoom');
       const pan = element.getAttribute('data-nav-pan');
 
-      if (xyz || zoom || pan) {
-        const section = element.getAttribute('data-section') || element.id || '';
+      const section = (element.getAttribute('data-key') || '').split(',')[0].trim() || element.id || '';
 
-        // Use data-section as key for deduplication, fallback to index if no section
-        const uniqueKey = section || `__index_${index}`;
+      // Use data-key (first key) for deduplication, fallback to index if no section
+      const uniqueKey = section || `__index_${index}`;
 
-        // Only add if not already in map (keeps first occurrence)
-        if (!uniqueNavItems.has(uniqueKey)) {
-          uniqueNavItems.set(uniqueKey, {
-            element,
-            index,
-            section,
-            xyz,
-            zoom,
-            pan
-          });
-          navItemsArray.push({
-            uniqueKey,
-            element,
-            index,
-            section,
-            xyz,
-            zoom,
-            pan
-          });
-        }
+      // Only add if not already in map (keeps first occurrence)
+      if (!uniqueNavItems.has(uniqueKey)) {
+        uniqueNavItems.set(uniqueKey, {
+          element,
+          index,
+          section,
+          xyz,
+          zoom,
+          pan
+        });
+        navItemsArray.push({
+          uniqueKey,
+          element,
+          index,
+          section,
+          xyz,
+          zoom,
+          pan
+        });
       }
     });
 
@@ -1017,18 +1159,22 @@ class Isometric3D {
       return a.index - b.index;
     });
 
+    // Rebuild this.navElements in sorted order so all index-based lookups
+    // (autoplay, URL loading, highlight-only, etc.) match the nav-bar sequence
+    this.navElements = navItemsArray.map(item => item.element);
+
     // Create navigation points for the unique, sorted items
-    navItemsArray.forEach((item) => {
+    navItemsArray.forEach((item, sortedIndex) => {
       const navPoint = document.createElement('div');
       navPoint.className = 'nav-point';
-      navPoint.setAttribute('data-nav-index', item.index);
-      // Add data-activate to nav-points-container for validation
-      if (item.element.hasAttribute('data-activate')) {
-        navPoint.setAttribute('activate', item.element.getAttribute('data-activate'));
+      navPoint.setAttribute('data-nav-index', sortedIndex);
+      // Add data-key to nav-points-container for validation
+      if (item.element.hasAttribute('data-key')) {
+        navPoint.setAttribute('activate', item.element.getAttribute('data-key'));
       }
-      // Store section for reference
-      if (item.element.hasAttribute('data-section')) {
-        navPoint.setAttribute('section', item.element.getAttribute('data-section'));
+      // Store section (first key) for reference
+      if (item.element.hasAttribute('data-key')) {
+        navPoint.setAttribute('section', (item.element.getAttribute('data-key') || '').split(',')[0].trim());
       }
 
       // Add click handler
@@ -1040,10 +1186,9 @@ class Isometric3D {
         this.container.focus();
 
         // Update autoplay index so it continues from this position
-        this.currentNavIndex = item.index;
+        this.currentNavIndex = sortedIndex;
 
-        // Update active state
-        this.setActiveNavPoint(item.index);
+        if (!this._navigationSource) this._navigationSource = 'nav-bar';
 
         // Mark as navigation button click
         this.isNavButtonClick = true;
@@ -1052,9 +1197,9 @@ class Isometric3D {
         this.navigateToPosition(item.xyz, item.zoom, item.element, item.pan);
       });
 
-      // Add keyboard handler for Enter/Space
+      // Add keyboard handler for Enter
       navPoint.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Enter') {
           e.preventDefault();
           navPoint.click();
         }
@@ -1071,18 +1216,37 @@ class Isometric3D {
     const navPoints = this.container.querySelectorAll('.nav-point');
 
     navPoints.forEach((point, index) => {
+      // Prevent Space keyup from generating a synthetic click on the nav-point;
+      // Space is handled globally by onKeyDown → resetToDefault().
+      point.addEventListener('keyup', (e) => {
+        if (e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      });
+
       point.addEventListener('keydown', (e) => {
+        // Space always resets to default — prevent default so no click fires
+        if (e.key === ' ') {
+          e.preventDefault();
+          // Don't stopPropagation — let it bubble to container's onKeyDown
+          return;
+        }
+
         let targetIndex = index;
 
         if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
           e.preventDefault();
-          targetIndex = index > 0 ? index - 1 : navPoints.length - 1;
+          targetIndex = index > 0 ? index - 1 : -1;
         } else if (e.key === 'ArrowRight' || e.key === 'Tab') {
           e.preventDefault();
-          targetIndex = index < navPoints.length - 1 ? index + 1 : 0;
+          targetIndex = index < navPoints.length - 1 ? index + 1 : -1;
         }
 
-        if (targetIndex !== index) {
+        if (targetIndex === -1) {
+          // Past first/last → reset to default (blur nav points, focus container)
+          this.container.focus();
+        } else if (targetIndex !== index) {
           navPoints[targetIndex].focus();
         }
       });
@@ -1123,6 +1287,9 @@ class Isometric3D {
     setTimeout(() => {
       this.startAllAnimations();
     }, 100);
+
+    // Clear navigation source after all synchronous emits are done
+    this._navigationSource = null;
   }
 
   setActiveNavPoint(activeIndex, skipUrlUpdate = false) {
@@ -1162,18 +1329,18 @@ class Isometric3D {
     if (this.navElements && this.navElements[navIndex]) {
       const navElement = this.navElements[navIndex];
 
-      // Check element itself for data-section
-      sectionId = navElement.getAttribute('data-section');
+      // Check element itself for data-key (first key = scroll target)
+      sectionId = (navElement.getAttribute('data-key') || '').split(',')[0].trim() || null;
 
       // If not found, check parent scene or cuboid
       if (!sectionId) {
         const parentScene = navElement.closest('.scene');
         const parentCuboid = navElement.closest('.cuboid');
 
-        if (parentScene && parentScene.hasAttribute('data-section')) {
-          sectionId = parentScene.getAttribute('data-section');
-        } else if (parentCuboid && parentCuboid.hasAttribute('data-section')) {
-          sectionId = parentCuboid.getAttribute('data-section');
+        if (parentScene && parentScene.hasAttribute('data-key')) {
+          sectionId = (parentScene.getAttribute('data-key') || '').split(',')[0].trim();
+        } else if (parentCuboid && parentCuboid.hasAttribute('data-key')) {
+          sectionId = (parentCuboid.getAttribute('data-key') || '').split(',')[0].trim();
         }
       }
     }
@@ -1206,9 +1373,12 @@ class Isometric3D {
       el.classList.remove('nav-selected');
     });
 
+    // Use the sorted navElements array for index lookup (matches nav-bar display order)
+    const sortedNav = this.navElements;
+
     // If activeIndex is valid, add nav-selected to the appropriate element
-    if (activeIndex >= 0 && activeIndex < navigableElements.length) {
-      const activeElement = navigableElements[activeIndex];
+    if (activeIndex >= 0 && sortedNav && activeIndex < sortedNav.length) {
+      const activeElement = sortedNav[activeIndex];
       let targetElement = activeElement;
 
       // If navSelectedTarget is not 'clicked', try to find the target face
@@ -1240,7 +1410,7 @@ class Isometric3D {
       }
 
       // IMPORTANT: Only add nav-selected to elements that belong to the same scene as activeElement
-      // This prevents issues when multiple elements share the same data-section across different scenes
+      // This prevents issues when multiple elements share the same data-key across different scenes
       const activeElementScene = activeElement.classList.contains('scene')
         ? activeElement
         : activeElement.closest('.scene');
@@ -1277,7 +1447,18 @@ class Isometric3D {
         element: activeElement,
         navSelectedElement: targetElement,
         id: activeElement.id || null,
-        key: activeElement.getAttribute('data-section') || activeElement.id || null
+        key: (activeElement.getAttribute('data-key') || '').split(',')[0].trim() || activeElement.id || null,
+        source: this._navigationSource || 'unknown'
+      });
+    } else {
+      // Emit navigation change for deselection (index -1)
+      this.emit('navigationChange', {
+        index: -1,
+        element: null,
+        navSelectedElement: null,
+        id: null,
+        key: null,
+        source: this._navigationSource || 'unknown'
       });
     }
   }
@@ -1302,6 +1483,7 @@ class Isometric3D {
     }
 
     this.isAutoPlaying = true;
+    this.emit('autoPlayChange', { playing: true });
 
     // Start the autoplay cycle
     this.advanceToNextNavPoint(highlightOnly);
@@ -1312,6 +1494,7 @@ class Isometric3D {
    */
   stopAutoPlay() {
     this.isAutoPlaying = false;
+    this.emit('autoPlayChange', { playing: false });
     if (this.autoPlayTimer) {
       clearTimeout(this.autoPlayTimer);
       this.autoPlayTimer = null;
@@ -1341,18 +1524,19 @@ class Isometric3D {
 
     if (this.currentNavIndex === -1) {
       // Navigate to overview (reset view or just clear highlights)
+      this._navigationSource = 'autoplay';
       if (highlightOnly) {
         // Highlight-only mode: just clear highlights, don't change view
         this.navigateHighlightOnly(-1);
       } else {
         // Full mode: reset view
-        this.setActiveNavPoint(-1);
         this.resetView();
       }
     } else {
       // Get the navigation element and trigger navigation
       const navElement = this.navElements[this.currentNavIndex];
       if (navElement) {
+        this._navigationSource = 'autoplay';
         if (highlightOnly) {
           // Highlight-only mode: update highlights without changing view
           this.navigateHighlightOnly(this.currentNavIndex);
@@ -1362,13 +1546,8 @@ class Isometric3D {
           const zoom = navElement.getAttribute('data-nav-zoom');
           const pan = navElement.getAttribute('data-nav-pan');
 
-          if (xyz || zoom || pan) {
-            // Update navigation bar active state
-            this.setActiveNavPoint(this.currentNavIndex);
-
-            // Navigate to position
-            this.navigateToPosition(xyz, zoom, navElement, pan);
-          }
+          // Navigate to position
+          this.navigateToPosition(xyz, zoom, navElement, pan);
         }
       }
     }
@@ -1403,16 +1582,50 @@ class Isometric3D {
     });
   }
 
-  // Navigate to element by ID or data-section attribute
+  /**
+   * Get deduplicated navigation keys.
+   * Collects data-key values from scenes, cuboids, and their descendants
+   * (excluding navigation-specific elements with data-nav-xyz/zoom/pan),
+   * plus connector group keys. Returns a flat, unique string array.
+   * @returns {string[]}
+   */
+  getNavKeys() {
+    const seen = new Set();
+
+    // Collect data-key from all elements
+    const perspective = this.container.querySelector('.isometric-perspective');
+    if (perspective) {
+      perspective.querySelectorAll('[data-key]').forEach(el => {
+        const attr = el.getAttribute('data-key') || '';
+        attr.split(',').map(k => k.trim()).filter(Boolean).forEach(k => seen.add(k));
+      });
+    }
+
+    // Collect keys from connector groups
+    if (this.connectors) {
+      this.connectors.forEach(connector => {
+        let groups = connector.groups || connector.keys || (connector.key ? [connector.key] : []);
+        if (typeof groups === 'string') {
+          groups = groups.split(',').map(k => k.trim());
+        }
+        groups.filter(Boolean).forEach(k => seen.add(k));
+      });
+    }
+
+    return [...seen];
+  }
+
+  // Navigate to element by ID or data-key attribute
   navigateByKey(key) {
     const navigableElements = this.container.querySelectorAll('.nav-clickable');
 
     // Try to find element by ID first
     let targetElement = this.container.querySelector(`#${key}`);
 
-    // If not found by ID, try data-section attribute
+    // If not found by ID, try data-key attribute (check first key in comma-separated values)
     if (!targetElement || !targetElement.classList.contains('nav-clickable')) {
-      targetElement = this.container.querySelector(`[data-section="${key}"]`);
+      targetElement = this.container.querySelector(`[data-key="${key}"]`) ||
+        this.container.querySelector(`[data-key^="${key},"]`);
     }
 
     // If still not found, try to find a child with nav-clickable class
@@ -1429,8 +1642,8 @@ class Isometric3D {
       const zoom = targetElement.getAttribute('data-nav-zoom');
       const pan = targetElement.getAttribute('data-nav-pan');
 
-      // Find index for updating nav bar
-      const index = Array.from(navigableElements).indexOf(targetElement);
+      // Find index for updating nav bar (use sorted navElements for correct display order)
+      const index = this.navElements ? Array.from(this.navElements).indexOf(targetElement) : -1;
       if (index !== -1) {
         this.setActiveNavPoint(index);
       }
@@ -1457,8 +1670,8 @@ class Isometric3D {
     // Store mousemove handler for dynamic attachment
     this.mouseMoveHandler = this.onMouseMove.bind(this);
 
-    // Note: Mouse wheel is NOT used for zoom/pan to allow normal page scrolling
-    // Users can zoom/pan using keyboard controls or drag gestures
+    // Mouse wheel on the container: rotate / zoom / pan (does NOT scroll the page)
+    this.container.addEventListener('wheel', this.onWheel, { passive: false });
 
     // Touch events for mobile - only on perspective
     if (perspective) {
@@ -1497,9 +1710,11 @@ class Isometric3D {
         }
       }
 
-      // Center on the element if it has the focus attribute
+      // Center on the element (or group of elements with matching keys) if it has the focus attribute
       if (focusElement) {
-        this.centerOnElement(focusElement);
+        const focusKeyAttr = focusElement.getAttribute('data-key');
+        const focusKeys = focusKeyAttr ? focusKeyAttr.split(',').map(k => k.trim()) : null;
+        this.centerOnElement(focusElement, focusKeys);
       }
 
       // The navigation clicks are now handled directly by setupNavigationEffects
@@ -1644,87 +1859,40 @@ class Isometric3D {
       console.error('❌ Failed to find help button or keyboard help panel in:', this.containerId);
     }
 
-    // Add click event listeners to spherical controller elements
-    const upIndicator = compactControls.querySelector(`#${this.containerId}-indicator-up`);
-    const downIndicator = compactControls.querySelector(`#${this.containerId}-indicator-down`);
-    const leftIndicator = compactControls.querySelector(`#${this.containerId}-indicator-left`);
-    const rightIndicator = compactControls.querySelector(`#${this.containerId}-indicator-right`);
-    const centerDot = compactControls.querySelector(`#${this.containerId}-center-dot`);
+    // Spherical controller: direction click handlers
+    const directionMap = [
+      { id: 'up',    axis: 'x', delta: -15 },
+      { id: 'down',  axis: 'x', delta: +15 },
+      { id: 'left',  axis: 'z', delta: -15 },
+      { id: 'right', axis: 'z', delta: +15 }
+    ];
 
-    // Make elements clickable with pointer cursor
-    [upIndicator, downIndicator, leftIndicator, rightIndicator, centerDot].forEach(element => {
-      if (element) {
-        element.style.cursor = 'pointer';
-        element.style.pointerEvents = 'auto';
-      }
+    directionMap.forEach(({ id, axis, delta }) => {
+      const el = compactControls.querySelector(`#${this.containerId}-indicator-${id}`);
+      if (!el) return;
+      el.style.cursor = 'pointer';
+      el.style.pointerEvents = 'auto';
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.add('pressed');
+        setTimeout(() => el.classList.remove('pressed'), 200);
+        const limits = this.rotationLimits[axis];
+        const clamped = Math.max(limits.min, Math.min(limits.max, this.currentRotation[axis] + delta));
+        this.smoothAnimateTo({ ...this.currentRotation, [axis]: clamped }, this.currentZoom, 500);
+      });
     });
 
-    // Up arrow - navigate to negative X rotation (looking up)
-    if (upIndicator) {
-      upIndicator.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        upIndicator.classList.add('pressed');
-        setTimeout(() => upIndicator.classList.remove('pressed'), 200);
-        const targetX = Math.max(this.rotationLimits.x.min, this.currentRotation.x - 15);
-        this.smoothAnimateTo({ ...this.currentRotation, x: targetX }, this.currentZoom, 500);
-      });
-    }
-
-    // Down arrow - navigate to positive X rotation (looking down)
-    if (downIndicator) {
-      downIndicator.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        downIndicator.classList.add('pressed');
-        setTimeout(() => downIndicator.classList.remove('pressed'), 200);
-        const targetX = Math.min(this.rotationLimits.x.max, this.currentRotation.x + 15);
-        this.smoothAnimateTo({ ...this.currentRotation, x: targetX }, this.currentZoom, 500);
-      });
-    }
-
-    // Left arrow - navigate to negative Z rotation (turning left)
-    if (leftIndicator) {
-      leftIndicator.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        leftIndicator.classList.add('pressed');
-        setTimeout(() => leftIndicator.classList.remove('pressed'), 200);
-        const targetZ = Math.max(this.rotationLimits.z.min, this.currentRotation.z - 15);
-        this.smoothAnimateTo({ ...this.currentRotation, z: targetZ }, this.currentZoom, 500);
-      });
-    }
-
-    // Right arrow - navigate to positive Z rotation (turning right)
-    if (rightIndicator) {
-      rightIndicator.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        rightIndicator.classList.add('pressed');
-        setTimeout(() => rightIndicator.classList.remove('pressed'), 200);
-        const targetZ = Math.min(this.rotationLimits.z.max, this.currentRotation.z + 15);
-        this.smoothAnimateTo({ ...this.currentRotation, z: targetZ }, this.currentZoom, 500);
-      });
-    }
-
-    // Center dot - navigate to (0,0,0)
+    // Center dot - reset to (0,0,0)
+    const centerDot = compactControls.querySelector(`#${this.containerId}-center-dot`);
     if (centerDot) {
+      centerDot.style.cursor = 'pointer';
+      centerDot.style.pointerEvents = 'auto';
       centerDot.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-
-        // Reset translation to center the scene in the container
         this.animateTranslation(0, 0, 0);
-
-        // Reset all rotations to 0 (no x, y, or z rotation)
-        const targetRotation = {
-          x: 0,
-          y: 0,
-          z: 0
-        };
-
-        // Animate rotation change
-        this.smoothAnimateTo(targetRotation, this.currentZoom, 500);
+        this.smoothAnimateTo({ x: 0, y: 0, z: 0 }, this.currentZoom, 500);
       });
     }
 
@@ -1909,6 +2077,21 @@ class Isometric3D {
     if (scene.style.top !== '50%') scene.style.top = '50%';
     if (scene.style.position !== 'absolute') scene.style.position = 'absolute';
 
+    // Emit scene update event
+    this.emit('sceneUpdate', {
+      rotation: { ...this.currentRotation },
+      zoom: this.currentZoom,
+      translation: { ...this.currentTranslation },
+      container: {
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight
+      },
+      perspective: scene ? {
+        width: scene.offsetWidth,
+        height: scene.offsetHeight
+      } : null
+    });
+
     // Update display values
     this.updateDisplayValues();
 
@@ -2044,7 +2227,7 @@ class Isometric3D {
       const xyz = targetElement.getAttribute('data-nav-xyz');
       const zoom = targetElement.getAttribute('data-nav-zoom');
       const pan = targetElement.getAttribute('data-nav-pan');
-      const autoHighlight = targetElement.getAttribute('data-activate');
+      const autoHighlight = targetElement.getAttribute('data-key');
 
       if (xyz || zoom || pan) {
         navData = { xyz, zoom, pan, element: targetElement };
@@ -2092,13 +2275,13 @@ class Isometric3D {
       return;
     }
 
-    // Handle auto-highlight if the element has data-activate
-    let autoHighlightKeys = navElement.getAttribute('data-activate');
+    // Handle auto-highlight if the element has data-key
+    let autoHighlightKeys = navElement.getAttribute('data-key');
     let sourceScene = navElement.closest('.scene');
 
     // If not found on the element itself, check parent scene
     if (!autoHighlightKeys && sourceScene) {
-      autoHighlightKeys = sourceScene.getAttribute('data-activate');
+      autoHighlightKeys = sourceScene.getAttribute('data-key');
     }
 
     if (autoHighlightKeys) {
@@ -2113,7 +2296,7 @@ class Isometric3D {
         }
       }
     } else {
-      // If no data-activate, clear all highlights
+      // If no data-key, clear all highlights
       const allHighlighted = this.container.querySelectorAll('.highlighted');
       allHighlighted.forEach(el => el.classList.remove('highlighted'));
     }
@@ -2122,6 +2305,9 @@ class Isometric3D {
     if (this.showDebug) {
       this.drawDebugActivateRects();
     }
+
+    // Clear navigation source after all synchronous emits are done
+    this._navigationSource = null;
   }
 
   navigateToPosition(xyzString, zoomString, sourceElement = null, panString = null, onComplete = null, skipUrlUpdate = false) {
@@ -2172,8 +2358,7 @@ class Isometric3D {
       // Keep z from existing translation
       targetTranslation.z = targetTranslation.z || 0;
     } else if (sourceElement) {
-      // Auto-calculate pan to center the parent scene when pan is not explicitly defined
-      // If the clicked element is a face, find its parent scene and center that
+      // Auto-calculate pan (and optionally zoom) when pan is not explicitly defined
       let elementToCenter = sourceElement;
 
       // If it's a face (not a scene itself), find the parent scene
@@ -2184,18 +2369,45 @@ class Isometric3D {
         }
       }
 
-      targetTranslation = this.calculateCenterPan(elementToCenter, targetRotation, targetZoom);
+      // Extract highlight keys for group bounding-box centering/fitting
+      let centeringKeys = null;
+      const keyAttr = sourceElement.getAttribute('data-key') ||
+        (sourceElement.closest('.scene')?.getAttribute('data-key'));
+      if (keyAttr) {
+        centeringKeys = keyAttr.split(',').map(k => k.trim());
+      }
+
+      if (!zoomString && centeringKeys) {
+        // Auto-fit: no explicit zoom — rotate to default, zoom+pan to fit group at ~80%
+        targetRotation.x = this.defaultRotation.x;
+        targetRotation.y = this.defaultRotation.y;
+        targetRotation.z = this.defaultRotation.z;
+
+        const fitResult = this.calculateFitZoomAndPan(elementToCenter, targetRotation, centeringKeys);
+        if (fitResult) {
+          targetZoom = fitResult.zoom;
+          targetTranslation = fitResult.translation;
+          console.log(`[navigateToPosition] auto-fit key=[${centeringKeys}] -> zoom=${targetZoom.toFixed(3)} pan=(${targetTranslation.x.toFixed(1)},${targetTranslation.y.toFixed(1)}) rotation=(${targetRotation.x},${targetRotation.y},${targetRotation.z})`);
+        } else {
+          // Fallback: pan-only centering at current zoom
+          targetTranslation = this.calculateCenterPan(elementToCenter, targetRotation, targetZoom, centeringKeys);
+          console.log(`[navigateToPosition] auto-fit FALLBACK key=[${centeringKeys}] -> pan-only=(${targetTranslation.x.toFixed(1)},${targetTranslation.y.toFixed(1)})`);
+        }
+      } else {
+        // Explicit zoom provided (or no keys) — pan-only centering
+        targetTranslation = this.calculateCenterPan(elementToCenter, targetRotation, targetZoom, centeringKeys);
+      }
     }
 
-    // Check if source element has data-section for hash-based navigation
+    // Check if source element has data-key for hash-based navigation (first key = scroll target)
     let targetHash = null;
     if (sourceElement) {
-      targetHash = sourceElement.getAttribute('data-section');
+      targetHash = (sourceElement.getAttribute('data-key') || '').split(',')[0].trim() || null;
       // If not on element itself, check parent scene
       if (!targetHash) {
         const parentScene = sourceElement.closest('.scene');
         if (parentScene) {
-          targetHash = parentScene.getAttribute('data-section');
+          targetHash = (parentScene.getAttribute('data-key') || '').split(',')[0].trim() || null;
         }
       }
     }
@@ -2240,12 +2452,12 @@ class Isometric3D {
     // Handle auto-highlight if source element is provided
     if (sourceElement) {
       // Check face first, then parent scene for activate groups
-      let autoHighlightKeys = sourceElement.getAttribute('data-activate');
+      let autoHighlightKeys = sourceElement.getAttribute('data-key');
       let sourceScene = sourceElement.closest('.scene');
 
       // If not found on the element itself, check parent scene
       if (!autoHighlightKeys && sourceScene) {
-        autoHighlightKeys = sourceScene.getAttribute('data-activate');
+        autoHighlightKeys = sourceScene.getAttribute('data-key');
       }
 
       if (autoHighlightKeys) {
@@ -2268,16 +2480,16 @@ class Isometric3D {
       this.clearHighlights();
     }
 
-    // IMPORTANT: Highlight all elements with the same data-section AFTER all other highlight
+    // IMPORTANT: Highlight all elements with the same data-key AFTER all other highlight
     // This ensures section-based highlights aren't cleared by highlightByKey()
     if (targetHash && sourceElement) {
       // Clear previous section-based highlights before adding new ones
       const allPreviousHighlights = this.container.querySelectorAll('.highlight');
       allPreviousHighlights.forEach(el => el.classList.remove('highlight'));
 
-      // Query for data-section attributes
+      // Query for data-key attributes (match first key in comma-separated values)
       const elementsWithSameId = this.container.querySelectorAll(
-        `[data-section="${targetHash}"]`
+        `[data-key="${targetHash}"], [data-key^="${targetHash},"]`
       );
       const scenesWithHighlightedFaces = new Set();
 
@@ -2308,31 +2520,92 @@ class Isometric3D {
     // Sanitize translation before animating
     targetTranslation = this.sanitizeTranslation(targetTranslation);
 
-    // Perform smooth animation with pan/translation
-    this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, 1200, onComplete);
+    // Detect whether this is a "large" transition that needs two-phase animation
+    // to avoid erratic intermediate frames from independent zoom/pan/rotation interpolation
+    const zoomRatio = Math.max(this.currentZoom, targetZoom) / Math.min(this.currentZoom, targetZoom);
+    const rotationDelta = Math.max(
+      Math.abs(this.currentRotation.x - targetRotation.x),
+      Math.abs(this.currentRotation.y - targetRotation.y),
+      Math.abs(this.currentRotation.z - targetRotation.z)
+    );
+    const panDelta = Math.sqrt(
+      Math.pow(this.currentTranslation.x - targetTranslation.x, 2) +
+      Math.pow(this.currentTranslation.y - targetTranslation.y, 2)
+    );
+
+    // Check if source element opts out of two-phase via data-nav-transition="direct"
+    const forceDirectTransition = sourceElement &&
+      sourceElement.getAttribute('data-nav-transition') === 'direct';
+
+    // Scale the pan threshold by the max zoom to avoid spurious two-phase at high zoom
+    // (at zoom 2 everything is 2× farther apart, so pan changes are naturally larger)
+    const effectiveMaxZoom = Math.max(this.currentZoom, targetZoom, 1);
+    const scaledPanThreshold = 200 * effectiveMaxZoom;
+
+    const isLargeTransition = !forceDirectTransition && (
+      zoomRatio > 1.3 || rotationDelta > 30 || panDelta > scaledPanThreshold
+    );
+
+    if (isLargeTransition) {
+      // Two-phase animation: current → neutral → target
+      // Phase 1 zooms out to a safe neutral level and centers on the TARGET element;
+      // Phase 2 zooms to the final level — element stays centered because pan/zoom are proportional.
+      const neutralZoom = Math.max(
+        this.defaultZoom * 0.9,
+        Math.min(this.currentZoom, targetZoom)
+      );
+      // Compute neutral pan that centers the TARGET element at the neutral zoom.
+      // Since centering pan is proportional to zoom (pan = zoom * C, where C is the
+      // element's pre-scale offset from center), we scale the target pan by the zoom ratio.
+      // This ensures phase 2 starts centered on the target, so zoom and pan stay
+      // coupled throughout the animation (no off-center intermediate frames).
+      const zoomScale = targetZoom > 0 ? neutralZoom / targetZoom : 1;
+      const neutralTranslation = {
+        x: targetTranslation.x * zoomScale,
+        y: targetTranslation.y * zoomScale,
+        z: 0
+      };
+      // Keep current rotation in phase 1 — it transitions smoothly across both phases
+      const neutralRotation = { ...this.currentRotation };
+
+      console.log(`[navigateToPosition] TWO-PHASE: zoomRatio=${zoomRatio.toFixed(2)} rotDelta=${rotationDelta.toFixed(1)}° panDelta=${panDelta.toFixed(0)}px | phase1→zoom=${neutralZoom.toFixed(2)} pan=(${neutralTranslation.x.toFixed(1)},${neutralTranslation.y.toFixed(1)}) | phase2→zoom=${targetZoom.toFixed(2)} pan=(${targetTranslation.x.toFixed(1)},${targetTranslation.y.toFixed(1)})`);
+
+      this.smoothAnimateToWithPan(neutralRotation, neutralZoom, neutralTranslation, 600, () => {
+        // Phase 2: neutral → target
+        this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, 600, onComplete);
+      });
+    } else {
+      // Single-phase direct animation (small transition — current behavior)
+      console.log(`[navigateToPosition] DIRECT: zoomRatio=${zoomRatio.toFixed(2)} rotDelta=${rotationDelta.toFixed(1)}° panDelta=${panDelta.toFixed(0)}px`);
+      this.smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, 1200, onComplete);
+    }
+
+    // Clear navigation source after all synchronous emits are done
+    this._navigationSource = null;
   }
 
   syncNavigationBar(xyzString, zoomString, panString, sourceElement = null) {
     // Find the navigation element that matches this position
-    const navElements = this.container.querySelectorAll('.nav-clickable');
+    // Use the sorted navElements array so indices match the nav-bar display order
     let matchingIndex = -1;
 
-    // Check if this matches the default position (no xyz, zoom, or pan)
-    if (!xyzString && !zoomString && !panString) {
-      matchingIndex = -1; // Default position
-    } else {
-      // If sourceElement is provided, find its exact index
-      if (sourceElement) {
-        navElements.forEach((element, index) => {
-          if (element === sourceElement) {
-            matchingIndex = index;
-          }
-        });
+    // If sourceElement is provided, find its index in the sorted navElements array
+    if (sourceElement && this.navElements) {
+      for (let i = 0; i < this.navElements.length; i++) {
+        if (this.navElements[i] === sourceElement) {
+          matchingIndex = i;
+          break;
+        }
       }
+    }
 
-      // If we didn't find sourceElement or it wasn't provided, match by attributes
-      if (matchingIndex === -1) {
-        navElements.forEach((element, index) => {
+    // If we didn't find sourceElement, match by attributes or default
+    if (matchingIndex === -1 && !sourceElement) {
+      if (!xyzString && !zoomString && !panString) {
+        matchingIndex = -1; // Default position
+      } else if (this.navElements) {
+        for (let i = 0; i < this.navElements.length; i++) {
+          const element = this.navElements[i];
           const elementXyz = element.getAttribute('data-nav-xyz');
           const elementZoom = element.getAttribute('data-nav-zoom');
           const elementPan = element.getAttribute('data-nav-pan');
@@ -2342,9 +2615,9 @@ class Isometric3D {
           const panMatch = !panString || elementPan === panString;
 
           if (xyzMatch && zoomMatch && panMatch) {
-            matchingIndex = index;
+            matchingIndex = i;
           }
-        });
+        }
       }
     }
 
@@ -2352,67 +2625,23 @@ class Isometric3D {
     this.setActiveNavPoint(matchingIndex);
   }
 
+  /**
+   * Animate rotation and zoom (backward-compatible shorthand — delegates to smoothAnimateToWithPan).
+   */
   smoothAnimateTo(targetRotation, targetZoom, duration = 1200) {
-    this.isAnimating = true; // Set animation flag to prevent premature label updates
-
-    const startTime = performance.now();
-    const startRotation = { ...this.currentRotation };
-    const startZoom = this.currentZoom;
-
-    // Clamp target rotation to limits before animating
-    const clampedTarget = {
-      x: Math.max(this.rotationLimits.x.min, Math.min(this.rotationLimits.x.max, targetRotation.x)),
-      y: Math.max(this.rotationLimits.y.min, Math.min(this.rotationLimits.y.max, targetRotation.y)),
-      z: Math.max(this.rotationLimits.z.min, Math.min(this.rotationLimits.z.max, targetRotation.z))
-    };
-
-    const clampedZoom = Math.max(0.2, Math.min(3.0, targetZoom));
-
-    const animate = (currentTime) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      // Use easeInOutQuad for smoother, more gentle animation
-      const eased = progress < 0.5
-        ? 2 * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-      // Interpolate rotation values
-      this.currentRotation.x = startRotation.x + (clampedTarget.x - startRotation.x) * eased;
-      this.currentRotation.y = startRotation.y + (clampedTarget.y - startRotation.y) * eased;
-      this.currentRotation.z = startRotation.z + (clampedTarget.z - startRotation.z) * eased;
-
-      // Interpolate zoom
-      this.currentZoom = startZoom + (clampedZoom - startZoom) * eased;
-
-      // Update the scene
-      this.updateScene();
-
-      // Continue animation if not complete
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        // Ensure final values are exactly the target
-        this.currentRotation = { ...clampedTarget };
-        this.currentZoom = clampedZoom;
-        this.updateScene();
-
-        // Animation finished - now update labels
-        this.isAnimating = false;
-        setTimeout(() => this.updateLabelPositions(), 100); // Update labels after animation completes
-      }
-    };
-
-    requestAnimationFrame(animate);
+    this.smoothAnimateToWithPan(targetRotation, targetZoom, null, duration);
   }
 
-  smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation, duration = 1200, onComplete = null) {
+  smoothAnimateToWithPan(targetRotation, targetZoom, targetTranslation = null, duration = 1200, onComplete = null) {
+    this.cancelPendingAnimations();
     this.isAnimating = true; // Set animation flag to prevent premature label updates
 
     const startTime = performance.now();
     const startRotation = { ...this.currentRotation };
     const startZoom = this.currentZoom;
     const startTranslation = { ...this.currentTranslation };
+    const hasPan = targetTranslation !== null;
+    if (!hasPan) targetTranslation = { ...this.currentTranslation };
 
     // Clamp target rotation to limits before animating
     const clampedTarget = {
@@ -2440,32 +2669,35 @@ class Isometric3D {
       // Interpolate zoom
       this.currentZoom = startZoom + (clampedZoom - startZoom) * eased;
 
-      // Interpolate translation/pan (values guaranteed valid by caller)
-      this.currentTranslation.x = startTranslation.x + (targetTranslation.x - startTranslation.x) * eased;
-      this.currentTranslation.y = startTranslation.y + (targetTranslation.y - startTranslation.y) * eased;
-      this.currentTranslation.z = startTranslation.z + (targetTranslation.z - startTranslation.z) * eased;
+      // Interpolate translation/pan when a target was provided
+      if (hasPan) {
+        this.currentTranslation.x = startTranslation.x + (targetTranslation.x - startTranslation.x) * eased;
+        this.currentTranslation.y = startTranslation.y + (targetTranslation.y - startTranslation.y) * eased;
+        this.currentTranslation.z = startTranslation.z + (targetTranslation.z - startTranslation.z) * eased;
+      }
 
       // Update the scene
       this.updateScene();
 
       // Continue animation if not complete
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.navigationAnimationId = requestAnimationFrame(animate);
       } else {
+        this.navigationAnimationId = null;
         // Ensure final values are exactly the target
         this.currentRotation = { ...clampedTarget };
         this.currentZoom = clampedZoom;
-        this.currentTranslation = { ...targetTranslation };
+        if (hasPan) {
+          this.currentTranslation = { ...targetTranslation };
+          this.clampTranslation();
+        }
         this.updateScene();
 
         // Animation finished - now update labels
         this.isAnimating = false;
-        setTimeout(() => this.updateLabelPositions(), 100); // Update labels after animation completes
+        setTimeout(() => this.updateLabelPositions(), 100);
 
-        // Call completion callback if provided
-        if (onComplete && typeof onComplete === 'function') {
-          onComplete();
-        }
+        if (onComplete) onComplete();
       }
     };
 
@@ -2639,18 +2871,31 @@ class Isometric3D {
     this.updateScene();
   }
 
+  /**
+   * Clamp pan values to prevent runaway translations.
+   * Limits are relative to the container size — you can pan up to 2× the container dimension in any direction.
+   */
+  clampTranslation() {
+    const maxPan = Math.max(this.container.offsetWidth, this.container.offsetHeight) * 2;
+    this.currentTranslation.x = Math.max(-maxPan, Math.min(maxPan, this.currentTranslation.x));
+    this.currentTranslation.y = Math.max(-maxPan, Math.min(maxPan, this.currentTranslation.y));
+  }
+
   panScene(deltaX, deltaY) {
-    // Pan the scene by adjusting translation
-    // Divide by zoom to maintain consistent pan speed at different zoom levels
-    const panSpeed = 1 / this.currentZoom;
-    this.currentTranslation.x += deltaX * panSpeed;
-    this.currentTranslation.y += deltaY * panSpeed;
+    // Pan the scene by adjusting translation (in screen pixels).
+    // translate3d(pan) is applied before scale(zoom) in the CSS transform chain,
+    // so pan values are in screen pixels and are NOT affected by zoom.
+    this.currentTranslation.x += deltaX;
+    this.currentTranslation.y += deltaY;
+    this.clampTranslation();
     // Mark that user has manually adjusted pan
     this.hasManualPanAdjustment = true;
     this.updateScene();
   }
 
   resetView(options = {}) {
+    this.emit('viewReset', { rotation: { ...this.initialRotation }, zoom: this.initialZoom, source: this._navigationSource || 'unknown' });
+
     // Animate smoothly to initial/home rotation, zoom, and pan
     const sanitizedTranslation = this.sanitizeTranslation(this.initialTranslation);
     this.smoothAnimateToWithPan(
@@ -2672,6 +2917,9 @@ class Isometric3D {
 
     // Reset manual pan flag since we're going back to default
     this.hasManualPanAdjustment = false;
+
+    // Clear navigation source after all synchronous emits are done
+    this._navigationSource = null;
   }
 
   /**
@@ -2698,9 +2946,9 @@ class Isometric3D {
     }
   }
 
-  calculateCenterPan(element, targetRotation, targetZoom) {
-    // Calculate the pan values needed to center an element with specific rotation and zoom
-    // This is used for auto-centering when data-nav-pan is not specified
+  calculateCenterPan(element, targetRotation, targetZoom, keys = null) {
+    // Calculate the pan values needed to center an element (or group of elements) with specific rotation and zoom
+    // When keys are provided, centers on the combined bounding box of ALL matching elements
 
     if (!element) return { x: 0, y: 0, z: 0 };
 
@@ -2721,64 +2969,96 @@ class Isometric3D {
     tempPerspective.style.transform = `translate(-50%, -50%) translate3d(0px, 0px, 0px) scale(${targetZoom}) rotateX(${targetRotation.x}deg) rotateY(${targetRotation.y}deg) rotateZ(${targetRotation.z}deg)`;
     tempPerspective.style.left = '50%';
     tempPerspective.style.top = '50%';
+    // CRITICAL: Disable CSS transitions so getBoundingClientRect() returns the
+    // target transform state immediately instead of the start of a transition.
+    // The live scene may have .smooth-transition which the clone inherits.
+    tempPerspective.style.transition = 'none';
 
     this.container.appendChild(tempPerspective);
 
-    // Find the corresponding element in the clone
-    let tempElement = null;
-    if (element.id) {
-      tempElement = tempPerspective.querySelector(`#${element.id}`);
-    }
-
-    // Fallback: use data-section attribute if no ID
-    if (!tempElement && element.getAttribute('data-section')) {
-      const section = element.getAttribute('data-section');
-      tempElement = tempPerspective.querySelector(`[data-section="${section}"]`);
-    }
-
-    // Fallback: use same position in DOM tree if no ID or data-section
-    if (!tempElement) {
-      const getElementIndex = (el) => Array.from(el.parentNode.children).indexOf(el);
-      const path = [];
-      let current = element;
-      while (current && current !== scene) {
-        path.unshift(getElementIndex(current));
-        current = current.parentNode;
-      }
-
-      tempElement = tempPerspective;
-      for (const index of path) {
-        if (tempElement.children[index]) {
-          tempElement = tempElement.children[index];
-        } else {
-          break;
-        }
-      }
-    }
+    // Force layout recalculation
+    tempPerspective.getBoundingClientRect();
 
     let panX = 0;
     let panY = 0;
 
-    if (tempElement) {
-      // Force layout recalculation
-      tempPerspective.getBoundingClientRect();
+    if (keys && keys.length > 0) {
+      // GROUP CENTERING: Find ALL elements matching the keys and compute combined bounding box
+      const matchingElements = this.findMatchingElementsInTree(tempPerspective, keys);
 
-      // Get element position in the temporary scene
-      const elementRect = tempElement.getBoundingClientRect();
+      if (matchingElements.length > 0) {
+        let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
 
-      // Calculate element center in viewport coordinates
-      const elementCenterX = elementRect.left + (elementRect.width / 2);
-      const elementCenterY = elementRect.top + (elementRect.height / 2);
+        matchingElements.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 || rect.height > 0) {
+            minLeft = Math.min(minLeft, rect.left);
+            minTop = Math.min(minTop, rect.top);
+            maxRight = Math.max(maxRight, rect.right);
+            maxBottom = Math.max(maxBottom, rect.bottom);
+          }
+        });
 
-      // Calculate container center in viewport coordinates
-      const containerCenterXAbs = containerRect.left + containerCenterX;
-      const containerCenterYAbs = containerRect.top + containerCenterY;
+        if (minLeft !== Infinity) {
+          const groupCenterX = (minLeft + maxRight) / 2;
+          const groupCenterY = (minTop + maxBottom) / 2;
 
-      // Calculate pan needed to center the element
-      // The offset is the difference between where the element currently is
-      // and where we want it (container center)
-      panX = (containerCenterXAbs - elementCenterX) / targetZoom;
-      panY = (containerCenterYAbs - elementCenterY) / targetZoom;
+          const containerCenterXAbs = containerRect.left + containerCenterX;
+          const containerCenterYAbs = containerRect.top + containerCenterY;
+
+          // Pan is in screen pixels: in the CSS transform chain
+          // translate3d(pan) scale(zoom), translate is applied independently of scale
+          panX = containerCenterXAbs - groupCenterX;
+          panY = containerCenterYAbs - groupCenterY;
+        }
+      }
+    } else {
+      // SINGLE ELEMENT CENTERING: Original behavior
+      // Find the corresponding element in the clone
+      let tempElement = null;
+      if (element.id) {
+        tempElement = tempPerspective.querySelector(`#${element.id}`);
+      }
+
+      // Fallback: use data-key attribute if no ID
+      if (!tempElement && element.getAttribute('data-key')) {
+        const section = (element.getAttribute('data-key') || '').split(',')[0].trim();
+        tempElement = tempPerspective.querySelector(`[data-key="${section}"]`) ||
+          tempPerspective.querySelector(`[data-key^="${section},"]`);
+      }
+
+      // Fallback: use same position in DOM tree if no ID or data-key
+      if (!tempElement) {
+        const getElementIndex = (el) => Array.from(el.parentNode.children).indexOf(el);
+        const path = [];
+        let current = element;
+        while (current && current !== scene) {
+          path.unshift(getElementIndex(current));
+          current = current.parentNode;
+        }
+
+        tempElement = tempPerspective;
+        for (const index of path) {
+          if (tempElement.children[index]) {
+            tempElement = tempElement.children[index];
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (tempElement) {
+        const elementRect = tempElement.getBoundingClientRect();
+        const elementCenterX = elementRect.left + (elementRect.width / 2);
+        const elementCenterY = elementRect.top + (elementRect.height / 2);
+
+        const containerCenterXAbs = containerRect.left + containerCenterX;
+        const containerCenterYAbs = containerRect.top + containerCenterY;
+
+        // Pan is in screen pixels (translate3d before scale in CSS transform chain)
+        panX = containerCenterXAbs - elementCenterX;
+        panY = containerCenterYAbs - elementCenterY;
+      }
     }
 
     // Remove temporary clone
@@ -2787,25 +3067,179 @@ class Isometric3D {
     return { x: panX, y: panY, z: 0 };
   }
 
-  centerOnElement(element) {
-    // Get the element's geometric center relative to the isometric container
+  _measureGroupBBox(clonedPerspective, keys, excludeConnectors = false) {
+    // Measure the combined bounding box of all elements matching keys in a cloned perspective tree
+    if (!keys || keys.length === 0) return null;
+
+    let matchingElements = this.findMatchingElementsInTree(clonedPerspective, keys);
+    if (excludeConnectors) {
+      // For fit calculations, exclude elements that only match via data-connector-keys
+      // (connectors span to distant elements and distort the target size)
+      matchingElements = matchingElements.filter(el =>
+        el.hasAttribute('data-key') || el.hasAttribute('data-related-keys')
+      );
+    }
+    if (matchingElements.length === 0) return null;
+
+    let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
+    matchingElements.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 || rect.height > 0) {
+        minLeft = Math.min(minLeft, rect.left);
+        minTop = Math.min(minTop, rect.top);
+        maxRight = Math.max(maxRight, rect.right);
+        maxBottom = Math.max(maxBottom, rect.bottom);
+      }
+    });
+
+    if (minLeft === Infinity) return null;
+
+    return {
+      width: maxRight - minLeft,
+      height: maxBottom - minTop,
+      centerX: (minLeft + maxRight) / 2,
+      centerY: (minTop + maxBottom) / 2
+    };
+  }
+
+  calculateFitZoomAndPan(element, targetRotation, keys, fitRatio = 0.8) {
+    // Calculate zoom + pan so the highlight group fills ~fitRatio of the container viewport.
+    // Uses iterative probing on a hidden clone, converging both zoom AND pan together
+    // to compensate for CSS perspective distortion (perspective: 1200px on container).
+    if (!element) return null;
+
+    const scene = this.container.querySelector('.isometric-perspective');
+    if (!scene) return null;
+
+    const containerRect = this.container.getBoundingClientRect();
+    const containerW = containerRect.width;
+    const containerH = containerRect.height;
+    const containerCenterXAbs = containerRect.left + containerW / 2;
+    const containerCenterYAbs = containerRect.top + containerH / 2;
+
+    const availW = containerW * fitRatio;
+    const availH = containerH * fitRatio;
+
+    console.group(`[fitZoomPan] keys=[${keys}] fitRatio=${fitRatio}`);
+    console.log(`  container: ${containerW.toFixed(0)}x${containerH.toFixed(0)}  center=(${containerCenterXAbs.toFixed(1)}, ${containerCenterYAbs.toFixed(1)})`);
+    console.log(`  available (${(fitRatio*100).toFixed(0)}%%): ${availW.toFixed(0)}x${availH.toFixed(0)}`);
+    console.log(`  rotation: x=${targetRotation.x} y=${targetRotation.y} z=${targetRotation.z}`);
+    console.log(`  element: <${element.tagName.toLowerCase()}> id=${element.id || '(none)'} class="${element.className || ''}"`);
+
+    // Create single hidden clone — reused across all probes
+    const tempPerspective = scene.cloneNode(true);
+    tempPerspective.style.position = 'absolute';
+    tempPerspective.style.visibility = 'hidden';
+    tempPerspective.style.pointerEvents = 'none';
+    tempPerspective.style.left = '50%';
+    tempPerspective.style.top = '50%';
+    // CRITICAL: Disable CSS transitions so getBoundingClientRect() returns the
+    // target transform state immediately instead of the start of a transition.
+    // The live scene may have .smooth-transition which the clone inherits.
+    tempPerspective.style.transition = 'none';
+    this.container.appendChild(tempPerspective);
+
+    // Log matched elements (excluding connectors) for diagnostic clarity
+    const _debugMatched = this.findMatchingElementsInTree(tempPerspective, keys)
+      .filter(el => el.hasAttribute('data-key') || el.hasAttribute('data-related-keys'));
+    console.log(`  matched elements (excl connectors): ${_debugMatched.length}`);
+    _debugMatched.forEach(el => {
+      const r = el.getBoundingClientRect();
+      console.log(`    <${el.tagName.toLowerCase()}> key="${el.getAttribute('data-key') || ''}" related="${el.getAttribute('data-related-keys') || ''}" class="${el.className}" rect=${r.width.toFixed(0)}x${r.height.toFixed(0)} @(${r.left.toFixed(0)},${r.top.toFixed(0)})`);
+    });
+
+    let probeZoom = this.defaultZoom;
+    let probePanX = 0;
+    let probePanY = 0;
+    const ITERATIONS = 3;
+
+    for (let i = 0; i < ITERATIONS; i++) {
+      // Apply current zoom AND pan — converges both simultaneously
+      tempPerspective.style.transform = `translate(-50%, -50%) translate3d(${probePanX}px, ${probePanY}px, 0px) scale(${probeZoom}) rotateX(${targetRotation.x}deg) rotateY(${targetRotation.y}deg) rotateZ(${targetRotation.z}deg)`;
+      tempPerspective.getBoundingClientRect(); // force layout
+
+      const bbox = this._measureGroupBBox(tempPerspective, keys, true);
+      if (!bbox) {
+        console.warn(`  iter ${i}: no matching elements with size > 0`);
+        this.container.removeChild(tempPerspective);
+        console.groupEnd();
+        return null;
+      }
+
+      // Adjust zoom based on how the group fills the available area
+      const scaleX = bbox.width > 0 ? availW / bbox.width : 1;
+      const scaleY = bbox.height > 0 ? availH / bbox.height : 1;
+      const scaleFactor = Math.min(scaleX, scaleY);
+      const prevZoom = probeZoom;
+      // Cap auto-fit zoom at 2.0 (not the manual max of 3.0) to keep pan values manageable
+      probeZoom = Math.max(0.3, Math.min(2.0, probeZoom * scaleFactor));
+
+      // Adjust pan — accumulate offset corrections to converge on center
+      const panDX = containerCenterXAbs - bbox.centerX;
+      const panDY = containerCenterYAbs - bbox.centerY;
+      probePanX += panDX;
+      probePanY += panDY;
+
+      console.log(`  iter ${i}: bbox=${bbox.width.toFixed(1)}x${bbox.height.toFixed(1)} center=(${bbox.centerX.toFixed(1)},${bbox.centerY.toFixed(1)}) | scaleX=${scaleX.toFixed(3)} scaleY=${scaleY.toFixed(3)} factor=${scaleFactor.toFixed(3)} | zoom ${prevZoom.toFixed(3)}->${probeZoom.toFixed(3)} | panDelta=(${panDX.toFixed(1)},${panDY.toFixed(1)}) pan=(${probePanX.toFixed(1)},${probePanY.toFixed(1)})`);
+    }
+
+    this.container.removeChild(tempPerspective);
+
+    console.log(`  RESULT: zoom=${probeZoom.toFixed(3)} pan=(${probePanX.toFixed(1)}, ${probePanY.toFixed(1)})`);
+    console.groupEnd();
+
+    return { zoom: probeZoom, translation: { x: probePanX, y: probePanY, z: 0 } };
+  }
+
+  centerOnElement(element, keys = null) {
+    // Get the element's geometric center (or group bounding-box center) relative to the isometric container
     const scene = this.container.querySelector('.isometric-perspective');
     if (!scene || !element) return;
+
+    this.emit('centerOnElement', { element, id: element.id || null });
 
     // Get container center - this is where we want the element to appear
     const containerRect = this.container.getBoundingClientRect();
     const containerCenterX = containerRect.width / 2;
     const containerCenterY = containerRect.height / 2;
 
-    // Get current element position (affected by current transforms)
-    const elementRect = element.getBoundingClientRect();
-    const elementCenterX = elementRect.left - containerRect.left + (elementRect.width / 2);
-    const elementCenterY = elementRect.top - containerRect.top + (elementRect.height / 2);
+    let elementCenterX, elementCenterY;
+
+    if (keys && keys.length > 0) {
+      // Group centering: compute combined bounding box of all matching elements
+      const matchingElements = this.findMatchingElementsInTree(scene, keys);
+      let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
+
+      matchingElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          minLeft = Math.min(minLeft, rect.left);
+          minTop = Math.min(minTop, rect.top);
+          maxRight = Math.max(maxRight, rect.right);
+          maxBottom = Math.max(maxBottom, rect.bottom);
+        }
+      });
+
+      if (minLeft !== Infinity) {
+        elementCenterX = ((minLeft + maxRight) / 2) - containerRect.left;
+        elementCenterY = ((minTop + maxBottom) / 2) - containerRect.top;
+      } else {
+        // Fallback to single element
+        const elementRect = element.getBoundingClientRect();
+        elementCenterX = elementRect.left - containerRect.left + (elementRect.width / 2);
+        elementCenterY = elementRect.top - containerRect.top + (elementRect.height / 2);
+      }
+    } else {
+      // Single element centering (original behavior)
+      const elementRect = element.getBoundingClientRect();
+      elementCenterX = elementRect.left - containerRect.left + (elementRect.width / 2);
+      elementCenterY = elementRect.top - containerRect.top + (elementRect.height / 2);
+    }
 
     // Calculate how much we need to translate to center the element
-    // The translation should move the element from its current position to the container center
-    const neededTranslateX = (containerCenterX - elementCenterX) / this.currentZoom;
-    const neededTranslateY = (containerCenterY - elementCenterY) / this.currentZoom;
+    // Pan is in screen pixels (translate3d before scale in CSS transform chain)
+    const neededTranslateX = containerCenterX - elementCenterX;
+    const neededTranslateY = containerCenterY - elementCenterY;
 
     // Add this translation to our current translation (don't replace it)
     const targetTranslateX = this.currentTranslation.x + neededTranslateX;
@@ -2813,6 +3247,25 @@ class Isometric3D {
 
     // Animate to the new position
     this.animateTranslation(targetTranslateX, targetTranslateY, this.currentTranslation.z);
+  }
+
+  /**
+   * Find all elements within a DOM tree that match any of the given keys.
+   * Checks data-key, data-related-keys, and data-connector-keys attributes.
+   * Works on both the live DOM and cloned trees.
+   * @param {HTMLElement} root - Root element to search within
+   * @param {Array<string>} keys - Array of keys to match
+   * @returns {Array<HTMLElement>} - Array of matching elements
+   */
+  findMatchingElementsInTree(root, keys) {
+    const matching = [];
+    const candidates = root.querySelectorAll('[data-key], [data-related-keys], [data-connector-keys]');
+    candidates.forEach(el => {
+      if (this.elementMatchesCriteria(el, keys)) {
+        matching.push(el);
+      }
+    });
+    return matching;
   }
 
   project3DTo2D(x, y, z) {
@@ -2900,6 +3353,7 @@ class Isometric3D {
   // Mouse event handlers
   onMouseDown(e) {
     this.isDragging = true;
+    this.hasDragged = false; // Track if mouse actually moved during drag
     this.isClickNavigation = false; // Reset flag when manually dragging
     this.lastMouseX = e.clientX;
     this.lastMouseY = e.clientY;
@@ -2909,6 +3363,9 @@ class Isometric3D {
     if (this.isAutoPlaying) {
       this.stopAutoPlay();
     }
+
+    // Cancel any in-progress animations so drag and animation don't fight
+    this.cancelPendingAnimations();
 
     // Cancel any pending label updates to prevent flicker during drag
     clearTimeout(this.labelUpdateTimeout);
@@ -2956,6 +3413,11 @@ class Isometric3D {
 
     const deltaX = e.clientX - this.lastMouseX;
     const deltaY = e.clientY - this.lastMouseY;
+
+    // Mark that a real drag occurred (mouse moved)
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+      this.hasDragged = true;
+    }
 
     // Use requestAnimationFrame for smooth updates and prevent flicker
     if (!this.animationFrameId) {
@@ -3007,6 +3469,10 @@ class Isometric3D {
   }
 
   onMouseUp(e) {
+    // Record drag-end timestamp so click handlers can suppress click-after-drag
+    if (this.hasDragged) {
+      this.dragEndTime = performance.now();
+    }
     this.isDragging = false;
     this.dragButton = null;
 
@@ -3074,9 +3540,13 @@ class Isometric3D {
     }
 
     e.preventDefault();
+    e.stopPropagation();
 
     // Reset click navigation flag when manually navigating via mouse wheel
     this.isClickNavigation = false;
+
+    // Cancel any in-progress animations so wheel and animation don't fight
+    this.cancelPendingAnimations();
 
     // Pause autoplay when user manually interacts with mouse wheel
     if (this.isAutoPlaying) {
@@ -3106,8 +3576,20 @@ class Isometric3D {
   }
 
   onKeyDown(e) {
-    // Only respond if this container has focus
-    if (document.activeElement !== this.container) {
+    // Only respond if this container (or a child like a nav-point) has focus
+    if (!this.container.contains(document.activeElement)) {
+      return;
+    }
+
+    const containerFocused = document.activeElement === this.container;
+
+    // Space always resets to default (index -1), regardless of which child has focus
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.isAutoPlaying) this.stopAutoPlay();
+      this._navigationSource = 'keyboard';
+      this.resetToDefault();
       return;
     }
 
@@ -3129,43 +3611,69 @@ class Isometric3D {
 
       const navPoints = this.container.querySelectorAll('.nav-point');
       if (navPoints.length > 0) {
-        // Find currently active nav point or default to first one
-        let activeIndex = 0;
+        // Find currently active nav point index, or -1 if none (default/reset state)
+        let activeIndex = -1;
         const activePoint = this.container.querySelector('.nav-point.active');
         if (activePoint) {
           activeIndex = Array.from(navPoints).indexOf(activePoint);
         }
 
         // Calculate next index in the nav points array
+        // Wrapping goes to -1 (reset/default) instead of looping around
         let nextArrayIndex;
 
         if (e.altKey && e.shiftKey) {
           // Alt+Shift+Tab: go backwards (highlight-only mode - don't change view)
-          nextArrayIndex = activeIndex > 0 ? activeIndex - 1 : navPoints.length - 1;
-          // Get the actual navigation index from data-nav-index attribute
-          const nextNavIndex = parseInt(navPoints[nextArrayIndex].getAttribute('data-nav-index'));
-          this.navigateHighlightOnly(nextNavIndex);
+          this._navigationSource = 'alt-shift-tab';
+          if (activeIndex <= 0) {
+            // At first item or already at -1 → reset to default
+            this.resetToDefault();
+          } else {
+            nextArrayIndex = activeIndex - 1;
+            const nextNavIndex = parseInt(navPoints[nextArrayIndex].getAttribute('data-nav-index'));
+            this.navigateHighlightOnly(nextNavIndex);
+          }
         } else if (e.altKey) {
           // Alt+Tab: go forwards (highlight-only mode - don't change view)
-          nextArrayIndex = activeIndex < navPoints.length - 1 ? activeIndex + 1 : 0;
-          // Get the actual navigation index from data-nav-index attribute
-          const nextNavIndex = parseInt(navPoints[nextArrayIndex].getAttribute('data-nav-index'));
-          this.navigateHighlightOnly(nextNavIndex);
+          this._navigationSource = 'alt-tab';
+          if (activeIndex >= navPoints.length - 1) {
+            // At last item → reset to default
+            this.resetToDefault();
+          } else {
+            nextArrayIndex = activeIndex + 1;
+            const nextNavIndex = parseInt(navPoints[nextArrayIndex].getAttribute('data-nav-index'));
+            this.navigateHighlightOnly(nextNavIndex);
+          }
         } else if (e.shiftKey) {
           // Shift+Tab: go backwards (full navigation with view change)
-          nextArrayIndex = activeIndex > 0 ? activeIndex - 1 : navPoints.length - 1;
-          navPoints[nextArrayIndex].click();
+          this._navigationSource = 'shift-tab';
+          if (activeIndex <= 0) {
+            // At first item or already at -1 → reset to default
+            this.resetToDefault();
+          } else {
+            nextArrayIndex = activeIndex - 1;
+            navPoints[nextArrayIndex].click();
+          }
         } else {
           // Tab: go forwards (full navigation with view change)
-          nextArrayIndex = activeIndex < navPoints.length - 1 ? activeIndex + 1 : 0;
-          navPoints[nextArrayIndex].click();
+          this._navigationSource = 'tab';
+          if (activeIndex >= navPoints.length - 1) {
+            // At last item → reset to default
+            this.resetToDefault();
+          } else {
+            nextArrayIndex = activeIndex + 1;
+            navPoints[nextArrayIndex].click();
+          }
         }
       }
       return;
     }
 
+    // Remaining keys (arrows, zoom, r) require the container itself to have focus
+    if (!containerFocused) return;
+
     // Prevent default behavior for arrow keys and other navigation keys immediately
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '+', '=', '-', ' ', 'r', 'R'].includes(e.key)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', '+', '=', '-', 'r', 'R'].includes(e.key)) {
       e.preventDefault();
       e.stopPropagation();
 
@@ -3258,7 +3766,7 @@ class Isometric3D {
         break;
       case 'r':
       case 'R':
-      case ' ':
+        this._navigationSource = 'keyboard';
         this.resetToDefault();
         break;
     }
@@ -3312,14 +3820,14 @@ class Isometric3D {
       // Try to find by section hash
       if (sectionHash) {
         const matchingNav = this.navElements.find(nav => {
-          const section = nav.getAttribute('data-section');
+          const section = (nav.getAttribute('data-key') || '').split(',')[0].trim();
           if (section === sectionHash) return true;
 
           const parentScene = nav.closest('.scene');
           const parentCuboid = nav.closest('.cuboid');
 
-          if (parentScene && parentScene.getAttribute('data-section') === sectionHash) return true;
-          if (parentCuboid && parentCuboid.getAttribute('data-section') === sectionHash) return true;
+          if (parentScene && (parentScene.getAttribute('data-key') || '').split(',')[0].trim() === sectionHash) return true;
+          if (parentCuboid && (parentCuboid.getAttribute('data-key') || '').split(',')[0].trim() === sectionHash) return true;
 
           return false;
         });
@@ -3344,6 +3852,7 @@ class Isometric3D {
     const baseZoom = navElement.getAttribute('data-nav-zoom');
     const basePan = navElement.getAttribute('data-nav-pan');
 
+    this._navigationSource = 'url';
     this.navigateToPosition(baseXyz, baseZoom, navElement, basePan, () => {
       // STEP 3: Apply manual adjustments (if any) with smooth animation
       const targetRotation = { ...this.currentRotation };
@@ -3411,78 +3920,6 @@ class Isometric3D {
     this.setActiveNavPoint(finalNavIndex, true);
   }
 
-  /**
-   * Apply manual rotation/zoom/pan adjustments from URL parameters
-   * @deprecated This method is no longer used. Manual adjustments are now applied directly in loadFromUrl()
-   */
-  applyManualAdjustmentsFromUrl() {
-    if (typeof window === 'undefined') return;
-
-    const prefix = this.urlPrefix.replace('_', '');
-
-    // Parse query parameters - handle BOTH formats: #section?params AND ?params
-    const fullHash = window.location.hash.slice(1);
-    const standardQuery = window.location.search.slice(1);
-    let queryString = '';
-
-    // Priority 1: Query string in hash (format: #section?params)
-    if (fullHash.includes('?')) {
-      const parts = fullHash.split('?');
-      queryString = parts[1];
-    }
-    // Priority 2: Standard query string (format: ?params)
-    else if (standardQuery) {
-      queryString = standardQuery;
-    }
-
-    const params = new URLSearchParams(queryString);
-
-    // Check for manual adjustment parameters
-    const xyzParam = params.get(`${prefix}-xyz`);
-    const zoomParam = params.get(`${prefix}-zoom`);
-    const panParam = params.get(`${prefix}-pan`);
-
-    let hasAdjustments = false;
-
-    // Apply rotation adjustment
-    if (xyzParam) {
-      const [x, y, z] = xyzParam.split('.').map(v => parseFloat(v) || 0);
-      if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
-        this.currentRotation.x = x;
-        this.currentRotation.y = y;
-        this.currentRotation.z = z;
-        this.clampRotation();
-        hasAdjustments = true;
-      }
-    }
-
-    // Apply zoom adjustment
-    if (zoomParam) {
-      const zoom = parseFloat(zoomParam);
-      if (!isNaN(zoom)) {
-        this.currentZoom = zoom;
-        hasAdjustments = true;
-      }
-    }
-
-    // Apply pan adjustment
-    if (panParam) {
-      const [x, y] = panParam.split('.').map(v => parseFloat(v) || 0);
-      if (!isNaN(x) && !isNaN(y)) {
-        const sanitized = this.sanitizeTranslation({ x, y, z: this.currentTranslation.z });
-        this.currentTranslation.x = sanitized.x;
-        this.currentTranslation.y = sanitized.y;
-        hasAdjustments = true;
-      }
-    }
-
-    // Update scene if any adjustments were applied
-    if (hasAdjustments) {
-      // Update scene (isClickNavigation flag is already set by loadFromUrl to prevent URL updates)
-      this.updateScene();
-    }
-  }
-
   // Public methods for external control
   setRotation(x, y, z) {
     this.currentRotation = { x, y, z };
@@ -3512,13 +3949,8 @@ class Isometric3D {
 
     const perspective = this.container.querySelector('.isometric-perspective');
 
-    // If connectors were provided via constructor options, apply them to the perspective element
-    if (perspective && this.connectors && !perspective.hasAttribute('data-connectors')) {
-      perspective.setAttribute('data-connectors', JSON.stringify(this.connectors));
-    }
-
     // Create SVG overlay if connectors are defined
-    if (perspective && perspective.hasAttribute('data-connectors')) {
+    if (perspective && this.connectors && this.connectors.length > 0) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('scene-overlay');
       svg.style.position = 'absolute';
@@ -3529,6 +3961,33 @@ class Isometric3D {
       svg.style.pointerEvents = 'none';
       svg.style.zIndex = '2';
       svg.style.transform = 'translateZ(0.5px)'; // Bring SVG slightly forward to ensure visibility
+
+      // Add click handler for connector selection (same behavior as data-key)
+      svg.addEventListener('click', (e) => {
+        const target = e.target;
+        const connectorKeys = target.getAttribute('data-connector-keys');
+        if (connectorKeys) {
+          e.stopPropagation();
+          const keys = connectorKeys.split(',').map(k => k.trim());
+          this.emit('connectorClick', { keys, element: target });
+          // Toggle behavior: if same keys are already active, clear highlights
+          if (this.currentHighlightKeys &&
+              keys.length === this.currentHighlightKeys.length &&
+              keys.every(k => this.currentHighlightKeys.includes(k))) {
+            this.clearHighlights();
+          } else {
+            this.highlightByKey(keys);
+          }
+          // Center viewport on the group of elements matching the connector keys
+          const connectorPath = target.classList.contains('connector-path')
+            ? target
+            : svg.querySelector(`.connector-path[data-connector-keys="${connectorKeys}"]`);
+          if (connectorPath) {
+            this.centerOnElement(connectorPath, keys);
+          }
+        }
+      });
+
       perspective.insertBefore(svg, perspective.firstChild);
     }
 
@@ -3648,6 +4107,9 @@ class Isometric3D {
         // Start all animations for default view
         this.startAllAnimations();
 
+        // Emit navigation keys after initialization
+        this.emit('navKeys', { keys: this.getNavKeys() });
+
         // Load navigation state from URL if present
         this.loadFromUrl();
       }, 50); // Small delay to ensure updateScene has completed
@@ -3661,15 +4123,9 @@ class Isometric3D {
     const perspective = this.container.querySelector('.isometric-perspective');
     if (!perspective) return;
 
-    const connectorsData = perspective.getAttribute('data-connectors');
-    if (!connectorsData) return;
+    if (!this.connectors || this.connectors.length === 0) return;
 
-    let connectors;
-    try {
-      connectors = JSON.parse(connectorsData);
-    } catch (e) {
-      return;
-    }
+    const connectors = this.connectors;
 
     // Store initial positions AND configuration for all connector endpoints
     this.initialConnectorPositions = new Map();
@@ -3764,18 +4220,12 @@ class Isometric3D {
     // Get the perspective container's position for reference
     const perspectiveRect = perspective.getBoundingClientRect();
 
-    // Parse connector metadata from data attribute
-    const connectorsData = perspective.getAttribute('data-connectors');
-    if (!connectorsData) {
+    // Parse connector metadata
+    if (!this.connectors || this.connectors.length === 0) {
       return;
     }
 
-    let connectors;
-    try {
-      connectors = JSON.parse(connectorsData);
-    } catch (e) {
-      return;
-    }
+    const connectors = this.connectors;
 
     // Scan connectors to determine which marker types are actually needed per color
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -4321,8 +4771,25 @@ class Isometric3D {
         path.setAttribute('data-connector-keys', keys.join(','));
       }
       path.classList.add('connector-path');
+      path.style.pointerEvents = 'stroke';
+      path.style.cursor = 'pointer';
 
       svg.appendChild(path);
+
+      // Add invisible wider hit-area path for easier clicking
+      const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      hitArea.setAttribute('d', pathData);
+      hitArea.setAttribute('stroke', 'transparent');
+      hitArea.setAttribute('stroke-width', '16');
+      hitArea.setAttribute('fill', 'none');
+      hitArea.setAttribute('stroke-linecap', 'round');
+      hitArea.style.pointerEvents = 'stroke';
+      hitArea.style.cursor = 'pointer';
+      hitArea.classList.add('connector-hit-area');
+      if (keys.length > 0) {
+        hitArea.setAttribute('data-connector-keys', keys.join(','));
+      }
+      svg.appendChild(hitArea);
 
       // Check if this path should be dimmed based on current highlight state
       // Use the stored configuration from cachedPositions (already retrieved above)
@@ -4370,6 +4837,8 @@ class Isometric3D {
             // Note: opacity controlled by CSS (.connector-marker default = 0.8)
             circle.setAttribute('data-original-color', color);
             circle.classList.add('connector-marker');
+            circle.style.pointerEvents = 'auto';
+            circle.style.cursor = 'pointer';
             if (keys.length > 0) {
               circle.setAttribute('data-connector-keys', keys.join(','));
             }
@@ -4387,6 +4856,8 @@ class Isometric3D {
             // Note: opacity controlled by CSS (.connector-marker default = 0.8)
             circle.setAttribute('data-original-color', color);
             circle.classList.add('connector-marker');
+            circle.style.pointerEvents = 'auto';
+            circle.style.cursor = 'pointer';
             if (keys.length > 0) {
               circle.setAttribute('data-connector-keys', keys.join(','));
             }
@@ -4414,6 +4885,8 @@ class Isometric3D {
         // Note: opacity controlled by CSS (.connector-animated-marker default = 0.9)
         animatedCircle.setAttribute('data-original-color', color);
         animatedCircle.classList.add('connector-animated-marker');
+        animatedCircle.style.pointerEvents = 'auto';
+        animatedCircle.style.cursor = 'pointer';
 
         // Create animateMotion element
         const animateMotion = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
@@ -4615,6 +5088,8 @@ class Isometric3D {
     // Store the requested keys for connector matching
     this.currentHighlightKeys = keyArray;
 
+    this.emit('highlightChange', { action: 'highlight', keys: keyArray, source: this._navigationSource || 'unknown' });
+
     // First, remove ALL highlighted and dimmed classes from everything
     const allHighlighted = this.container.querySelectorAll('.highlighted');
     allHighlighted.forEach(el => el.classList.remove('highlighted'));
@@ -4697,14 +5172,14 @@ class Isometric3D {
   }
 
   /**
-   * Check if an element matches the selected criteria (data-groups OR data-activate)
+   * Check if an element matches the selected criteria (data-related-keys OR data-key)
    * @param {HTMLElement} element - Element to check
    * @param {Array<string>} selectedKeys - Array of selected key values
    * @returns {boolean} - True if element matches any of the selected keys
    */
   elementMatchesCriteria(element, selectedKeys) {
-    // Check data-groups attribute
-    const groupsAttr = element.getAttribute('data-groups');
+    // Check data-related-keys attribute
+    const groupsAttr = element.getAttribute('data-related-keys');
     if (groupsAttr) {
       const groups = groupsAttr.split(',').map(g => g.trim());
       if (groups.some(group => selectedKeys.includes(group))) {
@@ -4712,8 +5187,8 @@ class Isometric3D {
       }
     }
 
-    // Check data-activate attribute
-    const activateAttr = element.getAttribute('data-activate');
+    // Check data-key attribute (implicit membership)
+    const activateAttr = element.getAttribute('data-key');
     if (activateAttr) {
       const activateKeys = activateAttr.split(',').map(k => k.trim());
       if (activateKeys.some(key => selectedKeys.includes(key))) {
@@ -4870,6 +5345,8 @@ class Isometric3D {
     // Clear the stored highlight keys
     this.currentHighlightKeys = null;
 
+    this.emit('highlightChange', { action: 'clear', keys: null, source: this._navigationSource || 'unknown' });
+
     // Remove .highlighted class from all elements
     const allHighlighted = this.container.querySelectorAll('.highlighted');
     allHighlighted.forEach(el => el.classList.remove('highlighted'));
@@ -4901,6 +5378,9 @@ class Isometric3D {
     }
   }
 }
+
+// Expose Phase enum on the class for external consumers
+Isometric3D.Phase = Phase;
 
 // Global registry for multiple instances
 window.isometric3DInstances = window.isometric3DInstances || {};

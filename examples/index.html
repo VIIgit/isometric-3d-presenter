@@ -167,54 +167,49 @@
 
     <div class="sticky-section-wrapper">
         <div id="modern-scene" class="isometric-container">
-            <div class="isometric-perspective grid-layout" data-connectors='[
-                     {"ids": "cube1,cube3", "positions": "center,top", "vertices": "20,80", "color": "#4CAF50", "groups": "workflow", "animationStyle": "circle"},
-                     {"ids": "cube1,rectA", "positions": "right,left", "vertices": "20", "color": "#FF9800", "groups": "database", "endStyles": "circle,arrow-circle", "lineStyle": "dashed"},
-                     {"ids": "cube4,cube2", "positions": "center,right", "vertices": "50", "color": "#E91E63", "groups": "database", "endStyles": "circle,arrow"},
-                     {"ids": "cube4,cube3", "positions": "left,center", "vertices": "50", "color": "#2196F3", "groups": "workflow,integration", "endStyles": ",arrowSmall", "animationStyle": "circle", "lineStyle": "dashed"}
-                 ]'>
+            <div class="isometric-perspective grid-layout">
 
                 <div id="rectA" class="scene rect-a" data-focus="center">
                     RECT A
                     <img src="logo.jpeg">
                 </div>
                 <div id="cube4" class="scene rect-b" data-z-axis="80" data-nav-xyz="00.15.15" data-nav-zoom="1.2"
-                    data-section="cube1-description">Cube 4
+                    data-key="cube1-description">Cube 4
                     <img src="logo.jpeg">
                 </div>
 
                 <!-- Cube 1 - Scene container with shadow -->
                 <div class="scene scene-a" data-z-axis="80"
-                    data-activate="database" data-groups="database,integration">
+                    data-key="database" data-related-keys="database,integration">
                     <!-- Cuboid with dimensions -->
                     <div id="cube1" class="cuboid" data-width="100" data-height="auto" data-depth="120">
                         <div class="front">front</div>
                         <div class="back">back</div>
                         <div class="left flex-column">
                             left
-                            <div data-section="featureA" data-activate="database" 
+                            <div data-key="featureA" data-key="database" 
                                  data-nav-xyz="current" data-nav-zoom="current">Feature A
                             </div>
-                            <div data-nav-xyz="40.10.-65" data-nav-zoom="0.9" data-section="featureB">Feature B
+                            <div data-nav-xyz="40.10.-65" data-nav-zoom="0.9" data-key="featureB">Feature B
                             </div>
 
                             <div class="flex-row">
-                                <div data-section="featureA" data-activate="database"
+                                <div data-key="featureA" data-key="database"
                                      data-nav-xyz="current" data-nav-zoom="current">A
                                 </div>
-                                <div data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-section="featureD">D
+                                <div data-nav-xyz="35.00.-65" data-nav-zoom="0.8" data-key="featureD">D
                                 </div>
                             </div>
                         </div>
                         <div class="right">right</div>
                         <div class="top" data-nav-xyz="48.00.-79" data-nav-zoom="0.7" data-nav-pan="261.-31"
-                            data-focus="center" data-section="cube1-description">top 1</div>
+                            data-focus="center" data-key="cube1-description">top 1</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
                 <div style="transform-style: preserve-3d;"> Cube 2
                     <!-- Scene container with shadow -->
-                    <div class="scene scene-b" data-z-axis="10" data-groups="workflow">
+                    <div class="scene scene-b" data-z-axis="10" data-related-keys="workflow">
                         <!-- Cuboid with dimensions -->
                         <div id="cube2" class="cuboid" data-width="30" data-height="260" data-depth="100">
                             <div class="front">front</div>
@@ -222,15 +217,15 @@
                             <div class="left flex-column">
                                 left
                                 <div id="cube2-left-1" data-nav-xyz="35.00.-65" data-nav-zoom="0.8"
-                                    data-section="featureA">Feature A</div>
+                                    data-key="featureA">Feature A</div>
                                 <div id="cube2-left-2" data-nav-xyz="40.10.-65" data-nav-zoom="0.9"
-                                    data-section="featureB">Feature B</div>
+                                    data-key="featureB">Feature B</div>
                                 <div id="cube2-left-3" data-nav-xyz="45.20.-65" data-nav-zoom="1.0"
-                                    data-section="featureC">Feature C</div>
+                                    data-key="featureC">Feature C</div>
                             </div>
                             <div class="right">right</div>
                             <div class="top" id="cube2-top" data-z-axis="180" data-nav-xyz="00.00.15"
-                                data-nav-zoom="0.8" data-section="cube2-top-description">top 2</div>
+                                data-nav-zoom="0.8" data-key="cube2-top-description">top 2</div>
                             <div class="bottom">bottom</div>
                         </div>
                     </div>
@@ -244,7 +239,7 @@
                         <div class="left">left</div>
                         <div class="right">right</div>
                         <div class="top" data-nav-xyz="15.00.-15" data-nav-zoom="0.8" data-focus="center"
-                            data-section="cube3-description" data-activate="workflow,integration">top cube3</div>
+                            data-key="cube3-description" data-key="workflow,integration">top cube3</div>
                         <div class="bottom">bottom</div>
                     </div>
                 </div>
@@ -408,6 +403,12 @@
                 y: { min: -180, max: 180 },
                 z: { min: -180, max: 180 }
             },
+            connectors: [
+                { ids: 'cube1,cube3', positions: 'center,top', vertices: '20,80', color: '#4CAF50', groups: 'workflow', animationStyle: 'circle' },
+                { ids: 'cube1,rectA', positions: 'right,left', vertices: '20', color: '#FF9800', groups: 'database', endStyles: 'circle,arrow-circle', lineStyle: 'dashed' },
+                { ids: 'cube4,cube2', positions: 'center,right', vertices: '50', color: '#E91E63', groups: 'database', endStyles: 'circle,arrow' },
+                { ids: 'cube4,cube3', positions: 'left,center', vertices: '50', color: '#2196F3', groups: 'workflow,integration', endStyles: ',arrowSmall', animationStyle: 'circle', lineStyle: 'dashed' }
+            ],
             connectorDefaults: {
                 startLine: undefined,      // Default: no start marker
                 endLine: 'arrow',          // Default: arrow at end

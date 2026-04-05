@@ -13,7 +13,7 @@
  * @param {number} options.scrollDuration - Scroll animation duration in ms (default: 1800)
  * @param {number} options.debounceDelay - Debounce delay for navigation updates in ms (default: 100)
  * @param {string} options.sectionSelector - CSS selector for content sections (default: '.description-section')
- * @param {string} options.dataSectionAttribute - Attribute name for linking 3D elements to sections (default: 'data-section')
+ * @param {string} options.dataSectionAttribute - Attribute name for linking 3D elements to sections (default: 'data-key')
  */
 class ScrollSync {
     constructor(controller, options = {}) {
@@ -24,7 +24,7 @@ class ScrollSync {
             scrollDuration: 1800,
             debounceDelay: 100,
             sectionSelector: '.description-section',
-            dataSectionAttribute: 'data-section',
+            dataSectionAttribute: 'data-key',
             ...options
         };
         
@@ -87,15 +87,34 @@ class ScrollSync {
     }
 
     /**
+     * Updates stickyThreshold at runtime and re-applies derived CSS values.
+     * Useful for responsive layouts that switch between stacked and two-column
+     * modes — call this from a matchMedia listener or ResizeObserver.
+     * Pass 'auto' to re-measure from .isometric-wrapper, or a numeric px value.
+     * @param {number|string} threshold - New stickyThreshold value ('auto' or px number)
+     * @public
+     */
+    updateStickyThreshold(threshold) {
+        if (threshold === 'auto') {
+            this.computeStickyThreshold();
+        } else {
+            this.options.stickyThreshold = threshold;
+        }
+        this.applyStickyThresholdCSS();
+    }
+
+    /**
      * Sets up bidirectional synchronization between 3D navigation and page scrolling
      * @private
      */
     setupBidirectionalSync() {
         // 1. Navigation → Scroll: When 3D navigation changes, scroll to description
         this.controller.on('navigationChange', (data) => {
-            const sectionId = data.element.getAttribute(this.options.dataSectionAttribute);
+            const sectionId = (data.element.getAttribute(this.options.dataSectionAttribute) || '').split(',')[0].trim() || null;
             // Don't scroll if this navigation was triggered by user scrolling (prevents feedback loop)
             if (sectionId && !this.programmaticScroll && !this.scrollTriggeredNavigation) {
+                // Track target so scroll-back detection doesn't re-trigger navigation
+                this.currentNavigationTarget = sectionId;
                 this.scrollToSection(sectionId);
             }
         });
@@ -112,12 +131,13 @@ class ScrollSync {
         const sections = document.querySelectorAll(this.options.sectionSelector);
 
         // Build a map from section IDs to their corresponding 3D elements
-        // Support multiple elements with the same data-section
+        // Support multiple elements with the same data-key (first key = section ID)
         const sectionToNavElements = {};
         sections.forEach(section => {
             const sectionId = section.id;
+            // Match elements whose data-key starts with this sectionId
             const navElements = document.querySelectorAll(
-                `[${this.options.dataSectionAttribute}="${sectionId}"]`
+                `[${this.options.dataSectionAttribute}="${sectionId}"], [${this.options.dataSectionAttribute}^="${sectionId},"]`
             );
             if (navElements.length > 0) {
                 sectionToNavElements[sectionId] = Array.from(navElements);
@@ -149,6 +169,7 @@ class ScrollSync {
                 this.currentNavigationTarget = null;
                 const baseUrl = window.location.pathname;
                 window.history.replaceState({}, '', baseUrl);
+                this.controller._navigationSource = 'scroll';
                 this.controller.resetToDefault({ skipScroll: true });
                 this.controller.clearHighlights();
             }
@@ -161,6 +182,7 @@ class ScrollSync {
             if (!navElements || navElements.length === 0) return;
             this.currentNavigationTarget = sectionId;
             this.scrollTriggeredNavigation = true;
+            this.controller._navigationSource = 'scroll';
             navElements[0].click();
             setTimeout(() => { this.scrollTriggeredNavigation = false; }, 50);
         };
@@ -169,13 +191,15 @@ class ScrollSync {
         // Runs every frame via rAF for immediate, consistent response at any scroll speed.
         // Determines the active section by finding the last section whose top has scrolled
         // to or above the effective sticky boundary (stickyThreshold + stickyGap).
-        const effectiveTop = this.options.stickyThreshold + (this.options.stickyGap || 0);
         let scrollTicking = false;
         window.addEventListener('scroll', () => {
             if (this.programmaticScroll || scrollTicking) return;
             scrollTicking = true;
             requestAnimationFrame(() => {
                 scrollTicking = false;
+                // Read threshold dynamically so runtime changes (e.g. responsive
+                // layout switches via updateStickyThreshold()) are picked up.
+                const effectiveTop = this.options.stickyThreshold + (this.options.stickyGap || 0);
                 // Find the last section whose top has scrolled to or above the sticky boundary.
                 // "Last" because sections are in DOM order — if multiple have crossed,
                 // the bottom-most one is the one currently under the sticky block.

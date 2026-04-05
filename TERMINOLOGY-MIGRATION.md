@@ -10,9 +10,9 @@ We've improved the attribute naming to be more intuitive and self-documenting. T
 
 | Old Attribute | New Attribute | Purpose |
 |--------------|---------------|---------|
-| `data-keys` | `data-groups` | Which highlight groups this element belongs to |
-| `data-highlight-keys` | `data-activate` | Which groups to activate/highlight when clicked |
-| `data-id` | `data-section` | Which content section this links to |
+| `data-keys` | `data-related-keys` | Which highlight groups this element belongs to |
+| `data-highlight-keys` | `data-key` | Which groups to activate/highlight when clicked |
+| `data-id` | `data-key` | Which content section this links to |
 
 ### Connector Property Renaming
 
@@ -22,23 +22,23 @@ We've improved the attribute naming to be more intuitive and self-documenting. T
 
 ## Why These Changes?
 
-### 1. **`data-groups`** (formerly `data-keys`)
+### 1. **`data-related-keys`** (formerly `data-keys`)
 - **More descriptive**: "Groups" clearly indicates membership in logical groups
 - **Self-documenting**: Immediately obvious that this element belongs to certain groups
-- **Example**: `data-groups="workflow,database"` vs. `data-keys="A,B"`
+- **Example**: `data-related-keys="workflow,database"` vs. `data-keys="A,B"`
 
-### 2. **`data-activate`** (formerly `data-highlight-keys`)
+### 2. **`data-key`** (formerly `data-highlight-keys`)
 - **Action-oriented**: The verb "activate" shows this is a trigger
 - **Clearer intent**: Explicitly states that clicking activates certain groups
-- **Example**: `data-activate="workflow"` - when clicked, activate the workflow group
+- **Example**: `data-key="workflow"` - when clicked, activate the workflow group
 
-### 3. **`data-section`** (formerly `data-id`)
+### 3. **`data-key`** (formerly `data-id`)
 - **Purpose-specific**: "Section" clearly indicates it links to a content section
 - **Avoids confusion**: Distinct from HTML `id` attribute
-- **Example**: `data-section="features-overview"` links to `<div id="features-overview">`
+- **Example**: `data-key="features-overview"` links to `<div id="features-overview">`
 
 ### 4. **`groups`** (formerly `keys` in connectors)
-- **Consistent naming**: Matches `data-groups` attribute terminology
+- **Consistent naming**: Matches `data-related-keys` attribute terminology
 - **Consistent format**: Uses comma-separated string like other list attributes
 - **Example**: `"groups": "workflow,database"`
 
@@ -73,10 +73,10 @@ We've improved the attribute naming to be more intuitive and self-documenting. T
 ```html
 <!-- Scene with new attributes -->
 <div class="scene" 
-     data-groups="workflow,database"
-     data-activate="workflow"
+     data-related-keys="workflow,database"
+     data-key="workflow"
      data-nav-xyz="45.00.-35"
-     data-section="cube1-description">
+     data-key="cube1-description">
 </div>
 
 <!-- Connector with new property (string format) -->
@@ -109,9 +109,9 @@ We've improved the attribute naming to be more intuitive and self-documenting. T
 **All old attributes are still supported!** You don't need to migrate immediately.
 
 The library automatically checks for both old and new attributes:
-- If `data-activate` is found, it's used; otherwise falls back to `data-highlight-keys`
-- If `data-groups` is found, it's used; otherwise falls back to `data-keys`
-- If `data-section` is found, it's used; otherwise falls back to `data-id`
+- If `data-key` is found, it's used; otherwise falls back to `data-highlight-keys`
+- If `data-related-keys` is found, it's used; otherwise falls back to `data-keys`
+- If `data-key` is found, it's used; otherwise falls back to `data-id`
 - If `groups` property is found in connectors, it's used; otherwise falls back to `keys`
 
 ### Priority Order
@@ -121,8 +121,8 @@ When both old and new attributes exist, the **new attribute takes priority**:
 ```html
 <!-- New attribute wins -->
 <div class="scene" 
-     data-groups="workflow"
-     data-keys="A">  <!-- Ignored if data-groups exists -->
+     data-related-keys="workflow"
+     data-keys="A">  <!-- Ignored if data-related-keys exists -->
 </div>
 ```
 
@@ -140,13 +140,13 @@ When both old and new attributes exist, the **new attribute takes priority**:
 You can use find-and-replace in your editor:
 
 1. Find: `data-keys="`  
-   Replace: `data-groups="`
+   Replace: `data-related-keys="`
 
 2. Find: `data-highlight-keys="`  
-   Replace: `data-activate="`
+   Replace: `data-key="`
 
 3. Find: `data-id="`  
-   Replace: `data-section="`
+   Replace: `data-key="`
 
 4. Find: `"keys":`  
    Replace: `"groups":`
@@ -189,23 +189,23 @@ You can use find-and-replace in your editor:
        data-width="100" 
        data-height="100" 
        data-depth="100"
-       data-groups="database,integration"
-       data-activate="database">
+       data-related-keys="database,integration"
+       data-key="database">
     <div class="face front">Database</div>
     <div class="face top" 
          data-nav-xyz="45.00.-35" 
          data-nav-zoom="1.2"
-         data-section="database-docs">
+         data-key="database-docs">
       Database Layer
     </div>
   </div>
   
   <!-- Cube 2: Workflow component -->
   <div id="cube2" class="scene" 
-       data-groups="workflow"
-       data-activate="workflow,integration">
+       data-related-keys="workflow"
+       data-key="workflow,integration">
     <div class="face top" 
-         data-section="workflow-docs">
+         data-key="workflow-docs">
       Workflow Engine
     </div>
   </div>
@@ -233,7 +233,7 @@ You can use find-and-replace in your editor:
 |--------|----------------|-------------|
 | **Purpose** | Configuration (what, why, when) | Presentation (how it looks) |
 | **Naming** | Descriptive, purpose-specific | Semantic, state-based |
-| **Example** | `data-activate`, `data-groups` | `.highlight`, `.active` |
+| **Example** | `data-key`, `data-related-keys` | `.highlight`, `.active` |
 | **Convention** | Describe relationships | Describe visual state |
 
 ### Separation of Concerns
@@ -241,9 +241,9 @@ You can use find-and-replace in your editor:
 ```html
 <!-- Attributes: Describe purpose and relationships -->
 <div class="scene" 
-     data-groups="workflow,database"
-     data-activate="workflow"
-     data-section="features">
+     data-related-keys="workflow,database"
+     data-key="workflow"
+     data-key="features">
 
 <!-- CSS Classes: Describe visual state -->
 <div class="scene highlight nav-selected">
@@ -265,4 +265,4 @@ This separation makes code **more clear**:
 
 The new terminology makes the library more intuitive and professional. While migration is optional due to full backward compatibility, we recommend adopting the new attribute names for better code clarity and maintainability.
 
-**Key takeaway**: Use `data-groups`, `data-activate`, and `data-section` for new projects. Migrate existing projects at your convenience. CSS classes (`.highlight`, `.nav-selected`) remain unchanged to follow web development conventions.
+**Key takeaway**: Use `data-related-keys`, `data-key`, and `data-key` for new projects. Migrate existing projects at your convenience. CSS classes (`.highlight`, `.nav-selected`) remain unchanged to follow web development conventions.

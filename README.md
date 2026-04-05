@@ -180,13 +180,13 @@ Customize the appearance of your 3D scenes with different colors for each face a
   }
 
   /* Dimming non-highlighted elements */
-  .isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight) > .face {
+  .isometric-perspective:has(.highlight[data-key]) .scene:not(.highlight) > .face {
     opacity: 0.2;  /* Dim to 20% when other elements are highlighted */
     filter: grayscale(50%);
   }
 
   /* Dim child content inside non-highlighted scenes */
-  .isometric-perspective:has(.highlight[data-activate]) .scene:not(.highlight) > *:not(.face) {
+  .isometric-perspective:has(.highlight[data-key]) .scene:not(.highlight) > *:not(.face) {
     opacity: 0.3;
   }
 
@@ -250,7 +250,7 @@ Customize the appearance of your 3D scenes with different colors for each face a
   <div class="isometric-viewport">
     <div id="demo" class="isometric-container">
       <div class="isometric-perspective">
-        <div class="scene" data-width="100" data-height="100" data-depth="100" data-groups="cube1">
+        <div class="scene" data-width="100" data-height="100" data-depth="100" data-related-keys="cube1">
           <div class="face front">Front</div>
           <div class="face back">Back</div>
           <div class="face left">Left</div>
@@ -258,7 +258,7 @@ Customize the appearance of your 3D scenes with different colors for each face a
           <div class="face top" 
                data-nav-xyz="45.0.-35" 
                data-nav-zoom="1.2"
-               data-activate="cube1">
+               data-key="cube1">
             Click Me
           </div>
           <div class="face bottom">Bottom</div>
@@ -290,7 +290,7 @@ Customize the appearance of your 3D scenes with different colors for each face a
 | `showCompactControls` | Boolean | `false` | Show spherical controller |
 | `bookmarkPrefix` | String | `containerId_` | URL parameter prefix |
 | `navSelectedTarget` | String | `'clicked'` | Which face gets `.nav-selected` class: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
-| `connectors` | Array | `null` | Connector definitions array (alternative to `data-connectors` HTML attribute) |
+| `connectors` | Array | `null` | Connector definitions array |
 | `dimmingAlpha` | Object | See below | Alpha values for dimming non-highlighted elements |
 
 ### Dimming Configuration
@@ -595,7 +595,7 @@ When `data-height` is not specified, the system automatically measures and calcu
      data-nav-xyz="45.00.-35" 
      data-nav-zoom="1.2"
      data-nav-pan="100.-50"
-     data-section="section1">
+     data-key="section1">
   Click to navigate
 </div>
 ```
@@ -605,7 +605,7 @@ When `data-height` is not specified, the system automatically measures and calcu
 - `data-nav-xyz` - Target rotation (format: "x.y.z" with dots, or `"current"` to keep current rotation)
 - `data-nav-zoom` - Target zoom level (e.g., "1.2", or `"current"` to keep current zoom)
 - `data-nav-pan` - Target pan/translation (format: "x.y" with dot separator, or `"current"` to keep current pan) - **Optional**
-- `data-section` - Unique section identifier for navigation
+- `data-key` - Unique section identifier for navigation, highlighting trigger, and URL hash. **An element with only `data-key` (no `data-nav-*` attributes) is still navigable** — the system keeps the current rotation, auto-fits the zoom to the group, and auto-centers the pan. Each `data-key` value must be unique across elements.
 
 #### Using Special Keywords for Navigation Control
 
@@ -618,8 +618,8 @@ To enable element selection and highlighting **without changing the camera posit
 ```html
 <!-- Select and highlight without moving camera -->
 <div class="face" 
-     data-section="featureA" 
-     data-activate="database"
+     data-key="featureA" 
+     data-key="database"
      data-nav-xyz="current" 
      data-nav-zoom="current">
   Feature A
@@ -627,8 +627,8 @@ To enable element selection and highlighting **without changing the camera posit
 
 <!-- Only lock rotation, allow zoom/pan to change -->
 <div class="face" 
-     data-section="featureB" 
-     data-activate="workflow"
+     data-key="featureB" 
+     data-key="workflow"
      data-nav-xyz="current" 
      data-nav-zoom="1.5">
   Feature B (zooms but doesn't rotate)
@@ -636,8 +636,8 @@ To enable element selection and highlighting **without changing the camera posit
 
 <!-- Lock zoom but allow rotation -->
 <div class="face" 
-     data-section="featureC" 
-     data-activate="integration"
+     data-key="featureC" 
+     data-key="integration"
      data-nav-xyz="15.00.-45" 
      data-nav-zoom="current">
   Feature C (rotates but doesn't zoom)
@@ -651,7 +651,7 @@ Use `"default"` to return to the initial/default camera position set during init
 ```html
 <!-- Return to default pan position (0,0,0) -->
 <div class="face" 
-     data-section="reset-view" 
+     data-key="reset-view" 
      data-nav-xyz="45.0.-35"
      data-nav-zoom="1.0"
      data-nav-pan="default">
@@ -660,7 +660,7 @@ Use `"default"` to return to the initial/default camera position set during init
 
 <!-- Keep current rotation/zoom but reset pan -->
 <div class="face" 
-     data-section="center-view" 
+     data-key="center-view" 
      data-nav-xyz="current"
      data-nav-zoom="current"
      data-nav-pan="default">
@@ -689,7 +689,7 @@ Use `"default"` to return to the initial/default camera position set during init
 **Behavior:**
 
 - Elements with navigation keywords are still treated as navigable (get glass hover effect, appear in navigation bar)
-- Clicking them applies highlights via `data-activate`
+- Clicking them applies highlights via `data-key`
 - Can mix keywords with actual values for fine control
 - `"current"` preserves the exact current state
 - `"default"` uses values from `defaultRotation`, `defaultZoom`, and `defaultTranslation` in config
@@ -701,8 +701,14 @@ Use `"default"` to return to the initial/default camera position set during init
 <div class="face top" 
      data-nav-xyz="45.0.-35" 
      data-nav-zoom="1.2"
-     data-section="intro">
+     data-key="intro">
   <!-- Element will be centered automatically -->
+</div>
+
+<!-- Minimal navigation (data-key only — auto-fits zoom + auto-centers pan) -->
+<div class="face top" 
+     data-key="overview">
+  <!-- Keeps current rotation, auto-fits zoom to ~80% of viewport, auto-centers -->
 </div>
 
 <!-- Manual pan override (when specific positioning is needed) -->
@@ -710,37 +716,39 @@ Use `"default"` to return to the initial/default camera position set during init
      data-nav-xyz="45.0.-35" 
      data-nav-zoom="1.2"
      data-nav-pan="100.-50"
-     data-section="custom-position">
+     data-key="custom-position">
   <!-- Element positioned at specific pan coordinates -->
 </div>
 ```
+
+**Auto-Fit:** When `data-nav-zoom` is omitted, the system uses an iterative fitting algorithm to find the zoom level that makes the target group (all elements sharing the same `data-key`) fill ~80% of the viewport, then auto-centers the pan. This is the recommended approach for scroll-synced presentations.
 
 #### Navigation Bar Behavior
 
 The navigation bar displays circular indicators for each unique navigation point. The system automatically:
 
-1. **Deduplicates** - If multiple elements share the same `data-section` value, only one navigation dot appears
-2. **Sorts alphabetically** - Navigation dots are ordered alphanumerically by `data-section` name
+1. **Deduplicates** - If multiple elements share the same `data-key` value, only one navigation dot appears
+2. **Sorts alphabetically** - Navigation dots are ordered alphanumerically by `data-key` name
 
 **Naming Recommendations:**
 
-To control the order of navigation dots, use prefixed numbering in your `data-section` names:
+To control the order of navigation dots, use prefixed numbering in your `data-key` names:
 
 ```html
 <!-- ✅ Good: Ordered presentation flow -->
-<div class="face top" data-section="01-intro" data-nav-xyz="45.0.-35">Introduction</div>
-<div class="face top" data-section="02-features" data-nav-xyz="30.0.-45">Features</div>
-<div class="face top" data-section="03-demo" data-nav-xyz="15.0.-55">Demo</div>
-<div class="face top" data-section="04-conclusion" data-nav-xyz="0.0.-35">Conclusion</div>
+<div class="face top" data-key="01-intro" data-nav-xyz="45.0.-35">Introduction</div>
+<div class="face top" data-key="02-features" data-nav-xyz="30.0.-45">Features</div>
+<div class="face top" data-key="03-demo" data-nav-xyz="15.0.-55">Demo</div>
+<div class="face top" data-key="04-conclusion" data-nav-xyz="0.0.-35">Conclusion</div>
 
 <!-- ✅ Good: Topic-based grouping -->
-<div class="face top" data-section="api-overview" data-nav-xyz="45.0.0">API Overview</div>
-<div class="face top" data-section="api-endpoints" data-nav-xyz="45.0.-30">API Endpoints</div>
-<div class="face top" data-section="database-schema" data-nav-xyz="30.0.0">Database</div>
+<div class="face top" data-key="api-overview" data-nav-xyz="45.0.0">API Overview</div>
+<div class="face top" data-key="api-endpoints" data-nav-xyz="45.0.-30">API Endpoints</div>
+<div class="face top" data-key="database-schema" data-nav-xyz="30.0.0">Database</div>
 
 <!-- ❌ Avoid: Unordered naming -->
-<div class="face top" data-section="conclusion" data-nav-xyz="0.0.-35">Conclusion</div>
-<div class="face top" data-section="intro" data-nav-xyz="45.0.-35">Introduction</div>
+<div class="face top" data-key="conclusion" data-nav-xyz="0.0.-35">Conclusion</div>
+<div class="face top" data-key="intro" data-nav-xyz="45.0.-35">Introduction</div>
 <!-- Navigation bar will show: conclusion → intro (alphabetical, not logical order) -->
 ```
 
@@ -759,6 +767,9 @@ viewer.navigateToPosition("45.00.-35", "1.2");
 
 // Navigate by key/ID
 viewer.navigateByKey("section1");
+
+// Get all unique navigation keys (from data-key attributes + connector groups)
+const keys = viewer.getNavKeys();
 
 // Set rotation
 viewer.setRotation(45, 0, -35);
@@ -785,28 +796,7 @@ Draw connections between elements with automatic routing and customizable line e
 
 ### Defining Connectors
 
-Connectors can be defined in two ways:
-
-#### 1. Via HTML `data-connectors` attribute
-
-```html
-<div class="isometric-perspective" 
-     data-connectors='[
-       {
-         "ids": "cube1,cube2",
-         "positions": "top,bottom",
-         "color": "#4CAF50",
-         "endStyles": "circle,arrow",
-         "lineStyle": "solid",
-         "animationStyle": "circle",
-         "groups": "workflow,integration"
-       }
-     ]'>
-  <!-- scenes -->
-</div>
-```
-
-#### 2. Via JavaScript constructor options
+Connectors are defined via the JavaScript constructor options:
 
 ```javascript
 const presenter = createIsometric3D('presentation', {
@@ -823,8 +813,6 @@ const presenter = createIsometric3D('presentation', {
   ]
 });
 ```
-
-The JavaScript approach is useful when connectors need to be computed dynamically or when you prefer to keep configuration in code. If both HTML and JS connectors are provided, the HTML `data-connectors` attribute takes precedence.
 
 ### Connector Configuration
 
@@ -934,9 +922,9 @@ The highlighting system allows you to create visual focus effects on specific sc
 
 The library uses intuitive, semantic attribute names with consistent comma-separated list notation:
 
-- **`data-activate`** - Auto-activate groups when navigating (e.g., `"workflow,database"`)
-- **`data-groups`** - Mark element as member of named groups (e.g., `"api,frontend"`)
-- **`data-section`** - Unique section identifier for navigation
+- **`data-key`** - Auto-activate groups when navigating (e.g., `"workflow,database"`)
+- **`data-related-keys`** - Mark element as member of named groups (e.g., `"api,frontend"`)
+- **`data-key`** - Unique section identifier for navigation
 - **`groups`** (connectors) - Connector group membership (e.g., `"workflow,integration"`)
 
 These semantic names make the code self-documenting. Use meaningful names like "workflow", "database", "integration" rather than abstract identifiers.
@@ -947,11 +935,11 @@ These semantic names make the code self-documenting. Use meaningful names like "
 
 ### Auto-Highlighting on Navigation
 
-Use `data-activate` to automatically activate groups when navigating to a scene:
+Use `data-key` to automatically activate groups when navigating to a scene:
 
 ```html
 <div class="face top" 
-     data-activate="workflow,database"
+     data-key="workflow,database"
      data-nav-xyz="45.00.-35"
      data-nav-zoom="1.2">
   When clicked, automatically highlights all elements in workflow and database groups
@@ -969,16 +957,16 @@ Use `data-activate` to automatically activate groups when navigating to a scene:
 
 ### Element Group Membership
 
-Use `data-groups` to mark elements as members of named groups:
+Use `data-related-keys` to mark elements as members of named groups:
 
 ```html
 <!-- Scene that belongs to multiple groups -->
-<div class="scene" data-groups="workflow,integration">
+<div class="scene" data-related-keys="workflow,integration">
   This scene activates when workflow or integration groups are active
 </div>
 
 <!-- Face with specific group -->
-<div class="face top" data-groups="database">
+<div class="face top" data-related-keys="database">
   Highlighted when "database" group is active
 </div>
 ```
@@ -995,16 +983,17 @@ Use `data-groups` to mark elements as members of named groups:
 
 Connectors can be highlighted using the same group system:
 
-```html
-<div class="isometric-perspective" 
-     data-connectors='[
-       {
-         "ids": "cube1,cube2",
-         "positions": "center,top",
-         "color": "#4CAF50",
-         "groups": "workflow,integration"
-       }
-     ]'>
+```javascript
+const presenter = createIsometric3D('demo', {
+  connectors: [
+    {
+      ids: 'cube1,cube2',
+      positions: 'center,top',
+      color: '#4CAF50',
+      groups: 'workflow,integration'
+    }
+  ]
+});
 ```
 
 **Behavior:**
@@ -1016,9 +1005,9 @@ Connectors can be highlighted using the same group system:
 
 ### Highlighting Workflow
 
-1. **Navigate to element** with `data-activate="workflow,database"`
+1. **Navigate to element** with `data-key="workflow,database"`
 2. **System highlights**:
-   - All scenes/faces with `data-groups` containing "workflow" or "database"
+   - All scenes/faces with `data-related-keys` containing "workflow" or "database"
    - All connectors with `"groups": "workflow"` or `"groups": "database"`
 3. **System dims**:
    - All elements without matching groups (40% opacity)
@@ -1028,22 +1017,18 @@ Connectors can be highlighted using the same group system:
 ```html
 <!-- Navigation trigger -->
 <div class="face top" 
-     data-activate="api,backend"
+     data-key="api,backend"
      data-nav-xyz="0.0.0">
   Click me to highlight API and backend components
 </div>
 
 <!-- Highlighted scene -->
-<div class="scene" data-groups="api">
+<div class="scene" data-related-keys="api">
   API Gateway (receives .highlight class)
 </div>
 
-<!-- Highlighted connector -->
-<div class="isometric-perspective" 
-     data-connectors='[
-       {"ids": "api,db", "groups": "backend"}
-     ]'>
-</div>
+<!-- Highlighted connector (defined in JS connectors option) -->
+<!-- { ids: "api,db", groups: "backend" } -->
 ```
    - Animations pause
 
@@ -1065,54 +1050,49 @@ const highlighted = document.querySelectorAll('.highlight');
 ```html
 <!-- Step 1: Introduce input system -->
 <div class="face top" 
-     data-activate="input"
+     data-key="input"
      data-nav-xyz="45.00.-35"
      data-nav-zoom="1.5">
   Step 1: Input Layer
 </div>
 
-<div id="input-scene" class="scene" data-groups="input">
+<div id="input-scene" class="scene" data-related-keys="input">
   Input Processing
 </div>
 
 <!-- Step 2: Show data flow -->
 <div class="face top" 
-     data-activate="input,processing"
+     data-key="input,processing"
      data-nav-xyz="30.00.-45"
      data-nav-zoom="1.2">
   Step 2: Data Flow
 </div>
 
-<div id="processor" class="scene" data-groups="processing">
+<div id="processor" class="scene" data-related-keys="processing">
   Data Processor
 </div>
 
-<!-- Connectors highlight with their steps -->
-<div class="isometric-perspective" 
-     data-connectors='[
-       {"ids": "input-scene,processor", "positions": "right,left", "groups": "input,processing"}
-     ]'>
 ```
 
 ### Troubleshooting Highlighting
 
 If highlighting isn't working, verify these requirements:
 
-#### 1. Missing `data-groups` Attribute
+#### 1. Missing `data-related-keys` Attribute
 
-Elements must have `data-groups` to be highlightable:
+Elements must have `data-related-keys` to be highlightable:
 
 ```html
 <!-- ❌ Won't highlight -->
 <div id="cube1" class="scene">Content</div>
 
 <!-- ✅ Will highlight when "workflow" group is active -->
-<div id="cube1" class="scene" data-groups="workflow">Content</div>
+<div id="cube1" class="scene" data-related-keys="workflow">Content</div>
 ```
 
-#### 2. Missing `data-activate` on Navigation
+#### 2. Missing `data-key` on Navigation
 
-Navigation elements need `data-activate` to trigger highlighting:
+Navigation elements need `data-key` to trigger highlighting:
 
 ```html
 <!-- ❌ Navigation won't trigger highlighting -->
@@ -1121,7 +1101,7 @@ Navigation elements need `data-activate` to trigger highlighting:
 <!-- ✅ Triggers highlighting for "workflow" group -->
 <div class="face top" 
      data-nav-xyz="15.00.-15" 
-     data-activate="workflow">
+     data-key="workflow">
   Click me
 </div>
 ```
@@ -1141,7 +1121,7 @@ Connectors need the `groups` array property:
 #### 4. Group Matching Rules
 
 - Group names are **case-sensitive**: `"workflow"` ≠ `"Workflow"`
-- Multiple groups use **comma separation**: `data-groups="workflow,integration,api"` or `"groups": "workflow,integration"`
+- Multiple groups use **comma separation**: `data-related-keys="workflow,integration,api"` or `"groups": "workflow,integration"`
 - Group names must match exactly between navigation and elements
 
 #### 5. Debug Checklist
@@ -1150,51 +1130,57 @@ Run in browser console to verify setup:
 
 ```javascript
 // Check elements with groups
-document.querySelectorAll('[data-groups]').forEach(el => {
-  console.log('Highlightable:', el.id, el.getAttribute('data-groups'));
+document.querySelectorAll('[data-related-keys]').forEach(el => {
+  console.log('Highlightable:', el.id, el.getAttribute('data-related-keys'));
 });
 
 // Check navigation elements with activation triggers
-document.querySelectorAll('[data-activate]').forEach(el => {
-  console.log('Nav trigger:', el.className, el.getAttribute('data-activate'));
+document.querySelectorAll('[data-key]').forEach(el => {
+  console.log('Nav trigger:', el.className, el.getAttribute('data-key'));
 });
 
 // Check connectors configuration
-const perspective = document.querySelector('.isometric-perspective');
-console.log('Connectors:', perspective.getAttribute('data-connectors'));
+const presenter = /* your createIsometric3D instance */;
+console.log('Connectors:', presenter.connectors);
 ```
 
 #### 6. Complete Working Example
 
 ```html
-<div class="isometric-perspective" data-connectors='[
-  {"ids": "cube1,cube2", "positions": "right,left", "color": "#2196F3", "groups": "workflow"}
-]'>
+<div class="isometric-perspective">
   <!-- Element 1: Has group -->
-  <div id="cube1" class="scene" data-groups="workflow">
+  <div id="cube1" class="scene" data-related-keys="workflow">
     <div class="face top" 
          data-nav-xyz="15.00.-15" 
-         data-activate="workflow"
+         data-key="workflow"
          data-nav-zoom="1.2">
       Click to highlight workflow
     </div>
   </div>
   
   <!-- Element 2: Has same group -->
-  <div id="cube2" class="scene" data-groups="workflow">
+  <div id="cube2" class="scene" data-related-keys="workflow">
     Connected element
   </div>
   
   <!-- Element 3: Different group (won't highlight) -->
-  <div id="cube3" class="scene" data-groups="database">
+  <div id="cube3" class="scene" data-related-keys="database">
     Other element
   </div>
 </div>
+
+<script>
+  createIsometric3D('demo', {
+    connectors: [
+      { ids: 'cube1,cube2', positions: 'right,left', color: '#2196F3', groups: 'workflow' }
+    ]
+  });
+</script>
 ```
 
 **Expected behavior when clicking cube1's top face:**
 
-- ✅ cube1 and cube2 stay bright (both have `data-groups="workflow"`)
+- ✅ cube1 and cube2 stay bright (both have `data-related-keys="workflow"`)
 - ✅ Connector turns bright blue (has `"groups": "workflow"`)
 - ✅ cube3 dims to 40% opacity (different key)
 - ✅ Other connectors turn gray and stop animating
@@ -1221,7 +1207,7 @@ const scrollSync = new ScrollSync(viewer, {
 | `scrollDuration` | Number | `1800` | Scroll animation duration in ms |
 | `debounceDelay` | Number | `100` | Debounce delay for navigation updates in ms |
 | `sectionSelector` | String | `'.description-section'` | CSS selector for content sections |
-| `dataSectionAttribute` | String | `'data-section'` | Data attribute used for section identification |
+| `dataSectionAttribute` | String | `'data-key'` | Data attribute used for section identification |
 
 **How `stickyThreshold: 'auto'` works:**
 
@@ -1292,7 +1278,7 @@ Press `P` to automatically cycle through navigation points every 5 seconds with 
 
 - Starts from the current navigation position
 - Advances to the next point with complete view changes (rotation, zoom, pan)
-- Applies highlights via `data-activate` if present
+- Applies highlights via `data-key` if present
 - Loops back to the beginning after reaching the end
 - Press `P` again to pause
 
@@ -1303,7 +1289,7 @@ Press `Shift` + `P` to cycle through navigation highlights without moving the ca
 - Updates highlights and active states for each navigation point
 - Camera position (rotation, zoom, pan) remains unchanged
 - Perfect for keeping a fixed overview while cycling through different highlighted elements
-- Applies all `data-activate` groups at each navigation point
+- Applies all `data-key` groups at each navigation point
 - Loops continuously through all navigation points
 - Press `Shift` + `P` again to pause
 
@@ -1330,7 +1316,7 @@ const presenter = createIsometric3D('demo', {
 
 - Only works when navigation points exist (`data-nav-xyz`, `data-nav-zoom`, or `data-nav-pan`)
 - Timing: 5 seconds per navigation point
-- Automatically applies highlights if `data-activate` is present
+- Automatically applies highlights if `data-key` is present
 - Stops when manually interacting (clicking, dragging, keyboard controls)
 - Resume by pressing `P` or `Shift` + `P` again
 
@@ -1399,7 +1385,7 @@ The library provides two CSS classes for visual feedback during navigation and h
 
 #### `.highlight` Class
 
-Applied to elements that belong to the currently active highlight group (based on `data-groups` or `data-section`). Multiple elements can have this class simultaneously. The class name intentionally uses the universal web convention term "highlight" rather than "group" or "activate" because it represents the visual presentation state.
+Applied to elements that belong to the currently active highlight group (based on `data-related-keys` or `data-key`). Multiple elements can have this class simultaneously. The class name intentionally uses the universal web convention term "highlight" rather than "group" or "activate" because it represents the visual presentation state.
 
 **Common customizations:**
 
@@ -1587,7 +1573,48 @@ const viewer2 = createIsometric3D('viewer2', {
 
 ```javascript
 viewer.on('navigationChange', (data) => {
-  console.log('Navigation changed:', data);
+  // data.index      — nav point index (-1 when deselected)
+  // data.element    — clicked element (null on deselect)
+  // data.key        — first data-key value or element.id
+  // data.source     — 'click' | 'nav-bar' | 'autoplay' | 'scroll' | 'unknown'
+});
+
+viewer.on('navKeys', (data) => {
+  // data.keys       — string[] of deduplicated navigation keys
+});
+
+viewer.on('highlightChange', (data) => {
+  // data.action     — 'highlight' | 'clear'
+  // data.keys       — string[] of active keys (null on clear)
+  // data.source     — 'click' | 'nav-bar' | 'autoplay' | 'scroll' | 'unknown'
+});
+
+viewer.on('viewReset', (data) => {
+  // data.rotation   — {x, y, z} initial rotation
+  // data.zoom       — initial zoom level
+  // data.source     — navigation source
+});
+
+viewer.on('autoPlayChange', (data) => {
+  // data.playing    — boolean
+});
+
+viewer.on('sceneUpdate', (data) => {
+  // data.rotation    — {x, y, z} current rotation
+  // data.zoom        — current zoom level
+  // data.translation — {x, y} current pan
+  // data.container   — {width, height} container dimensions
+  // data.perspective — {width, height} perspective dimensions
+});
+
+viewer.on('connectorClick', (data) => {
+  // data.keys       — string[] of connector group keys
+  // data.element    — clicked SVG element
+});
+
+viewer.on('centerOnElement', (data) => {
+  // data.element    — DOM element being centered
+  // data.id         — element id or null
 });
 ```
 
@@ -1603,7 +1630,7 @@ When clicking on a navigable element or scrolling to a content section, the URL 
 example.html#cube1-description
 ```
 
-This provides semantic navigation to specific content sections using the element's `data-section` attribute.
+This provides semantic navigation to specific content sections using the element's `data-key` attribute.
 
 #### 2. Query Parameter Navigation (Index + Manual Adjustments)
 

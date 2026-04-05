@@ -95,42 +95,42 @@
     <div class="isometric-perspective">
 
       <!-- Scene A (Parent Container) - NO dimensions, just container -->
-      <div id="sceneA" class="scene" data-groups="groupA">
+      <div id="sceneA" class="scene" data-related-keys="groupA">
 
         <!-- Cuboid A1 (3D Box with faces) -->
-        <div class="scene" style="background-color: #667eea !important;" data-z-axis="20" data-groups="groupA1" data-section="A1">
+        <div class="scene" style="background-color: #667eea !important;" data-z-axis="20" data-related-keys="groupA1" data-key="A1">
           <div class="cuboid" data-width="80" data-height="60" data-depth="50">
             <div class="scene-label">A1</div>
             <div class="front">A1 Front</div>
             <div class="back">A1 Back</div>
             <div class="left">A1 Left</div>
             <div class="right">A1 Right</div>
-            <div class="top" data-nav-xyz="center" data-nav-zoom="90%" data-nav-pan="center" data-activate="groupA1" data-section="A1">A1 Top</div>
+            <div class="top" data-nav-xyz="center" data-nav-zoom="90%" data-nav-pan="center" data-key="groupA1" data-key="A1">A1 Top</div>
             <div class="bottom">A1 Bottom</div>
           </div>
         </div>
 
-        <div id="sceneA3" class="scene" data-z-axis="20" style="background-color: #667eea !important; width: 300px; height: 300px;"  data-groups="groupA1" data-section="A3">
+        <div id="sceneA3" class="scene" data-z-axis="20" style="background-color: #667eea !important; width: 300px; height: 300px;"  data-related-keys="groupA1" data-key="A3">
           <div class="cuboid" style="left: 10%;" data-width="80%" data-height="60" data-depth="100%">
             <div class="scene-label">A3 (80% = 240×300)</div>
             <div class="front">A3 Front</div>
             <div class="back">A3 Back</div>
             <div class="left">A3 Left</div>
             <div class="right">A3 Right</div>
-            <div class="top" data-nav-xyz="center" data-nav-zoom="90%" data-nav-pan="center" data-activate="groupA1" data-section="A1">A3 Top</div>
+            <div class="top" data-nav-xyz="center" data-nav-zoom="90%" data-nav-pan="center" data-key="groupA1" data-key="A1">A3 Top</div>
             <div class="bottom">A3 Bottom</div>
           </div>
         </div>
 
         <!-- Cuboid A2 (3D Box with faces, positioned next to A1) -->
-        <div class="scene" data-z-axis="20" style="transform: translateX(100px);" data-groups="groupA2">
+        <div class="scene" data-z-axis="20" style="transform: translateX(100px);" data-related-keys="groupA2">
           <div class="cuboid" data-width="80" data-height="60" data-depth="50">
             <div class="scene-label">A2</div>
             <div class="front">A2 Front</div>
             <div class="back">A2 Back</div>
             <div class="left">A2 Left</div>
             <div class="right">A2 Right</div>
-            <div class="top" data-nav-xyz="30.0.-30" data-nav-zoom="90%" data-nav-pan="center" data-activate="groupA2" data-section="A2">A2 Top</div>
+            <div class="top" data-nav-xyz="30.0.-30" data-nav-zoom="90%" data-nav-pan="center" data-key="groupA2" data-key="A2">A2 Top</div>
             <div class="bottom">A2 Bottom</div>
           </div>
         </div>
@@ -138,49 +138,49 @@
 
       <!-- Scene B (Standalone with shadow) -->
       <div id="sceneB" class="scene" data-z-axis="50" style="background-color: #667eea;"
-        data-groups="groupB,00-groupC" data-section="B">
-        <div class="cuboid" data-width="100" data-height="120" data-depth="100" data-groups="groupB,00-groupC">
+        data-related-keys="groupB,00-groupC" data-key="B">
+        <div class="cuboid" data-width="100" data-height="120" data-depth="100" data-related-keys="groupB,00-groupC">
           <div class="scene-label">B</div>
           <div class="front">B Front</div>
           <div class="back">B Back</div>
           <div class="left">B Left</div>
           <div class="right">B Right</div>
-          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="90%" data-activate="groupB">B Top</div>
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="90%" data-key="groupB">B Top</div>
           <div class="bottom">B Bottom</div>
         </div>
       </div>
 
       <!-- Scene C (With sub-elements on front face) -->
       <div id="sceneC" class="scene" data-z-axis="10" style="transform: translateX(-150px) translateY(100px);"
-        data-groups="00-groupC" data-section="C">
+        data-related-keys="00-groupC" data-key="C">
         <div class="cuboid" data-width="auto" data-height="auto" data-depth="auto">
           <div class="scene-label">C</div>
           <div class="front flex-column">
             <!-- Sub-elements without .face class -->
-            <div data-nav-xyz="current" data-nav-zoom="90%" data-activate="01-subface1">Sub-face 1 (90%)</div>
-            <div data-nav-xyz="current" data-nav-zoom="90%" data-activate="subface2">Sub-face 2 (90%)</div>
-            <div data-nav-xyz="current" data-nav-zoom="90%" data-activate="subface3">Sub-face 3 (90%)</div>
+            <div data-nav-xyz="current" data-nav-zoom="90%" data-key="01-subface1">Sub-face 1 (90%)</div>
+            <div data-nav-xyz="current" data-nav-zoom="90%" data-key="subface2">Sub-face 2 (90%)</div>
+            <div data-nav-xyz="current" data-nav-zoom="90%" data-key="subface3">Sub-face 3 (90%)</div>
           </div>
           <div class="back">C Back</div>
           <div class="left">C Left</div>
           <div class="right">C Right</div>
-          <div class="top" data-nav-zoom="90%" data-activate="00-groupCTop">C Top</div>
+          <div class="top" data-nav-zoom="90%" data-key="00-groupCTop">C Top</div>
           <div class="bottom">C Bottom</div>
         </div>
       </div>
 
-      <div id="withoutScene" class="cuboid" data-width="auto" data-height="auto" data-depth="auto" data-section="D">
+      <div id="withoutScene" class="cuboid" data-width="auto" data-height="auto" data-depth="auto" data-key="D">
         <div class="scene-label">D</div>
         <div class="front flex-column">
           <!-- Sub-elements without .face class -->
-          <div data-nav-xyz="current" data-nav-zoom="90%" data-nav-pan="center" data-activate="01-subface1">Sub-face 1</div>
-          <div data-nav-xyz="current" data-nav-zoom="70%" data-nav-pan="center" data-activate="00-groupC">00-groupC</div>
-          <div data-nav-xyz="current" data-nav-zoom="80%" data-nav-pan="center" data-activate="subface3">Sub-face 3</div>
+          <div data-nav-xyz="current" data-nav-zoom="90%" data-nav-pan="center" data-key="01-subface1">Sub-face 1</div>
+          <div data-nav-xyz="current" data-nav-zoom="70%" data-nav-pan="center" data-key="00-groupC">00-groupC</div>
+          <div data-nav-xyz="current" data-nav-zoom="80%" data-nav-pan="center" data-key="subface3">Sub-face 3</div>
         </div>
         <div class="back">D Back</div>
         <div class="left">D Left</div>
         <div class="right">D Right</div>
-        <div class="top" data-nav-xyz="60.0.-20" data-nav-zoom="90%" data-nav-pan="center" data-activate="00-groupC">D Top</div>
+        <div class="top" data-nav-xyz="60.0.-20" data-nav-zoom="90%" data-nav-pan="center" data-key="00-groupC">D Top</div>
         <div class="bottom">D Bottom</div>
       </div>
     </div>
@@ -229,7 +229,7 @@ Scene C (data-z-axis="10" - has shadow)
       defaultZoom: 1.0,
       showCompactControls: true,
       navSelectedTarget: 'bottom',
-      debugActivateRects: true  // Enable debug rectangles for data-activate elements
+      debugActivateRects: true  // Enable debug rectangles for data-key elements
     });
 
 

@@ -162,24 +162,7 @@
   <p class="description">Demonstrating various connector configurations with different styles, markers, and animations</p>
 
   <div id="demo" class="isometric-container">
-    <div class="isometric-perspective" data-connectors='[
-      {"ids": "cuboid1,sceneA", "positions": "right,left", "vertices": "10,10", "color": "#000eea", "endStyles": "circle,arrowSmall", "animationStyle": "circle"},
-      {"ids": "cuboid1,cuboid2", "positions": "center,center", "color": "#f5576c", "lineStyle": "dashed", "endStyles": "arrow,arrow"},
-      {"ids": "cuboid1,sceneB", "positions": "center,center", "color": "#00f2fe", "lineStyle": "dotted", "endStyles": "circle,circle"},
-      {"ids": "cuboid2,cuboid3", "positions": "center,center", "color": "#4facfe", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
-      {"ids": "sceneA,sceneD", "positions": "center,center", "vertices": "50", "color": "#fa709a", "endStyles": ",arrow"},
-      {"ids": "sceneC,sceneD", "positions": "center,center", "color": "#30cfd0", "lineStyle": "dashed", "endStyles": "arrow,arrow"},
-      {"ids": "sceneD,cuboid3", "positions": "center,center", "color": "#fecfef", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
-      {"ids": "cuboid3,sceneE", "positions": "center,center", "color": "#fcb69f", "lineStyle": "dotted", "endStyles": "circle,circle"},
-      {"ids": "sceneE,sceneC", "positions": "center,center", "vertices": "30", "color": "#a8edea", "lineStyle": "dashed", "endStyles": ",arrow"},
-      {"ids": "sceneB,cuboid2", "positions": "center,center", "color": "#fee140", "lineStyle": "dashed", "endStyles": "circle,arrow", "animationStyle": "circle"},
-      {"ids": "sceneA,sceneB", "positions": "center,center", "vertices": "40", "color": "#ff6b6b", "lineStyle": "dashed", "endStyles": "circle,arrow", "animationStyle": "circle"},
-      {"ids": "sceneB,sceneC", "positions": "center,center", "color": "#4ecdc4", "lineStyle": "dashed", "endStyles": "arrow,arrow", "animationStyle": "circle"},
-      {"ids": "sceneC,sceneE", "positions": "center,center", "vertices": "60", "color": "#ffe66d", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
-      {"ids": "sceneE,sceneA", "positions": "center,center", "color": "#a8dadc", "lineStyle": "dashed", "endStyles": "circle,circle", "animationStyle": "circle"},
-      {"ids": "sceneD,sceneB", "positions": "center,center", "color": "#f1faee", "lineStyle": "dashed", "endStyles": ",arrow", "animationStyle": "circle"},
-      {"ids": "sceneE,sceneD", "positions": "center,center", "color": "#e63946", "lineStyle": "dashed", "endStyles": "circle,arrow", "animationStyle": "circle"}
-    ]'>
+    <div class="isometric-perspective">
       
       <div class="grid-layout">
         
@@ -258,14 +241,31 @@
   <script src="../src/isometric-3d.js"></script>
   <script>
     // Initialize the isometric 3D presenter
-    // Connectors are defined in the HTML data-connectors attribute
     const iso3d = new Isometric3D('demo', {
       rotation: { x: 45, y: 0, z: -35 },
       zoom: 0.8,
-      translation: { x: 0, y: 0, z: 0 }
+      translation: { x: 0, y: 0, z: 0 },
+      connectors: [
+        { ids: 'cuboid1,sceneA', positions: 'right,left', vertices: '10,10', color: '#000eea', endStyles: 'circle,arrowSmall', animationStyle: 'circle' },
+        { ids: 'cuboid1,cuboid2', positions: 'center,center', color: '#f5576c', lineStyle: 'dashed', endStyles: 'arrow,arrow' },
+        { ids: 'cuboid1,sceneB', positions: 'center,center', color: '#00f2fe', lineStyle: 'dotted', endStyles: 'circle,circle' },
+        { ids: 'cuboid2,cuboid3', positions: 'center,center', color: '#4facfe', lineStyle: 'dashed', endStyles: ',arrow', animationStyle: 'circle' },
+        { ids: 'sceneA,sceneD', positions: 'center,center', vertices: '50', color: '#fa709a', endStyles: ',arrow' },
+        { ids: 'sceneC,sceneD', positions: 'center,center', color: '#30cfd0', lineStyle: 'dashed', endStyles: 'arrow,arrow' },
+        { ids: 'sceneD,cuboid3', positions: 'center,center', color: '#fecfef', lineStyle: 'dashed', endStyles: ',arrow', animationStyle: 'circle' },
+        { ids: 'cuboid3,sceneE', positions: 'center,center', color: '#fcb69f', lineStyle: 'dotted', endStyles: 'circle,circle' },
+        { ids: 'sceneE,sceneC', positions: 'center,center', vertices: '30', color: '#a8edea', lineStyle: 'dashed', endStyles: ',arrow' },
+        { ids: 'sceneB,cuboid2', positions: 'center,center', color: '#fee140', lineStyle: 'dashed', endStyles: 'circle,arrow', animationStyle: 'circle' },
+        { ids: 'sceneA,sceneB', positions: 'center,center', vertices: '40', color: '#ff6b6b', lineStyle: 'dashed', endStyles: 'circle,arrow', animationStyle: 'circle' },
+        { ids: 'sceneB,sceneC', positions: 'center,center', color: '#4ecdc4', lineStyle: 'dashed', endStyles: 'arrow,arrow', animationStyle: 'circle' },
+        { ids: 'sceneC,sceneE', positions: 'center,center', vertices: '60', color: '#ffe66d', lineStyle: 'dashed', endStyles: ',arrow', animationStyle: 'circle' },
+        { ids: 'sceneE,sceneA', positions: 'center,center', color: '#a8dadc', lineStyle: 'dashed', endStyles: 'circle,circle', animationStyle: 'circle' },
+        { ids: 'sceneD,sceneB', positions: 'center,center', color: '#f1faee', lineStyle: 'dashed', endStyles: ',arrow', animationStyle: 'circle' },
+        { ids: 'sceneE,sceneD', positions: 'center,center', color: '#e63946', lineStyle: 'dashed', endStyles: 'circle,arrow', animationStyle: 'circle' }
+      ]
     });
 
-    console.log('🔗 Connector Showcase initialized with 16 connectors (10 animated) via HTML data-connectors!');
+    console.log('🔗 Connector Showcase initialized with 16 connectors (10 animated) via constructor!');
     console.log('ISO3D instance:', iso3d);
     
     // Debug: Check if elements exist and connectors are drawn

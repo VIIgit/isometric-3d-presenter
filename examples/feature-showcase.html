@@ -746,7 +746,7 @@ createIsometric3D('demo4', {
       <ul>
         <li><code>data-nav-xyz</code> sets target rotation (format: "x.y.z")</li>
         <li><code>data-nav-zoom</code> sets target zoom level</li>
-        <li><code>data-section</code> creates navigation points in the nav bar</li>
+        <li><code>data-key</code> creates navigation points in the nav bar</li>
         <li>Smooth animated transitions between views</li>
       </ul>
       <div class="code-example">
@@ -763,13 +763,13 @@ createIsometric3D('demo4', {
   &lt;div class="top" 
        data-nav-xyz="45.0.-35" 
        data-nav-zoom="1.3"
-       data-section="top-view"&gt;
+       data-key="top-view"&gt;
     📍 Click: Top View
   &lt;/div&gt;
   &lt;div class="bottom" 
        data-nav-xyz="-45.0.-35" 
        data-nav-zoom="1.3"
-       data-section="bottom-view"&gt;
+       data-key="bottom-view"&gt;
     📍 Click: Bottom View
   &lt;/div&gt;
 &lt;/div&gt;</pre>
@@ -818,7 +818,7 @@ createIsometric3D('demo5', {
         <div id="nav-cube" class="cuboid" data-width="120" data-height="80" data-depth="120">
 
           <div class="front" data-nav-zoom="0.8" style="background: rgba(255, 100, 100, 0.3);"
-            data-section="front-view">
+            data-key="front-view">
             📍 Click: Front
           </div>
           <div class="back">Back</div>
@@ -826,7 +826,7 @@ createIsometric3D('demo5', {
             Left
           </div>
           <div class="right">Right</div>
-          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-section="top-view"
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-key="top-view"
             style="background: rgba(100, 100, 255, 0.3);">
             📍 Click: Top
           </div>
@@ -916,25 +916,7 @@ const svg = document
     </div>
     <div id="demo6" class="isometric-container wireframe">
       <div class="nav-hint">Connectors update as you rotate</div>
-      <div class="isometric-perspective" data-connectors='[
-                     {
-                         "ids": "conn-cube1,conn-cube2",
-                         "positions": "right,left",
-                         "vertices": "10",
-                         "color": "#221F19",
-                         "endStyles": "circle,arrow",
-                         "lineStyle": "solid",
-                         "animationStyle": "circle"
-                     },
-                     {
-                         "ids": "conn-cube2,conn-cube3",
-                         "positions": "bottom,top",
-                         "vertices": "40,60",
-                         "color": "#4A4640",
-                         "endStyles": ",arrowSmall",
-                         "lineStyle": "dashed"
-                     }
-                 ]'>
+      <div class="isometric-perspective">
         <div id="conn-cube1" class="cuboid" data-width="80" data-height="60" data-depth="80">
           <div class="front">Input</div>
           <div class="back">Input</div>
@@ -1074,8 +1056,8 @@ createIsometric3D('demo7', {
       <p>Dynamically highlight specific elements while dimming others. Perfect for step-by-step presentations and guided
         tours. This example uses a 3×3 grid layout with connector vertices for curved paths.</p>
       <ul>
-        <li><code>data-groups</code> assigns elements to named groups</li>
-        <li><code>data-activate</code> on navigation triggers highlighting</li>
+        <li><code>data-related-keys</code> assigns elements to named groups</li>
+        <li><code>data-key</code> on navigation triggers highlighting</li>
         <li>Highlighted elements receive <code>.highlight</code> class</li>
         <li>Non-highlighted elements receive <code>.dimmed</code> class and automatically dim</li>
         <li>Works with cuboids, faces, and SVG connectors</li>
@@ -1119,19 +1101,19 @@ createIsometric3D('demo7', {
 }]'&gt;
   &lt;div id="cube1" 
        class="cuboid"
-       data-groups="step1"
+       data-related-keys="step1"
        data-width="60"
        data-height="50"
        data-depth="60"&gt;
     &lt;div class="front" 
-         data-groups="step1"&gt;
+         data-related-keys="step1"&gt;
       Start
     &lt;/div&gt;
     &lt;!-- other faces... --&gt;
     &lt;div class="top" 
          data-nav-xyz="45.0.-35" 
-         data-activate="step1" 
-         data-groups="step1"&gt;
+         data-key="step1" 
+         data-related-keys="step1"&gt;
       📍 Step 1
     &lt;/div&gt;
   &lt;/div&gt;
@@ -1152,7 +1134,7 @@ createIsometric3D('demo7', {
 
 /* Dimmed non-highlighted */
 .isometric-perspective:has(
-  .highlight[data-activate]
+  .highlight[data-key]
 ) .cuboid:not(.highlight) 
   > .face {
   opacity: 0.3;
@@ -1180,51 +1162,22 @@ createIsometric3D('demo8', {
       </div>
     </div>
     <div id="demo8" class="isometric-container wireframe">
-      <div class="isometric-perspective grid-hl" data-connectors='[
-                     {
-                         "ids": "hl-cube1,hl-cube5",
-                         "positions": "bottom,top",
-                         "vertices": "15,15",
-                         "color": "#221F19",
-                         "endStyles": "circle,arrowSmall",
-                         "groups": "step1",
-                         "animationStyle": "circle"
-                     },
-                     {
-                         "ids": "hl-cube5,hl-cube9",
-                         "positions": "bottom,top",
-                         "vertices": "15,5",
-                         "color": "#4A4640",
-                         "endStyles": "circle,arrowSmall",
-                         "groups": "step2",
-                         "animationStyle": "circle"
-                     },
-                     {
-                         "ids": "hl-cube9,hl-cube1",
-                         "positions": "left,bottom",
-                         "vertices": "40,30",
-                         "color": "#221F19",
-                         "endStyles": "circle,arrowSmall",
-                         "lineStyle": "dashed",
-                         "groups": "step3",
-                         "animationStyle": "circle"
-                     }
-                 ]'>
-        <div id="hl-cube1" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step1"
+      <div class="isometric-perspective grid-hl">
+        <div id="hl-cube1" class="cuboid" data-width="60" data-height="50" data-depth="60" data-related-keys="step1"
           style="grid-area: 1 / 1 / 2 / 2;">
-          <div class="front" data-groups="step1"><span class="status-indicator"
+          <div class="front" data-related-keys="step1"><span class="status-indicator"
               style="font-size: 0.7em; color: #888;"></span></div>
-          <div class="back" data-groups="step1">Start</div>
-          <div class="left" data-groups="step1">Activate step1; Groups step1,step3</div>
+          <div class="back" data-related-keys="step1">Start</div>
+          <div class="left" data-related-keys="step1">Activate step1; Groups step1,step3</div>
           <div class="right">DB</div>
-          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="step1" data-section="step1"
-            data-groups="step1">
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-key="step1" data-key="step1"
+            data-related-keys="step1">
             📍 Step 1
           </div>
-          <div class="bottom" data-groups="step1">Bottom</div>
+          <div class="bottom" data-related-keys="step1">Bottom</div>
         </div>
 
-        <div id="hl-cube2" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step122"
+        <div id="hl-cube2" class="cuboid" data-width="60" data-height="50" data-depth="60" data-related-keys="step122"
           style="grid-area: 1 / 2 / 2 / 3;">
           <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
           <div class="back">Cache</div>
@@ -1242,13 +1195,13 @@ createIsometric3D('demo8', {
           <!-- Empty placeholder -->
         </div>
 
-        <div id="hl-cube5" class="scene" data-groups="step1,step2" data-nav-xyz="45.0.-35" data-nav-zoom="1.3"
-          data-activate="step2" data-section="step2"
+        <div id="hl-cube5" class="scene" data-related-keys="step1,step2" data-nav-xyz="45.0.-35" data-nav-zoom="1.3"
+          data-key="step2" data-key="step2"
           style="border: 1px dashed #221F19; grid-area: 2 / 2 / 3 / 3; padding: 15px; cursor: pointer;">
           📍 Step 2 - API
         </div>
 
-        <div id="hl-cube6" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step2"
+        <div id="hl-cube6" class="cuboid" data-width="60" data-height="50" data-depth="60" data-related-keys="step2"
           style="grid-area: 2 / 3 / 3 / 4;">
           <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
           <div class="back">Logic</div>
@@ -1262,7 +1215,7 @@ createIsometric3D('demo8', {
           <!-- Empty placeholder -->
         </div>
 
-        <div id="hl-cube8" class="cuboid" data-width="60" data-height="50" data-depth="60" data-groups="step2,step3"
+        <div id="hl-cube8" class="cuboid" data-width="60" data-height="50" data-depth="60" data-related-keys="step2,step3"
           style="grid-area: 3 / 2 / 4 / 3;">
           <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
           <div class="back">Router</div>
@@ -1273,16 +1226,16 @@ createIsometric3D('demo8', {
         </div>
 
         <div id="hl-cube9" class="cuboid" data-width="60" data-height="50" data-depth="60"
-          style="grid-area: 3 / 3 / 4 / 4;" data-groups="step3">
+          style="grid-area: 3 / 3 / 4 / 4;" data-related-keys="step3">
           <div class="front"><span class="status-indicator" style="font-size: 0.7em; color: #888;"></span></div>
-          <div class="back" data-groups="step3">UI</div>
-          <div class="left" data-groups="step3">group: step3</div>
+          <div class="back" data-related-keys="step3">UI</div>
+          <div class="left" data-related-keys="step3">group: step3</div>
           <div class="right">group: none</div>
-          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="step3" data-section="step3"
-            data-groups="step3">
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-key="step3" data-key="step3"
+            data-related-keys="step3">
             📍 Step 3
           </div>
-          <div class="bottom" data-groups="step3">Bottom</div>
+          <div class="bottom" data-related-keys="step3">Bottom</div>
         </div>
       </div>
     </div>
@@ -1424,13 +1377,13 @@ createIsometric3D('demo9', {
        data-width="90"
        data-height="60"
        data-depth="90"
-       data-groups="frontend"&gt;
+       data-related-keys="frontend"&gt;
     &lt;div class="front"&gt;React&lt;/div&gt;
     &lt;div class="top" 
          data-nav-xyz="30.0.-20"
          data-nav-zoom="1.4"
-         data-activate="frontend"
-         data-section="frontend"&gt;
+         data-key="frontend"
+         data-key="frontend"&gt;
       🖥️ Client
     &lt;/div&gt;
     &lt;!-- other faces... --&gt;
@@ -1485,33 +1438,7 @@ createIsometric3D('demo10', {
     </div>
     <div id="demo10" class="isometric-container wireframe">
       <div class="nav-hint">Click component tops to explore system</div>
-      <div class="isometric-perspective" data-connectors='[
-                     {
-                         "ids": "arch-client,arch-api",
-                         "positions": "right,left",
-                         "vertices": "15,15",
-                         
-                         "color": "#221F19",
-                         "endStyles": "circle,arrow",
-                         "animationStyle": "circle",
-                         "groups": "frontend"
-                     },
-                     {
-                         "ids": "arch-api,arch-db",
-                         "positions": "bottom,top",
-                         "color": "#221F19",
-                         "endStyles": ",arrow",
-                         "groups": "backend"
-                     },
-                     {
-                         "ids": "arch-api,arch-cache",
-                         "positions": "right,left",
-                         "color": "#4A4640",
-                         "endStyles": ",arrowSmall",
-                         "lineStyle": "dashed",
-                         "groups": "backend"
-                     }
-                 ]'>
+      <div class="isometric-perspective">
 
         <!-- Title -->
         <div class="scene" data-z-axis="200">
@@ -1519,12 +1446,12 @@ createIsometric3D('demo10', {
         </div>
 
         <!-- Frontend Layer -->
-        <div id="arch-client" class="cuboid" data-width="90" data-height="60" data-depth="90" data-groups="frontend">
+        <div id="arch-client" class="cuboid" data-width="90" data-height="60" data-depth="90" data-related-keys="frontend">
           <div class="front">React</div>
           <div class="back">React</div>
           <div class="left">UI</div>
           <div class="right">▶️</div>
-          <div class="top" data-nav-xyz="30.0.-20" data-nav-zoom="1.4" data-activate="frontend" data-section="frontend">
+          <div class="top" data-nav-xyz="30.0.-20" data-nav-zoom="1.4" data-key="frontend" data-key="frontend">
             🖥️ Client
           </div>
           <div class="bottom">Bottom</div>
@@ -1532,13 +1459,13 @@ createIsometric3D('demo10', {
 
         <!-- API Layer -->
         <div id="arch-api" class="cuboid" data-width="100" data-height="70" data-depth="100" style="margin-left: 150px;"
-          data-groups="frontend,backend">
+          data-related-keys="frontend,backend">
           <div class="front">REST API</div>
           <div class="back">REST API</div>
           <div class="left">◀️</div>
           <div class="right">▶️</div>
-          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-activate="frontend,backend"
-            data-section="api">
+          <div class="top" data-nav-xyz="45.0.-35" data-nav-zoom="1.3" data-key="frontend,backend"
+            data-key="api">
             🔗 API Gateway
           </div>
           <div class="bottom">⬇️</div>
@@ -1546,14 +1473,14 @@ createIsometric3D('demo10', {
 
         <!-- Database -->
         <div class="scene" data-z-axis="-100" style="margin-left: 150px;">
-          <div id="arch-db" class="cuboid" data-width="90" data-height="80" data-depth="90" data-groups="backend">
+          <div id="arch-db" class="cuboid" data-width="90" data-height="80" data-depth="90" data-related-keys="backend">
             <div class="front">PostgreSQL</div>
             <div class="back">PostgreSQL</div>
             <div class="left">DB</div>
             <div class="right">DB</div>
             <div class="top">⬆️ (z:-100px)</div>
-            <div class="bottom" data-nav-xyz="60.0.-35" data-nav-zoom="1.5" data-activate="backend"
-              data-section="database">
+            <div class="bottom" data-nav-xyz="60.0.-35" data-nav-zoom="1.5" data-key="backend"
+              data-key="database">
               🗄️ Database
             </div>
           </div>
@@ -1561,12 +1488,12 @@ createIsometric3D('demo10', {
 
         <!-- Cache -->
         <div id="arch-cache" class="cuboid" data-width="70" data-height="50" data-depth="70" style="margin-left: 280px;"
-          data-groups="backend">
+          data-related-keys="backend">
           <div class="front">Redis</div>
           <div class="back">Redis</div>
           <div class="left">◀️</div>
           <div class="right">Cache</div>
-          <div class="top" data-nav-xyz="20.0.-50" data-nav-zoom="1.6" data-activate="backend" data-section="cache">
+          <div class="top" data-nav-xyz="20.0.-50" data-nav-zoom="1.6" data-key="backend" data-key="cache">
             ⚡ Cache
           </div>
           <div class="bottom">Bottom</div>
@@ -1604,19 +1531,31 @@ createIsometric3D('demo10', {
       { id: 'demo3', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.0 },
       { id: 'demo4', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.9 },
       { id: 'demo5', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.1, showCompactControls: true },
-      { id: 'demo6', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.9 },
+      { id: 'demo6', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.9, connectors: [
+          { ids: 'conn-cube1,conn-cube2', positions: 'right,left', vertices: '10', color: '#221F19', endStyles: 'circle,arrow', lineStyle: 'solid', animationStyle: 'circle' },
+          { ids: 'conn-cube2,conn-cube3', positions: 'bottom,top', vertices: '40,60', color: '#4A4640', endStyles: ',arrowSmall', lineStyle: 'dashed' }
+      ] },
       { id: 'demo7', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.0 },
-      { id: 'demo8', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.85, showCompactControls: true },
+      { id: 'demo8', rotation: { x: 45, y: 0, z: -35 }, zoom: 0.85, showCompactControls: true, connectors: [
+          { ids: 'hl-cube1,hl-cube5', positions: 'bottom,top', vertices: '15,15', color: '#221F19', endStyles: 'circle,arrowSmall', groups: 'step1', animationStyle: 'circle' },
+          { ids: 'hl-cube5,hl-cube9', positions: 'bottom,top', vertices: '15,5', color: '#4A4640', endStyles: 'circle,arrowSmall', groups: 'step2', animationStyle: 'circle' },
+          { ids: 'hl-cube9,hl-cube1', positions: 'left,bottom', vertices: '40,30', color: '#221F19', endStyles: 'circle,arrowSmall', lineStyle: 'dashed', groups: 'step3', animationStyle: 'circle' }
+      ] },
       { id: 'demo9', rotation: { x: 45, y: 0, z: -35 }, zoom: 1.2 },
-      { id: 'demo10', rotation: { x: 50, y: 0, z: -30 }, zoom: 0.7, showCompactControls: true }
+      { id: 'demo10', rotation: { x: 50, y: 0, z: -30 }, zoom: 0.7, showCompactControls: true, connectors: [
+          { ids: 'arch-client,arch-api', positions: 'right,left', vertices: '15,15', color: '#221F19', endStyles: 'circle,arrow', animationStyle: 'circle', groups: 'frontend' },
+          { ids: 'arch-api,arch-db', positions: 'bottom,top', color: '#221F19', endStyles: ',arrow', groups: 'backend' },
+          { ids: 'arch-api,arch-cache', positions: 'right,left', color: '#4A4640', endStyles: ',arrowSmall', lineStyle: 'dashed', groups: 'backend' }
+      ] }
     ];
 
     demos.forEach(config => {
-      const { id, rotation, zoom, showCompactControls } = config;
+      const { id, rotation, zoom, showCompactControls, connectors } = config;
       createIsometric3D(id, {
         defaultRotation: rotation,
         defaultZoom: zoom,
-        showCompactControls: showCompactControls || false
+        showCompactControls: showCompactControls || false,
+        connectors: connectors || null
       });
     });
 
