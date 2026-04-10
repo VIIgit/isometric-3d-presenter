@@ -69,8 +69,10 @@ class Isometric3D {
    * @param {Object} options.rotationLimits - Min/max rotation constraints
    * @param {string} options.urlPrefix - Prefix for URL hash parameters
    * @param {boolean} options.showCompactControls - Show compact control panel
+   * @param {boolean} options.showShadows - Enable automatic shadow generation for elevated elements (default: true)
    * @param {boolean} options.debugShadows - Enable shadow debugging
    * @param {string} options.navSelectedTarget - Navigation target behavior
+   * @param {number} options.explodeFactor - Multiplier for dynamic Z-axis separation based on camera X-rotation (default: 0)
    * @param {Array} options.connectors - Connector definitions array
    * @param {Object} options.connectorDefaults - Default connector line styles
    * @param {Object} options.dimmingAlpha - Alpha values for dimming non-highlighted elements
@@ -162,8 +164,14 @@ class Isometric3D {
     // Compact controls option
     this.showCompactControls = options.showCompactControls || false;
 
+    // Automatic shadows option
+    this.showShadows = options.showShadows !== undefined ? options.showShadows : true;
+
     // Debug mode for shadow visualization
     this.debugShadows = options.debugShadows || false;
+    
+    // Dynamic z-axis expansion based on camera x-rotation
+    this.explodeFactor = options.explodeFactor || 0;
 
     // Nav-selected target face option
     // When clicking a face, which face should get .nav-selected?
@@ -874,11 +882,14 @@ class Isometric3D {
   }
 
   createShadowDiv(scene, width, depth) {
+    if (!this.showShadows) return;
+
     // Get z-axis offset for shadow calculations
     const zAxisOffset = parseInt(scene.getAttribute('data-z-axis')) || 0;
+    const hasNoShadow = scene.hasAttribute('data-no-shadow');
 
-    // Don't create shadow if zAxisOffset is 0
-    if (zAxisOffset === 0) {
+    // Don't create shadow if zAxisOffset is 0 or data-no-shadow is set
+    if (zAxisOffset === 0 || hasNoShadow) {
       return;
     }
 
@@ -1145,9 +1156,21 @@ class Isometric3D {
       }
     });
 
-    // Sort navigation items by section name (alphanumerically)
-    // Items without section (using __index_ prefix) will be sorted by their index
+    // Sort navigation items.
+    // Priority: data-nav-index (explicit numeric order) > alphabetical by section/data-key > DOM index.
     navItemsArray.sort((a, b) => {
+      const aNavIdx = a.element.getAttribute('data-nav-index');
+      const bNavIdx = b.element.getAttribute('data-nav-index');
+      const aHasIdx = aNavIdx !== null && aNavIdx !== '';
+      const bHasIdx = bNavIdx !== null && bNavIdx !== '';
+
+      // If both have data-nav-index, sort numerically
+      if (aHasIdx && bHasIdx) {
+        return parseFloat(aNavIdx) - parseFloat(bNavIdx);
+      }
+      // Elements with data-nav-index come before those without
+      if (aHasIdx) return -1;
+      if (bHasIdx) return 1;
       // If both have sections, sort alphabetically
       if (a.section && b.section) {
         return a.section.localeCompare(b.section);
@@ -1162,6 +1185,13 @@ class Isometric3D {
     // Rebuild this.navElements in sorted order so all index-based lookups
     // (autoplay, URL loading, highlight-only, etc.) match the nav-bar sequence
     this.navElements = navItemsArray.map(item => item.element);
+
+    // Stamp data-nav-order on each navigable element's parent scene
+    // so CSS can target scenes relative to the active selection
+    this.navElements.forEach((el, i) => {
+      const scene = el.classList.contains('scene') ? el : el.closest('.scene');
+      if (scene) scene.setAttribute('data-nav-order', i);
+    });
 
     // Create navigation points for the unique, sorted items
     navItemsArray.forEach((item, sortedIndex) => {
@@ -1365,10 +1395,16 @@ class Isometric3D {
   }
 
   updateNavSelectedElements(activeIndex) {
-    // Get all navigable elements (cuboids, scenes, and faces with nav attributes)
-    const navigableElements = this.container.querySelectorAll('.nav-clickable');
+    // Step 1: Clean slate — remove ALL positioning / selection classes first.
+    // This ensures the browser sees a clear before→after state change for
+    // CSS transitions when the correct class is applied in step 3.
+    const allScenes = this.container.querySelectorAll('.isometric-perspective > .scene[data-nav-order]');
+    allScenes.forEach(scene => {
+      scene.classList.remove('nav-selected', 'scene-below-active', 'scene-above-active');
+    });
 
-    // Remove nav-selected from all nav-clickable elements
+    // Also remove nav-selected from non-scene nav-clickable elements (faces, cuboids)
+    const navigableElements = this.container.querySelectorAll('.nav-clickable');
     navigableElements.forEach(el => {
       el.classList.remove('nav-selected');
     });
@@ -1437,8 +1473,25 @@ class Isometric3D {
         }
       }
 
+      // Step 2: Add nav-selected to the target element
       if (highlightElement && highlightElement.classList.contains('nav-clickable')) {
         highlightElement.classList.add('nav-selected');
+      }
+
+      // Step 3: Add the correct positional class to each non-active scene.
+      // scene-below-active: scenes with a lower nav-order than the selected scene
+      // scene-above-active: scenes with a higher nav-order than the selected scene
+      const activeOrder = activeElementScene ? parseInt(activeElementScene.getAttribute('data-nav-order'), 10) : -1;
+      if (Number.isFinite(activeOrder) && activeOrder >= 0) {
+        allScenes.forEach(scene => {
+          const order = parseInt(scene.getAttribute('data-nav-order'), 10);
+          if (order < activeOrder) {
+            scene.classList.add('scene-below-active');
+          } else if (order > activeOrder) {
+            scene.classList.add('scene-above-active');
+          }
+          // order === activeOrder: active scene — no positional class needed
+        });
       }
 
       // Emit navigation change event (with the originally clicked element)
@@ -1451,6 +1504,8 @@ class Isometric3D {
         source: this._navigationSource || 'unknown'
       });
     } else {
+      // No active selection — positional classes already removed in step 1
+
       // Emit navigation change for deselection (index -1)
       this.emit('navigationChange', {
         index: -1,
@@ -2057,6 +2112,27 @@ class Isometric3D {
     const scene = this.container.querySelector('.isometric-perspective');
     if (!scene) return;
 
+    // Apply explodeFactor to scenes if enabled
+    if (this.explodeFactor !== 0) {
+      const scenes = this.container.querySelectorAll('.scene[data-z-axis]');
+      const clampedX = Math.max(0, this.currentRotation.x); // Explode only positive X usually
+      
+      scenes.forEach(flatScene => {
+        const rawZAxis = flatScene.getAttribute('data-z-axis');
+        const parsedZAxis = parseFloat(rawZAxis);
+        
+        if (Number.isFinite(parsedZAxis) && parsedZAxis !== 0) {
+          // Base Z + (Base Z proportion * current X rotation * explodeFactor)
+          // Normalizing: z=100 gets 1x explode, z=200 gets 2x explode, etc.
+          // so the layers spread out evenly rather than all moving by the same flat amount.
+          const explodeAmount = (parsedZAxis / 100) * clampedX * this.explodeFactor;
+          const newZ = parsedZAxis + explodeAmount;
+          
+          flatScene.style.setProperty('--scene-translate-z', `${newZ}px`);
+        }
+      });
+    }
+
     // Batch DOM updates to prevent flicker
     const transform = `translate(-50%, -50%) translate3d(${this.currentTranslation.x}px, ${this.currentTranslation.y}px, ${this.currentTranslation.z}px) scale(${this.currentZoom}) rotateX(${this.currentRotation.x}deg) rotateY(${this.currentRotation.y}deg) rotateZ(${this.currentRotation.z}deg)`;
 
@@ -2339,6 +2415,12 @@ class Isometric3D {
     }
     // If zoomString is "current" or not provided, targetZoom already has current value
 
+    // Clamp rotation to limits BEFORE computing auto-centering pan,
+    // so the clone measurement matches the actual clamped animation target
+    targetRotation.x = Math.max(this.rotationLimits.x.min, Math.min(this.rotationLimits.x.max, targetRotation.x));
+    targetRotation.y = Math.max(this.rotationLimits.y.min, Math.min(this.rotationLimits.y.max, targetRotation.y));
+    targetRotation.z = Math.max(this.rotationLimits.z.min, Math.min(this.rotationLimits.z.max, targetRotation.z));
+
     // Parse pan string (e.g., "100,-50", "current", or "default") - overrides auto-centering
     if (panString === 'current') {
       // Explicitly keep current translation
@@ -2445,10 +2527,6 @@ class Isometric3D {
       }
     }
 
-    // Update navigation bar to match the target position
-    // Pass sourceElement so we know which specific element was clicked
-    this.syncNavigationBar(xyzString, zoomString, panString, sourceElement);
-
     // Handle auto-highlight if source element is provided
     if (sourceElement) {
       // Check face first, then parent scene for activate groups
@@ -2516,6 +2594,13 @@ class Isometric3D {
         }
       });
     }
+
+    // Update navigation bar AFTER all highlighting work is complete.
+    // The CSS class changes (nav-selected, scene-above-active, scene-below-active)
+    // trigger CSS opacity transitions. Deferring them until after all getComputedStyle()
+    // calls and inline style changes from alpha-dimming prevents the browser from
+    // interrupting or restarting the transitions during the same JS frame.
+    this.syncNavigationBar(xyzString, zoomString, panString, sourceElement);
 
     // Sanitize translation before animating
     targetTranslation = this.sanitizeTranslation(targetTranslation);
@@ -2974,60 +3059,75 @@ class Isometric3D {
     // The live scene may have .smooth-transition which the clone inherits.
     tempPerspective.style.transition = 'none';
 
+    // Apply explodeFactor to the clone using the TARGET rotation (not current)
+    // so that measured positions reflect where elements will actually be after navigation
+    if (this.explodeFactor !== 0) {
+      const clampedX = Math.max(0, targetRotation.x);
+      tempPerspective.querySelectorAll('.scene[data-z-axis]').forEach(s => {
+        const parsedZAxis = parseFloat(s.getAttribute('data-z-axis'));
+        if (Number.isFinite(parsedZAxis) && parsedZAxis !== 0) {
+          const explodeAmount = (parsedZAxis / 100) * clampedX * this.explodeFactor;
+          s.style.setProperty('--scene-translate-z', `${parsedZAxis + explodeAmount}px`);
+        }
+      });
+    }
+
     this.container.appendChild(tempPerspective);
 
     // Force layout recalculation
     tempPerspective.getBoundingClientRect();
 
+    const containerCenterXAbs = containerRect.left + containerCenterX;
+    const containerCenterYAbs = containerRect.top + containerCenterY;
+
     let panX = 0;
     let panY = 0;
 
+    // Resolve the target element(s) to measure in the clone
+    let measureFn = null;
+
     if (keys && keys.length > 0) {
-      // GROUP CENTERING: Find ALL elements matching the keys and compute combined bounding box
+      // GROUP CENTERING: combined bounding box of all matching elements
       const matchingElements = this.findMatchingElementsInTree(tempPerspective, keys);
-
       if (matchingElements.length > 0) {
-        let minLeft = Infinity, minTop = Infinity, maxRight = -Infinity, maxBottom = -Infinity;
-
+        // Ensure matching elements can host absolutely-positioned center markers
         matchingElements.forEach(el => {
-          const rect = el.getBoundingClientRect();
-          if (rect.width > 0 || rect.height > 0) {
-            minLeft = Math.min(minLeft, rect.left);
-            minTop = Math.min(minTop, rect.top);
-            maxRight = Math.max(maxRight, rect.right);
-            maxBottom = Math.max(maxBottom, rect.bottom);
-          }
+          if (!el.style.position || el.style.position === 'static') el.style.position = 'relative';
         });
-
-        if (minLeft !== Infinity) {
-          const groupCenterX = (minLeft + maxRight) / 2;
-          const groupCenterY = (minTop + maxBottom) / 2;
-
-          const containerCenterXAbs = containerRect.left + containerCenterX;
-          const containerCenterYAbs = containerRect.top + containerCenterY;
-
-          // Pan is in screen pixels: in the CSS transform chain
-          // translate3d(pan) scale(zoom), translate is applied independently of scale
-          panX = containerCenterXAbs - groupCenterX;
-          panY = containerCenterYAbs - groupCenterY;
-        }
+        measureFn = () => {
+          // Use center-point markers instead of bbox centers. CSS perspective
+          // magnifies the near side of tilted elements, shifting the bbox
+          // center away from the true geometric center — significant for
+          // large scenes at high Z with explodeFactor.
+          let sumX = 0, sumY = 0, count = 0;
+          matchingElements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width > 0 || rect.height > 0) {
+              const marker = document.createElement('div');
+              marker.style.cssText = 'position:absolute;left:50%;top:50%;width:0;height:0;';
+              el.appendChild(marker);
+              const mr = marker.getBoundingClientRect();
+              el.removeChild(marker);
+              sumX += mr.left;
+              sumY += mr.top;
+              count++;
+            }
+          });
+          if (count === 0) return null;
+          return { x: sumX / count, y: sumY / count };
+        };
       }
     } else {
-      // SINGLE ELEMENT CENTERING: Original behavior
-      // Find the corresponding element in the clone
+      // SINGLE ELEMENT CENTERING
       let tempElement = null;
       if (element.id) {
         tempElement = tempPerspective.querySelector(`#${element.id}`);
       }
-
-      // Fallback: use data-key attribute if no ID
       if (!tempElement && element.getAttribute('data-key')) {
         const section = (element.getAttribute('data-key') || '').split(',')[0].trim();
         tempElement = tempPerspective.querySelector(`[data-key="${section}"]`) ||
           tempPerspective.querySelector(`[data-key^="${section},"]`);
       }
-
-      // Fallback: use same position in DOM tree if no ID or data-key
       if (!tempElement) {
         const getElementIndex = (el) => Array.from(el.parentNode.children).indexOf(el);
         const path = [];
@@ -3036,7 +3136,6 @@ class Isometric3D {
           path.unshift(getElementIndex(current));
           current = current.parentNode;
         }
-
         tempElement = tempPerspective;
         for (const index of path) {
           if (tempElement.children[index]) {
@@ -3046,18 +3145,56 @@ class Isometric3D {
           }
         }
       }
-
       if (tempElement) {
-        const elementRect = tempElement.getBoundingClientRect();
-        const elementCenterX = elementRect.left + (elementRect.width / 2);
-        const elementCenterY = elementRect.top + (elementRect.height / 2);
+        if (!tempElement.style.position || tempElement.style.position === 'static') tempElement.style.position = 'relative';
+        measureFn = () => {
+          const marker = document.createElement('div');
+          marker.style.cssText = 'position:absolute;left:50%;top:50%;width:0;height:0;';
+          tempElement.appendChild(marker);
+          const mr = marker.getBoundingClientRect();
+          tempElement.removeChild(marker);
+          return { x: mr.left, y: mr.top };
+        };
+      }
+    }
 
-        const containerCenterXAbs = containerRect.left + containerCenterX;
-        const containerCenterYAbs = containerRect.top + containerCenterY;
+    // Two-probe centering: CSS perspective magnifies the pan translation by a factor
+    // that depends on the element's Z depth (gain = perspective / (perspective - z)).
+    // A naive iteration (panY += error) oscillates when gain > 1.
+    // Instead, measure at two pan values to compute the exact gain, then solve directly.
+    if (measureFn) {
+      const buildTransform = (px, py) =>
+        `translate(-50%, -50%) translate3d(${px}px, ${py}px, 0px) scale(${targetZoom}) rotateX(${targetRotation.x}deg) rotateY(${targetRotation.y}deg) rotateZ(${targetRotation.z}deg)`;
 
-        // Pan is in screen pixels (translate3d before scale in CSS transform chain)
-        panX = containerCenterXAbs - elementCenterX;
-        panY = containerCenterYAbs - elementCenterY;
+      // Probe 1: measure at pan = (0, 0)
+      tempPerspective.style.transform = buildTransform(0, 0);
+      tempPerspective.getBoundingClientRect();
+      const c0 = measureFn();
+
+      if (c0) {
+        // Probe 2: measure at a small delta to compute perspective gain
+        const PROBE = 10;
+        tempPerspective.style.transform = buildTransform(PROBE, PROBE);
+        tempPerspective.getBoundingClientRect();
+        const c1 = measureFn();
+
+        if (c1) {
+          const gainX = (c1.x - c0.x) / PROBE || 1;
+          const gainY = (c1.y - c0.y) / PROBE || 1;
+
+          // Solve: pan * gain = error  →  pan = error / gain
+          panX = (containerCenterXAbs - c0.x) / gainX;
+          panY = (containerCenterYAbs - c0.y) / gainY;
+
+          // One verification pass to correct any residual non-linearity
+          tempPerspective.style.transform = buildTransform(panX, panY);
+          tempPerspective.getBoundingClientRect();
+          const c2 = measureFn();
+          if (c2) {
+            panX += (containerCenterXAbs - c2.x) / gainX;
+            panY += (containerCenterYAbs - c2.y) / gainY;
+          }
+        }
       }
     }
 
@@ -3137,6 +3274,20 @@ class Isometric3D {
     // target transform state immediately instead of the start of a transition.
     // The live scene may have .smooth-transition which the clone inherits.
     tempPerspective.style.transition = 'none';
+
+    // Apply explodeFactor to the clone using the TARGET rotation (not current)
+    // so that measured positions reflect where elements will actually be after navigation
+    if (this.explodeFactor !== 0) {
+      const clampedX = Math.max(0, targetRotation.x);
+      tempPerspective.querySelectorAll('.scene[data-z-axis]').forEach(s => {
+        const parsedZAxis = parseFloat(s.getAttribute('data-z-axis'));
+        if (Number.isFinite(parsedZAxis) && parsedZAxis !== 0) {
+          const explodeAmount = (parsedZAxis / 100) * clampedX * this.explodeFactor;
+          s.style.setProperty('--scene-translate-z', `${parsedZAxis + explodeAmount}px`);
+        }
+      });
+    }
+
     this.container.appendChild(tempPerspective);
 
     // Log matched elements (excluding connectors) for diagnostic clarity
@@ -5097,6 +5248,14 @@ class Isometric3D {
     const allDimmed = this.container.querySelectorAll('.dimmed');
     allDimmed.forEach(el => el.classList.remove('dimmed'));
 
+    // Restore ALL previously-dimmed elements to a clean state before re-processing.
+    // This ensures no stale inline styles or data attributes from a previous
+    // highlight pass interfere with the new pass.
+    const allPreviouslyDimmed = this.container.querySelectorAll('[data-dimmed="true"]');
+    allPreviouslyDimmed.forEach(el => {
+      this.restoreElementColors(el);
+    });
+
     const perspective = this.container.querySelector('.isometric-perspective');
     if (!perspective) return;
 
@@ -5262,23 +5421,24 @@ class Isometric3D {
    * @param {HTMLElement} element - Element to restore
    */
   restoreElementColors(element) {
-    const storedStyles = JSON.parse(element.getAttribute('data-original-styles') || '{}');
-
     if (!element.hasAttribute('data-dimmed')) {
       return; // Not dimmed, nothing to restore
     }
 
-    // Restore original colors
+    const storedStyles = JSON.parse(element.getAttribute('data-original-styles') || '{}');
+
+    // Remove inline style overrides so the element falls back to CSS cascade.
+    // Setting to '' (empty) clears the inline property without leaving a residual value.
     if (storedStyles.backgroundColor) {
-      element.style.backgroundColor = storedStyles.backgroundColor;
+      element.style.removeProperty('background-color');
     }
 
     if (storedStyles.borderColor) {
-      element.style.borderColor = storedStyles.borderColor;
+      element.style.removeProperty('border-color');
     }
 
     if (storedStyles.color) {
-      element.style.color = storedStyles.color;
+      element.style.removeProperty('color');
     }
 
     // Handle SVG elements
@@ -5291,8 +5451,9 @@ class Isometric3D {
       }
     }
 
-    // Remove dimmed state
+    // Remove dimmed state AND stored styles so they are freshly captured next time
     element.removeAttribute('data-dimmed');
+    element.removeAttribute('data-original-styles');
   }
 
   /**
@@ -5355,7 +5516,6 @@ class Isometric3D {
     const allDimmed = this.container.querySelectorAll('[data-dimmed="true"]');
     allDimmed.forEach(el => {
       this.restoreElementColors(el);
-      el.removeAttribute('data-original-styles');
     });
 
     // Redraw SVG to restore all animations

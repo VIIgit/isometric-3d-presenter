@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 305">
+  <rect x="23" y="50" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="89.5" y="64" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 1</text>
+  <rect x="23" y="131" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="89.5" y="145" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 2</text>
+  <rect x="23" y="212" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="89.5" y="226" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 3</text>
+  <rect x="174" y="50" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="240.5" y="64" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 1</text>
+  <rect x="174" y="131" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="240.5" y="145" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 2</text>
+  <rect x="174" y="212" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="240.5" y="226" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 3</text>
+  <rect x="353" y="50" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="419.5" y="64" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 1</text>
+  <rect x="353" y="131" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="419.5" y="145" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 2</text>
+  <rect x="353" y="212" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="419.5" y="226" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 3</text>
+  <rect x="504" y="50" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="570.5" y="64" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 1</text>
+  <rect x="504" y="131" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="570.5" y="145" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 2</text>
+  <rect x="504" y="212" width="133" height="76" rx="4" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
+  <text x="570.5" y="226" text-anchor="middle" style="font:font-weight:bold;10px sans-serif;fill:#d6b656">Org 3</text>
+</svg>

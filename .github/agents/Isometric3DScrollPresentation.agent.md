@@ -470,6 +470,23 @@ The library provides **only structural CSS** (perspective, transforms, controls)
 }
 ```
 
+### Scene Layer Dimming (Optional — Stacked Layers)
+
+When a navigation target is selected, scenes with a lower `data-nav-order` than the active scene receive the CSS class `scene-below-active`, and scenes with a higher `data-nav-order` receive `scene-above-active`. This lets you dim or style layers relative to the selected one. The library toggles both classes automatically; you provide the styling:
+
+```css
+.isometric-perspective > .scene.scene-below-active {
+    opacity: 0.2;
+    transition: opacity 0.6s ease;
+}
+.isometric-perspective > .scene.scene-above-active {
+    opacity: 0.2;
+    transition: opacity 0.6s ease;
+}
+```
+
+The `data-nav-order` attribute is stamped on each scene automatically during navigation setup. The sort order is determined by: `data-nav-index` (explicit numeric, highest priority) > alphabetical by `data-key` > DOM order. Use `data-nav-index` to control the exact navigation sequence regardless of key names or DOM position. When the user selects e.g. nav index 3, scenes with `data-nav-order` 0, 1, 2 get `scene-below-active`; scene 3 is the active one; scenes 4+ get `scene-above-active`. Deselecting (returning to default / index -1) removes both classes from all scenes.
+
 ### Connector Styling (Optional Enhancement)
 
 ```css
@@ -502,7 +519,9 @@ The library provides **only structural CSS** (perspective, transforms, controls)
 
 | Attribute | Values | Description |
 |-----------|--------|-------------|
-| `data-z-axis` | `"0"` | Z-axis elevation offset in px. Creates automatic shadow when > 0 |
+| `data-z-axis` | `"0"` | Z-axis elevation offset in px. Creates automatic shadow when > 0. When `explodeFactor` is set, this value is the base for the dynamic Z expansion formula. |
+| `data-no-shadow` | (presence) | Opt out of automatic shadow generation for this individual scene, even when `showShadows` is `true` and `data-z-axis > 0`. |
+| `data-nav-order` | `"0"`, `"1"`, … | **Auto-generated.** Set by the library during navigation setup. Reflects the scene's position in the sorted nav-bar order. Used internally to toggle the `scene-below-active` and `scene-above-active` CSS classes for layer dimming. Do not set manually. |
 
 ### On Any Clickable Element (Navigation)
 
@@ -511,6 +530,7 @@ The library provides **only structural CSS** (perspective, transforms, controls)
 | `data-nav-xyz` | `"45.00.-35"`, `"current"` | Target camera rotation as `x.y.z` (degrees, dot-separated). `"current"` = keep current rotation |
 | `data-nav-zoom` | `"1.2"`, `"current"` | Target zoom level (`0.2`–`3.0`). `"current"` = keep current zoom |
 | `data-nav-pan` | `"100.-50"`, `"current"`, `"default"` | Target pan as `x.y` (px). `"current"` / `"default"` = keep / reset. If omitted, auto-centers parent scene |
+| `data-nav-index` | `"1"`, `"2"`, … | Explicit numeric sort order for the navigation bar. Elements with `data-nav-index` are sorted numerically before elements without it. Without this attribute, navigation order falls back to alphabetical by `data-key`, then DOM order. |
 | `data-key` | `"intro"` | Section identifier for navigation, highlighting trigger, and URL hash. **Must be unique across elements.** Also defines group membership for highlighting when used as a comma-separated list (e.g., `"workflow,database"`). An element with only `data-key` (no `data-nav-*`) is still navigable — auto-fits zoom and auto-centers pan. |
 | `data-related-keys` | `"api,frontend"` | Comma-separated group membership for highlighting (this element belongs to these groups) |
 | `data-focus` | `"center"` | Auto-pan to center this element when clicked |
@@ -620,6 +640,8 @@ Connectors are defined as an array in the `connectors` option of `createIsometri
 | `rotationLimits` | `{x:{min,max}, y:{min,max}, z:{min,max}}` | `x:[0,90], y:[-180,180], z:[-180,180]` | Rotation clamps |
 | `bookmarkPrefix` | `string` | `containerId + '_'` | URL parameter prefix |
 | `showCompactControls` | `boolean` | `false` | Show spherical controller |
+| `showShadows` | `boolean` | `true` | Enable/disable automatic drop-shadows for elevated scenes (`data-z-axis > 0`). Set to `false` to globally suppress all shadows. Individual scenes can also opt out via `data-no-shadow` attribute. |
+| `explodeFactor` | `number` | `0` | Dynamic Z-axis separation multiplier. When > 0, scenes with `data-z-axis` spread apart as the camera X-rotation increases: `effectiveZ = dataZAxis + (dataZAxis / 100) × clampedRotX × explodeFactor`. Useful for stacked-layer visualizations where layers should fan out when tilted. The auto-centering pan calculation accounts for explode offset at the target rotation. |
 | `debugShadows` | `boolean` | `false` | Visualize shadow divs |
 | `navSelectedTarget` | `string` | `'clicked'` | Which face gets `.nav-selected`: `'clicked'`, `'top'`, `'bottom'`, `'front'`, `'back'`, `'left'`, `'right'` |
 | `connectorDefaults` | `object` | see below | Default connector line styles |
@@ -1194,7 +1216,10 @@ Before finalizing a generated page, verify:
 - [ ] `<link>` to `isometric-3d.css` is in `<head>`
 - [ ] `isometric-3d.js` is loaded before `scroll-sync.js`
 - [ ] `createIsometric3D()` is called before `new ScrollSync()`
-- [ ] Scenes with `data-z-axis > 0` will get automatic shadows
+- [ ] Scenes with `data-z-axis > 0` will get automatic shadows (unless `showShadows: false` globally or `data-no-shadow` per-scene)
+- [ ] If using `explodeFactor`, ensure `rotationLimits.x.max > 0` so tilting causes visible layer separation
+- [ ] If using `explodeFactor`, `data-nav-xyz` rotation values will be clamped to `rotationLimits` — auto-centering pan is computed at the clamped rotation, not the raw `data-nav-xyz` value
+- [ ] For stacked-layer dimming, add `.isometric-perspective > .scene.scene-below-active { opacity: …; }` and/or `.scene-above-active` CSS rules — the library toggles these classes but does not provide default styling
 
 ---
 

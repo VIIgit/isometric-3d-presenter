@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 305">
+  <rect x="10" y="5" width="310" height="290" rx="10" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2.5"/>
+  <text x="165" y="25" text-anchor="middle" style="font:font-weight:bold;16px sans-serif;fill:#6c8ebf">US</text>
+  <rect x="340" y="5" width="310" height="290" rx="10" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2.5"/>
+  <text x="495" y="25" text-anchor="middle" style="font:font-weight:bold;16px sans-serif;fill:#6c8ebf">CH</text>
+</svg>

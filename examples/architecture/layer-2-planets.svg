@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 305">
+  <rect x="18" y="28" width="143" height="260" rx="6" fill="#d5e8d4" stroke="#82b366" stroke-width="1.5"/>
+  <text x="89.5" y="44" text-anchor="middle" style="font:font-weight:bold;12px sans-serif;fill:#82b366">Internal</text>
+  <rect x="169" y="28" width="143" height="260" rx="6" fill="#d5e8d4" stroke="#82b366" stroke-width="1.5"/>
+  <text x="240.5" y="44" text-anchor="middle" style="font:font-weight:bold;12px sans-serif;fill:#82b366">External</text>
+  <rect x="348" y="28" width="143" height="260" rx="6" fill="#d5e8d4" stroke="#82b366" stroke-width="1.5"/>
+  <text x="419.5" y="44" text-anchor="middle" style="font:font-weight:bold;12px sans-serif;fill:#82b366">Internal</text>
+  <rect x="499" y="28" width="143" height="260" rx="6" fill="#d5e8d4" stroke="#82b366" stroke-width="1.5"/>
+  <text x="570.5" y="44" text-anchor="middle" style="font:font-weight:bold;12px sans-serif;fill:#82b366">External</text>
+</svg>
